@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Account,
+    Asset,
     Contract,
     Keypair,
     rpc as SorobanRpc,
@@ -23,6 +24,8 @@ import {
 import { webAuthnProvider } from './webauthn';
 import { TransactionOutbox, type ReplayOptions, type ReplayResult } from './outbox';
 import { verifyAttestation, AttestationError, type AttestationPolicy } from './webauthn/attestation';
+import { createLocalCipher, type LocalCipher } from './crypto/prf';
+import { deriveCounterfactualAddress as _deriveCounterfactualAddress } from './counterfactual';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -91,6 +94,13 @@ export type WalletConfig = {
      * true (default false — proceed without verification).
      */
     requireAttestation?: boolean;
+    /**
+     * Optional Stellar secret used to sponsor network fees. When set, mutating
+     * transactions are submitted as fee-bump envelopes paid by this account.
+     */
+    sponsorSecret?: string;
+    /** Base fee used by the outer fee-bump transaction. Defaults to BASE_FEE. */
+    feeBumpBaseFee?: string;
 };
 
 /**
@@ -107,12 +117,54 @@ export type WebAuthnSignature = {
     signature: Uint8Array;
 };
 
+/**
+ * Where the WebAuthn credential lives.
+ *
+ * - `platform`       — a device-bound passkey (Touch ID, Windows Hello, …).
+ * - `cross-platform` — a roaming/portable FIDO2 security key (YubiKey, etc.)
+ *                      that can sign from any device it is plugged into.
+ */
+export type AuthenticatorAttachment = 'platform' | 'cross-platform';
+
+/** Optional knobs for register(). */
+export type RegisterOptions = {
+    /**
+     * Request a specific authenticator type. Pass `cross-platform` to enrol a
+     * roaming FIDO2 security key as a portable signer rather than a device-bound
+     * platform passkey. Defaults to letting the platform decide.
+     */
+    authenticatorAttachment?: AuthenticatorAttachment;
+};
+
+/**
+ * A roaming (cross-platform) credential, persisted independently of platform
+ * passkeys so it can be identified and used as a portable signer across devices.
+ */
+export type PortableSigner = {
+    /** Base64url-encoded credential ID of the roaming key. */
+    credentialId: string;
+    /** Hex-encoded uncompressed P-256 public key (65 bytes). */
+    publicKey: string;
+    /** Always `cross-platform` for a portable signer. */
+    authenticatorAttachment: 'cross-platform';
+    /** Transport hints (usb/nfc/ble/hybrid) used to prompt for the key. */
+    transports: string[];
+};
+
 /** Result returned by a successful register() call. */
 export type RegisterResult = {
     /** The deterministically computed contract address of the new wallet ("C..."). */
     walletAddress: string;
     /** The uncompressed P-256 public key bytes (65 bytes). */
     publicKeyBytes: Uint8Array;
+    /** The authenticator type the credential was created with, when reported. */
+    authenticatorAttachment?: AuthenticatorAttachment;
+    /**
+     * True when the credential is a roaming FIDO2 security key persisted as a
+     * portable signer (independent of platform passkeys). Optional so existing
+     * callers that don't enrol roaming keys remain source-compatible.
+     */
+    isPortableSigner?: boolean;
 };
 
 /** Result returned by a successful deploy() call. */
@@ -173,15 +225,22 @@ export class RecoveryNotPending extends Error {
 }
 
 
-type InvisibleWallet = {
+export type InvisibleWallet = {
     /** Soroban contract address of the deployed wallet, or null if not yet registered. */
     address: string | null;
     /** True if the wallet contract has been confirmed to exist on-chain. */
     isDeployed: boolean;
     isPending: boolean;
     error: string | null;
-    /** Create a new passkey credential and compute the deterministic wallet address. */
-    register: (username?: string) => Promise<RegisterResult>;
+    /**
+     * Create a new WebAuthn credential and compute the deterministic wallet address.
+     *
+     * Pass `{ authenticatorAttachment: 'cross-platform' }` to enrol a roaming
+     * FIDO2 security key (YubiKey, etc.) as a portable signer that can sign from
+     * any device the key is plugged into. The roaming credential is persisted
+     * independently of platform passkeys — see {@link getPortableSigner}.
+     */
+    register: (username?: string, options?: RegisterOptions) => Promise<RegisterResult>;
     /**
      * Deploy the user's wallet contract on-chain via the factory.
      *
@@ -203,6 +262,14 @@ type InvisibleWallet = {
      * @param signaturePayload  The 32-byte payload from the Soroban SorobanAuthorizationEntry.
      */
     signAuthEntry: (signaturePayload: Uint8Array) => Promise<WebAuthnSignature | null>;
+    /** Derive the counterfactual wallet address for a given P-256 public key before deployment. */
+    deriveCounterfactualAddress: (publicKeyBytes: Uint8Array) => import('./counterfactual').CounterfactualAddress;
+    /**
+     * Return the roaming FIDO2 credential persisted as a portable signer, or null
+     * if the active credential is a device-bound platform passkey. Stored under a
+     * dedicated key so it is identified independently of platform passkeys.
+     */
+    getPortableSigner: () => Promise<PortableSigner | null>;
     /**
      * Restore an existing wallet session from storage.
      * Verifies that the wallet contract actually exists on-chain before setting the address.
@@ -278,6 +345,26 @@ type InvisibleWallet = {
      */
     approve: (signerKeypair: Keypair, spender: string, token: string, amount: number, expiry?: number) => Promise<void>;
     /**
+     * Get the current on-chain balance of this wallet from a token contract.
+     * @param token Optional token contract address. Defaults to native XLM.
+     */
+    getBalance: (token?: string) => Promise<{ address: string; amount: bigint; assetCode: string }>;
+    /**
+     * Send a payment from this wallet contract using a fee payer.
+     * @param signerKeypair Stellar Keypair or secret used to pay transaction fees.
+     * @param to Recipient address.
+     * @param amount Amount in contract units (stroops for native XLM).
+     * @param token Optional token contract address. Defaults to native XLM.
+     * @param memo Optional transaction memo.
+     */
+    sendPayment: (
+        signerKeypair: Keypair | string,
+        to: string,
+        amount: number | bigint,
+        token?: string,
+        memo?: string,
+    ) => Promise<{ transactionHash: string; status: 'PENDING' | 'SUCCESS' | 'FAILED' }>;
+    /**
      * Get the current allowance for a spender and token.
      *
      * @param spender       Stellar address of the spender.
@@ -301,12 +388,41 @@ type InvisibleWallet = {
      *          already on-chain, or remain pending.
      */
     replayOutbox: (opts?: ReplayOptions) => Promise<ReplayResult>;
+    /**
+     * Encrypt local app data (cached metadata, backup blobs, …) with a symmetric
+     * key derived from the user's passkey via the WebAuthn PRF extension.
+     *
+     * The first call runs an interactive PRF assertion (the same passkey gesture
+     * as signing) and caches the derived key for the session. The key is stable
+     * across sessions for the same credential, so ciphertext written in one
+     * session decrypts in the next. When PRF is unsupported, falls back to a
+     * random key persisted in the configured storage adapter — see
+     * {@link encryptionMode}.
+     *
+     * @param plaintext UTF-8 string or raw bytes to encrypt.
+     * @returns Base64 ciphertext (iv ‖ ciphertext), unreadable without the passkey.
+     */
+    encryptLocal: (plaintext: string | Uint8Array) => Promise<string>;
+    /**
+     * Decrypt a payload previously produced by {@link encryptLocal}.
+     * @returns The decoded UTF-8 plaintext.
+     */
+    decryptLocal: (payload: string) => Promise<string>;
+    /**
+     * Resolve which key-derivation path local encryption uses for the current
+     * credential: 'prf' (passkey-bound) or 'fallback' (local random key, not
+     * bound to the passkey). Useful to warn users on the weaker fallback path.
+     */
+    encryptionMode: () => Promise<'prf' | 'fallback'>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const POLL_INTERVAL_MS  = 1_000;
 const POLL_MAX_ATTEMPTS = 30;
+
+/** Storage key holding the roaming (cross-platform) credential as a portable signer. */
+const PORTABLE_SIGNER_KEY = 'invisible_wallet_portable_signer';
 
 /**
  * Poll server.getTransaction(hash) until the transaction leaves NOT_FOUND,
@@ -326,6 +442,36 @@ async function waitForTransaction(
     throw new Error(`Transaction ${hash} not confirmed after ${POLL_MAX_ATTEMPTS} attempts`);
 }
 
+function resolveSponsorKeypair(config: WalletConfig): Keypair | null {
+    return config.sponsorSecret ? Keypair.fromSecret(config.sponsorSecret) : null;
+}
+
+function signForSubmission(
+    tx: any,
+    signerKeypair: Keypair,
+    config: WalletConfig,
+    extraInnerSigners: Keypair[] = []
+) {
+    tx.sign(signerKeypair);
+    for (const extraSigner of extraInnerSigners) {
+        if (extraSigner.publicKey() !== signerKeypair.publicKey()) {
+            tx.sign(extraSigner);
+        }
+    }
+
+    const sponsor = resolveSponsorKeypair(config);
+    if (!sponsor) return tx;
+
+    const feeBump = TransactionBuilder.buildFeeBumpTransaction(
+        sponsor.publicKey(),
+        config.feeBumpBaseFee ?? BASE_FEE,
+        tx,
+        config.networkPassphrase
+    );
+    feeBump.sign(sponsor);
+    return feeBump;
+}
+
 /** Build a storage adapter from the config, defaulting to localStorage on web. */
 function resolveStorage(storage?: StorageAdapter): StorageAdapter {
     if (storage) return storage;
@@ -337,6 +483,21 @@ function resolveStorage(storage?: StorageAdapter): StorageAdapter {
         };
     }
     return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+}
+
+/** Read and parse the persisted portable-signer record, or null if none/invalid. */
+async function readPortableSigner(store: StorageAdapter): Promise<PortableSigner | null> {
+    const raw = await store.getItem(PORTABLE_SIGNER_KEY);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw) as PortableSigner;
+        if (parsed && parsed.authenticatorAttachment === 'cross-platform' && parsed.credentialId) {
+            return { ...parsed, transports: parsed.transports ?? [] };
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -351,6 +512,11 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
 
     const store = useMemo(() => resolveStorage(config.storage), [config.storage]);
     const outbox = useMemo(() => new TransactionOutbox(store), [store]);
+
+    // Cache the PRF-derived cipher so the interactive assertion runs at most once
+    // per session. Reset whenever the storage adapter changes (i.e. a new wallet).
+    const cipherRef = useRef<LocalCipher | null>(null);
+    useEffect(() => { cipherRef.current = null; }, [store]);
 
     // ── replayOutbox ────────────────────────────────────────────────────────
     // Resubmit any transactions persisted in the offline outbox. Deduped by
@@ -384,24 +550,26 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
 
     // ── register ──────────────────────────────────────────────────────────────
 
-    const register = useCallback(async (username?: string): Promise<RegisterResult> => {
+    const register = useCallback(async (username?: string, options?: RegisterOptions): Promise<RegisterResult> => {
         setIsPending(true);
         setError(null);
         try {
             const challenge = crypto.getRandomValues(new Uint8Array(32));
-            const name      = username || 'Veil User';
-            const userId    = username
-                ? new TextEncoder().encode(username)
+            const normalizedUsername = username ? username.normalize('NFC') : undefined;
+            const name      = normalizedUsername || 'Veil User';
+            const userId    = normalizedUsername
+                ? new TextEncoder().encode(normalizedUsername)
                 : crypto.getRandomValues(new Uint8Array(16));
 
             const resolvedRpId = rpId ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
 
-            const { credentialId, publicKeyBytes, attestationObject, clientDataJSON } = await webAuthnProvider.create({
+            const { credentialId, publicKeyBytes, attestationObject, clientDataJSON, authenticatorAttachment, transports } = await webAuthnProvider.create({
                 challenge,
                 rpId:     resolvedRpId,
                 rpName:   'Invisible Wallet',
                 userId,
                 userName: name,
+                authenticatorAttachment: options?.authenticatorAttachment,
             });
 
             // Optional attestation verification — enforce authenticator policy.
@@ -422,13 +590,35 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             const publicKeyHex  = bufferToHex(publicKeyBytes);
             const walletAddress = computeWalletAddress(factoryAddress, publicKeyBytes, networkPassphrase);
 
+            // Treat the credential as a portable signer when either the caller asked
+            // for a roaming key or the platform reported a cross-platform attachment.
+            const resolvedAttachment = authenticatorAttachment ?? options?.authenticatorAttachment;
+            const isPortableSigner = resolvedAttachment === 'cross-platform';
+
             await store.setItem('invisible_wallet_address',    walletAddress);
             await store.setItem('invisible_wallet_key_id',     credentialId);
             await store.setItem('invisible_wallet_public_key', publicKeyHex);
+
+            if (isPortableSigner) {
+                // Persist the roaming credential under its own key so it is stored and
+                // identified independently of platform passkeys, and so signAuthEntry
+                // can replay its transports when signing from another device.
+                const portable: PortableSigner = {
+                    credentialId,
+                    publicKey: publicKeyHex,
+                    authenticatorAttachment: 'cross-platform',
+                    transports: transports ?? [],
+                };
+                await store.setItem(PORTABLE_SIGNER_KEY, JSON.stringify(portable));
+            } else if (store.removeItem) {
+                // Clear any stale portable-signer record from a previous roaming enrolment.
+                await store.removeItem(PORTABLE_SIGNER_KEY);
+            }
+
             setAddress(walletAddress);
             setIsDeployed(false);
 
-            return { walletAddress, publicKeyBytes };
+            return { walletAddress, publicKeyBytes, authenticatorAttachment: resolvedAttachment, isPortableSigner };
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
@@ -438,6 +628,18 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             setIsPending(false);
         }
     }, [factoryAddress, networkPassphrase, rpId, store, config.attestationPolicy, config.requireAttestation]);
+
+    // ── deriveCounterfactualAddress ───────────────────────────────────────────
+
+    const deriveCounterfactualAddress = useCallback((publicKeyBytes: Uint8Array) => {
+        return _deriveCounterfactualAddress(publicKeyBytes, { factoryAddress, networkPassphrase });
+    }, [factoryAddress, networkPassphrase]);
+
+    // ── getPortableSigner ───────────────────────────────────────────────────────
+
+    const getPortableSigner = useCallback(async (): Promise<PortableSigner | null> => {
+        return readPortableSigner(store);
+    }, [store]);
 
     // ── deploy ────────────────────────────────────────────────────────────────
 
@@ -478,20 +680,21 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             const rpIdBytes   = new TextEncoder().encode(resolvedRpId);
             const originBytes = new TextEncoder().encode(resolvedOrigin);
 
-            const tx = new TransactionBuilder(sourceAccount, {
+            const txBuilder = new TransactionBuilder(sourceAccount, {
                 fee: BASE_FEE,
                 networkPassphrase,
-            })
-                .addOperation(
-                    factory.call(
-                        'deploy',
-                        nativeToScVal(pubKeyBytes,  { type: 'bytes' }),
-                        nativeToScVal(rpIdBytes,    { type: 'bytes' }),
-                        nativeToScVal(originBytes,  { type: 'bytes' }),
-                    )
+            });
+
+            txBuilder.addOperation(
+                factory.call(
+                    'deploy',
+                    nativeToScVal(pubKeyBytes,  { type: 'bytes' }),
+                    nativeToScVal(rpIdBytes,    { type: 'bytes' }),
+                    nativeToScVal(originBytes,  { type: 'bytes' }),
                 )
-                .setTimeout(30)
-                .build();
+            );
+
+            const tx = txBuilder.setTimeout(30).build();
 
             const sim = await server.simulateTransaction(tx);
             if (SorobanRpc.Api.isSimulationError(sim)) {
@@ -499,9 +702,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             }
 
             const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
-            assembled.sign(signerKeypair);
+            const submissionTx = signForSubmission(assembled, signerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -536,7 +739,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [factoryAddress, rpcUrl, networkPassphrase, rpId, origin, store]);
+    }, [factoryAddress, rpcUrl, networkPassphrase, rpId, origin, store, config]);
 
     // ── login ─────────────────────────────────────────────────────────────────
 
@@ -602,10 +805,15 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
                 signaturePayload.byteOffset + signaturePayload.byteLength
             ) as ArrayBuffer;
 
+            // For a roaming key, forward the stored transports so the assertion can
+            // prompt for the security key over USB/NFC/BLE on any device.
+            const portable = await readPortableSigner(store);
+
             const { authData, clientDataJSON, signature } = await webAuthnProvider.authenticate({
                 challenge,
                 credentialId: keyId,
                 rpId,
+                transports: portable?.transports,
             });
 
             const publicKeyBytes = hexToUint8Array(publicKeyHex);
@@ -699,9 +907,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             }
 
             const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
-            assembled.sign(signerKeypair);
+            const submissionTx = signForSubmission(assembled, signerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -731,7 +939,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [address, rpcUrl, networkPassphrase]);
+    }, [address, rpcUrl, networkPassphrase, config]);
 
     // ── getSigners ────────────────────────────────────────────────────────────
 
@@ -823,9 +1031,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             }
 
             const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
-            assembled.sign(signerKeypair);
+            const submissionTx = signForSubmission(assembled, signerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -844,7 +1052,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [address, rpcUrl, networkPassphrase]);
+    }, [address, rpcUrl, networkPassphrase, config]);
 
     // ── setGuardian ───────────────────────────────────────────────────────────
 
@@ -931,9 +1139,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
                 }
             }
 
-            assembled.sign(signerKeypair);
+            const submissionTx = signForSubmission(assembled, signerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -952,7 +1160,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [address, rpcUrl, networkPassphrase, signAuthEntry]);
+    }, [address, rpcUrl, networkPassphrase, signAuthEntry, config]);
 
     // ── initiateRecovery ──────────────────────────────────────────────────────
 
@@ -995,9 +1203,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             }
 
             const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
-            assembled.sign(guardianKeypair);
+            const submissionTx = signForSubmission(assembled, guardianKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -1028,7 +1236,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [address, rpcUrl, networkPassphrase]);
+    }, [address, rpcUrl, networkPassphrase, config]);
 
     // ── completeRecovery ──────────────────────────────────────────────────────
 
@@ -1068,9 +1276,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             }
 
             const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
-            assembled.sign(payerKeypair);
+            const submissionTx = signForSubmission(assembled, payerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -1097,6 +1305,178 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             setIsPending(false);
         }
     }, [address, rpcUrl, networkPassphrase]);
+
+    // ── getBalance ──────────────────────────────────────────────────────────
+
+    const getBalance = useCallback(async (token?: string): Promise<{ address: string; amount: bigint; assetCode: string }> => {
+        setIsPending(true);
+        setError(null);
+        try {
+            if (!address) throw new Error('No wallet address. Call register() or login() first.');
+
+            const server = new SorobanRpc.Server(rpcUrl);
+            const contractAddress = token ?? Asset.native().contractId(networkPassphrase);
+            const tokenContract = new Contract(contractAddress);
+
+            const dummyKeypair = Keypair.random();
+            const sourceAccount = new Account(dummyKeypair.publicKey(), '0');
+
+            const tx = new TransactionBuilder(sourceAccount, {
+                fee: BASE_FEE,
+                networkPassphrase,
+            })
+                .addOperation(tokenContract.call(
+                    'balance',
+                    nativeToScVal(address, { type: 'address' })
+                ))
+                .setTimeout(30)
+                .build();
+
+            const sim = await server.simulateTransaction(tx);
+            if (SorobanRpc.Api.isSimulationError(sim)) {
+                throw new Error(`Simulation failed: ${sim.error}`);
+            }
+
+            const result = (sim as SorobanRpc.Api.SimulateTransactionSuccessResponse).result;
+            if (!result || result.retval === undefined) throw new Error('Simulation returned no result');
+
+            const amount = scValToNative(result.retval) as bigint;
+            return {
+                address,
+                amount,
+                assetCode: token ? token : 'XLM',
+            };
+
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            setError(message);
+            throw err;
+        } finally {
+            setIsPending(false);
+        }
+    }, [address, networkPassphrase, rpcUrl]);
+
+    // ── sendPayment ──────────────────────────────────────────────────────────
+
+    const sendPayment = useCallback(async (
+        signerKeypair: Keypair | string,
+        to: string,
+        amount: number | bigint,
+        token?: string,
+        memo?: string,
+    ): Promise<{ transactionHash: string; status: 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
+        setIsPending(true);
+        setError(null);
+        try {
+            if (!address) throw new Error('No wallet address. Call register() or login() first.');
+
+            const payerKeypair = typeof signerKeypair === 'string'
+                ? Keypair.fromSecret(signerKeypair)
+                : signerKeypair;
+
+            const contractAddress = token ?? Asset.native().contractId(networkPassphrase);
+            const tokenContract = new Contract(contractAddress);
+            const amountValue = typeof amount === 'bigint'
+                ? amount
+                : BigInt(Math.round(amount));
+
+            const server = new SorobanRpc.Server(rpcUrl);
+            const sourceAccount = await server.getAccount(payerKeypair.publicKey());
+            const txBuilder = new TransactionBuilder(sourceAccount, {
+                fee: BASE_FEE,
+                networkPassphrase,
+            })
+                .addOperation(tokenContract.call(
+                    'transfer',
+                    nativeToScVal(address, { type: 'address' }),
+                    nativeToScVal(to, { type: 'address' }),
+                    nativeToScVal(amountValue, { type: 'i128' }),
+                ));
+
+            if (memo !== undefined) {
+                txBuilder.addMemo({ type: 'text', value: String(memo) } as any);
+            }
+
+            const tx = txBuilder.setTimeout(30).build();
+            const sim = await server.simulateTransaction(tx);
+            if (SorobanRpc.Api.isSimulationError(sim)) {
+                throw new Error(`Simulation failed: ${sim.error}`);
+            }
+
+            const assembled = SorobanRpc.assembleTransaction(tx, sim).build();
+            const successSim = sim as SorobanRpc.Api.SimulateTransactionSuccessResponse;
+            const authEntries = successSim.result?.auth;
+
+            if (authEntries) {
+                const networkIdBytes = new Uint8Array(
+                    (stellarHash as (input: Buffer) => Buffer)(Buffer.from(networkPassphrase))
+                );
+
+                for (const parsed of authEntries) {
+                    const cred = parsed.credentials();
+                    if (cred.switch().value !== xdr.SorobanCredentialsType.sorobanCredentialsAddress().value) {
+                        continue;
+                    }
+
+                    const addrCred = cred.address();
+                    const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+                        new xdr.HashIdPreimageSorobanAuthorization({
+                            networkId: Buffer.from(networkIdBytes),
+                            nonce: addrCred.nonce(),
+                            invocation: parsed.rootInvocation(),
+                            signatureExpirationLedger: addrCred.signatureExpirationLedger(),
+                        })
+                    );
+                    const payloadHash = new Uint8Array(
+                        (stellarHash as (input: Buffer) => Buffer)(Buffer.from(preimage.toXDR()))
+                    );
+
+                    const webAuthnSig = await signAuthEntry(payloadHash);
+                    if (!webAuthnSig) throw new Error('WebAuthn signing was cancelled');
+
+                    const sigVec = xdr.ScVal.scvVec([
+                        nativeToScVal(webAuthnSig.publicKey,      { type: 'bytes' }),
+                        nativeToScVal(webAuthnSig.authData,       { type: 'bytes' }),
+                        nativeToScVal(webAuthnSig.clientDataJSON, { type: 'bytes' }),
+                        nativeToScVal(webAuthnSig.signature,      { type: 'bytes' }),
+                    ]);
+
+                    parsed.credentials(
+                        xdr.SorobanCredentials.sorobanCredentialsAddress(
+                            new xdr.SorobanAddressCredentials({
+                                address: addrCred.address(),
+                                nonce: addrCred.nonce(),
+                                signatureExpirationLedger: addrCred.signatureExpirationLedger(),
+                                signature: sigVec,
+                            })
+                        )
+                    );
+                }
+            }
+
+            const submissionTx = signForSubmission(assembled, payerKeypair, config);
+            const sendResult = await server.sendTransaction(submissionTx);
+            if (sendResult.status === 'ERROR') {
+                throw new Error(
+                    `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
+                );
+            }
+
+            const txResult = await waitForTransaction(server, sendResult.hash);
+            if (txResult.status !== SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
+                throw new Error(`Transaction failed with status: ${txResult.status}`);
+            }
+
+            return { transactionHash: sendResult.hash, status: 'SUCCESS' };
+
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            setError(message);
+            throw err;
+        } finally {
+            setIsPending(false);
+        }
+    }, [address, networkPassphrase, rpcUrl, signAuthEntry, config]);
 
     // ── getAllowance ──────────────────────────────────────────────────────────
 
@@ -1248,9 +1628,9 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
                 }
             }
 
-            assembled.sign(signerKeypair);
+            const submissionTx = signForSubmission(assembled, signerKeypair, config);
 
-            const sendResult = await server.sendTransaction(assembled);
+            const sendResult = await server.sendTransaction(submissionTx);
             if (sendResult.status === 'ERROR') {
                 throw new Error(
                     `Transaction rejected: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown error'}`
@@ -1269,9 +1649,37 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [address, rpcUrl, networkPassphrase, signAuthEntry]);
+    }, [address, rpcUrl, networkPassphrase, signAuthEntry, config]);
+
+    // ── Local PRF-derived encryption ──────────────────────────────────────────
+    // Lazily derive (and cache) a passkey-bound cipher for the registered
+    // credential, falling back to a stored random key when PRF is unsupported.
+
+    const getCipher = useCallback(async (): Promise<LocalCipher> => {
+        if (cipherRef.current) return cipherRef.current;
+        const credentialId = await store.getItem('invisible_wallet_key_id');
+        if (!credentialId) throw new Error('No passkey credential found. Please register first.');
+        const cipher = await createLocalCipher({ credentialId, rpId, storage: store });
+        cipherRef.current = cipher;
+        return cipher;
+    }, [rpId, store]);
+
+    const encryptLocal = useCallback(async (plaintext: string | Uint8Array): Promise<string> => {
+        const cipher = await getCipher();
+        return cipher.encrypt(plaintext);
+    }, [getCipher]);
+
+    const decryptLocal = useCallback(async (payload: string): Promise<string> => {
+        const cipher = await getCipher();
+        return cipher.decryptString(payload);
+    }, [getCipher]);
+
+    const encryptionMode = useCallback(async (): Promise<'prf' | 'fallback'> => {
+        const cipher = await getCipher();
+        return cipher.mode;
+    }, [getCipher]);
 
     return useMemo(() => (
-        { address, isDeployed, isPending, error, register, deploy, signAuthEntry, login, getNonce, addSigner, removeSigner, getSigners, setGuardian, initiateRecovery, completeRecovery, approve, getAllowance, outbox, replayOutbox }
-    ), [address, isDeployed, isPending, error, register, deploy, signAuthEntry, login, getNonce, addSigner, removeSigner, getSigners, setGuardian, initiateRecovery, completeRecovery, approve, getAllowance, outbox, replayOutbox]);
+        { address, isDeployed, isPending, error, register, deploy, signAuthEntry, deriveCounterfactualAddress, getPortableSigner, login, getNonce, addSigner, removeSigner, getSigners, setGuardian, initiateRecovery, completeRecovery, approve, getAllowance, getBalance, sendPayment, outbox, replayOutbox, encryptLocal, decryptLocal, encryptionMode }
+    ), [address, isDeployed, isPending, error, register, deploy, signAuthEntry, deriveCounterfactualAddress, getPortableSigner, login, getNonce, addSigner, removeSigner, getSigners, setGuardian, initiateRecovery, completeRecovery, approve, getAllowance, getBalance, sendPayment, outbox, replayOutbox, encryptLocal, decryptLocal, encryptionMode]);
 }

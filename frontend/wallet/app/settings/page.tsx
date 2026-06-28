@@ -475,6 +475,25 @@ export default function SettingsPage() {
                 </div>
               </button>
 
+              {/* Security & Lock */}
+              <button
+                className="card"
+                onClick={() => router.push('/settings/security')}
+                style={{ textAlign: 'left', cursor: 'pointer', width: '100%', border: '1px solid var(--border-dim)', background: 'var(--surface)' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, fontSize: '0.9375rem' }}>Security &amp; Lock</p>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', marginTop: '0.25rem' }}>
+                      Auto-lock the wallet after inactivity
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M6 3l5 5-5 5" stroke="rgba(246,247,248,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+
               {/* Address Book card */}
               <button
                 className="card"
@@ -509,6 +528,42 @@ export default function SettingsPage() {
                   </div>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
                     <path d="M6 3l5 5-5 5" stroke="rgba(246,247,248,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+
+              <button
+                className="card"
+                onClick={() => router.push('/vault')}
+                style={{ textAlign: 'left', cursor: 'pointer', width: '100%', border: '1px solid var(--border-dim)', background: 'var(--surface)' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, fontSize: '0.9375rem', color: 'var(--gold)' }}>Time-Locked Vault</p>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', marginTop: '0.25rem' }}>
+                      Protect long-term XLM with queued, cancellable withdrawals
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M6 3l5 5-5 5" stroke="rgba(246,247,248,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+
+              <button
+                className="card"
+                onClick={() => router.push('/settings/danger')}
+                style={{ textAlign: 'left', cursor: 'pointer', width: '100%', border: '1px solid rgba(220, 38, 38, 0.3)', background: 'var(--surface)' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, fontSize: '0.9375rem', color: 'rgba(220, 38, 38, 0.9)' }}>Danger Zone</p>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', marginTop: '0.25rem' }}>
+                      Irreversible actions: account merge and permanent wallet deletion
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M6 3l5 5-5 5" stroke="rgba(220, 38, 38, 0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               </button>

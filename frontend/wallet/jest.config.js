@@ -16,8 +16,10 @@ const config = {
   },
   // Replicate tsconfig paths so Jest resolves workspace aliases
   moduleNameMapper: {
-    '^@veil/utils$': '<rootDir>/../../sdk/src/utils',
-    '^@veil/sdk$':   '<rootDir>/../../sdk/src/useInvisibleWallet',
+    '^@veil/utils$':  '<rootDir>/../../sdk/src/utils',
+    '^@veil/sdk$':    '<rootDir>/../../sdk/src/useInvisibleWallet',
+    '^@veil/backup$': '<rootDir>/../../sdk/src/backup',
+    '^@veil/sep7$':   '<rootDir>/../../sdk/src/sep7',
   },
   setupFilesAfterEnv: [],
   collectCoverageFrom: [
