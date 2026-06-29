@@ -54,8 +54,67 @@ jobs:
       - run: npm ci || npm install
       - run: npx tsc --noEmit
       - run: npm test --if-present
+    - name: Run Vitest coverage
+      run: npx vitest run --coverage
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/**/*.json
+        fail_ci_if_error: true
       - name: Bundle size budget (size-limit)
         run: npm run size
+
+  # SDK Browser Matrix — Playwright tests across browsers
+  sdk-browser-matrix:
+    name: SDK Browser Matrix — Playwright
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: sdk/package-lock.json
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright (Chromium)
+        run: npx playwright test --project=chromium --reporter=html
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report/chromium
+      - name: Run Playwright (Firefox)
+        if: always()
+        run: npx playwright test --project=firefox --reporter=html
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report/firefox
+      - name: Run Playwright (Webkit)
+        if: always()
+        run: npx playwright test --project=webkit --reporter=html
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report/webkit
+      - name: Upload Playwright Chromium report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-chromium
+          path: sdk/playwright-report/chromium
+      - name: Upload Playwright Firefox report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-firefox
+          path: sdk/playwright-report/firefox
+      - name: Upload Playwright Webkit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-webkit
+          path: sdk/playwright-report/webkit
 
   wallet:
     name: Wallet frontend — typecheck & build
@@ -73,6 +132,14 @@ jobs:
       - run: npm ci || npm install
       - run: npm run typecheck
       - run: npm run build
+    - name: Run Vitest coverage
+      run: npx vitest run --coverage
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/**/*.json
+        fail_ci_if_error: true
         # gitguardian:ignore=true — public testnet values (NEXT_PUBLIC_* are browser-exposed)
         env:
           NEXT_PUBLIC_NETWORK: testnet
