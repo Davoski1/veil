@@ -33,8 +33,9 @@ export default function LockPage() {
 
       if (keyId !== 'recovery') {
         // Decode base64url key ID → ArrayBuffer
-        const b64 = keyId.replace(/-/g, '+').replace(/_/g, '/')
-        const binary = atob(b64)
+        const normalized = keyId.replace(/-/g, '+').replace(/_/g, '/')
+        const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+        const binary = atob(padded)
         const idBuffer = new Uint8Array(binary.length)
         for (let i = 0; i < binary.length; i++) idBuffer[i] = binary.charCodeAt(i)
 
@@ -118,8 +119,8 @@ export default function LockPage() {
             <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.25rem', color: 'var(--off-white)' }}>
               Wallet locked
             </h1>
-            <p style={{ fontSize: '0.875rem', color: '#909090', lineHeight: 1.6 }}>
-              Your session ended after 5 minutes of inactivity.
+            <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.45)', lineHeight: 1.6 }}>
+              Your session was locked after a period of inactivity.
               <br />
               Verify your identity to continue.
             </p>
