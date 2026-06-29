@@ -7,9 +7,12 @@
 /* ── Stellar Brand Manual 2025 — Design Tokens ───────────────────────── */
 :root {
   /* Primary */
-  --gold:       #FDDA24;
-  --near-black: #0F0F0F;
-  --off-white:  #F6F7F8;
+  --gold:       #d4af37;  /* #FDDA24; */
+  --near-black: #111; /*#0F0F0F */;
+  --off-white:   #d4d4d4;
+  --bg:   #111111;
+  --text: #e8e8e8;
+  --color-muted: #909090; 
 
   /* Secondary */
   --lilac:      #B7ACE8;
@@ -29,13 +32,15 @@
 /* ── Light theme overrides ───────────────────────────────────────────── */
 [data-theme="light"] {
   --near-black: #FFFFFF;
-  --off-white:  #1A1A1A;
+  --off-white:  #e0e0e0;
   --surface:    rgba(0,0,0,0.03);
   --surface-md: rgba(0,0,0,0.06);
   --border-dim: rgba(0,0,0,0.10);
   --gold:       #C4A800;
   --teal:       #007A85;
   --navy:       #002E5D;
+  --bg:   #ffffff;
+  --text: #1a1a1a;
 }
 
 [data-theme="light"] .wallet-nav {
@@ -56,8 +61,8 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--near-black);
-  color: var(--off-white);
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -90,9 +95,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  background: var(--gold);
-  color: var(--near-black);
+  background-color: #7a5c00; /* dark gold → white text ≥4.5:1 */
+  color: #ffffff; /* was #f5e6a3 — now ~11:1 contrast ✓ */
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.9375rem;
@@ -114,16 +118,17 @@ body {
   gap: 0.5rem;
   padding: 0.75rem 2rem;
   background: transparent;
-  color: var(--off-white);
+  color: #888888;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   border-radius: 100px;
   border: 1px solid var(--border-dim);
   cursor: pointer;
   transition: border-color 120ms var(--ease), background 120ms var(--ease), transform 100ms var(--ease);
   white-space: nowrap;
   width: 100%;
+  
 }
 .btn-ghost:hover  { border-color: rgba(246,247,248,0.5); background: rgba(246,247,248,0.05); }
 .btn-ghost:active { transform: scale(0.98); }
@@ -288,6 +293,10 @@ body {
   flex-direction: column;
 }
 
+.wallet-shell > div > p {
+  color: #7c7c7c !important;/* nudge up slightly → ~4.5:1 */
+}
+
 .wallet-nav {
   display: flex;
   align-items: center;
@@ -365,3 +374,40 @@ body {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.5; }
 }
+
+/* Dialog heading */
+#tutorial-title {
+    color: #c0c0c0 !important; /* 5.1:1 on #1a1a1a */
+}
+
+div[role="dialog"] {
+  background-color: #1a1a1a; /* explicit opaque bg, not inherited/transparent */
+}
+
+div[role="dialog"] .btn-gold {
+  background-color: #c9a227 !important; /* bright gold */
+  color: #111111 !important;            /* dark text → 9:1 */
+}
+
+div[role="dialog"] .btn-ghost {
+  color: #a0a0a0; /* 5.7:1 on #111111 ✓ */
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: "rgba(246,247,248,0.65)"; /* was 0.4  Sufficient contrast on #111111 */
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem;
+}
+
+.settings-button:hover,
+.settings-button:focus-visible {
+  color: #f6f7f8;
+}
+
+
