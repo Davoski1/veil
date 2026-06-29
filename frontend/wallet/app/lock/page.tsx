@@ -119,7 +119,7 @@ export default function LockPage() {
             <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.25rem', color: 'var(--off-white)' }}>
               Wallet locked
             </h1>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.45)', lineHeight: 1.6 }}>
+            <p className='text-muted'>
               Your session was locked after a period of inactivity.
               <br />
               Verify your identity to continue.
