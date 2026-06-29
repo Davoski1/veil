@@ -21,3 +21,5 @@ public/fallback-*.js
 # Playwright output
 playwright-report/
 test-results/
+playwright-report/
+test-results/
