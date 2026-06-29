@@ -31,7 +31,9 @@
     "test": "jest",
     "size": "npm run build && size-limit",
     "test:surface": "jest api-surface.test.ts",
-    "stryker": "stryker run"
+    "stryker": "stryker run",
+    "storybook": "storybook dev -p 6006 -c react/.storybook",
+    "build-storybook": "storybook build -c react/.storybook -o react/storybook-static"
   },
   "keywords": [
     "stellar",
@@ -67,6 +69,10 @@
   },
   "devDependencies": {
     "@size-limit/preset-small-lib": "^12.1.0",
+    "@storybook/addon-essentials": "^8.6.0",
+    "@storybook/react": "^8.6.0",
+    "@storybook/react-vite": "^8.6.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "@stryker-mutator/core": "^8.7.0",
     "@stryker-mutator/jest-runner": "^8.7.0",
     "@stryker-mutator/typescript-checker": "^8.7.0",
@@ -82,8 +88,10 @@
     "react": "^18.3.0",
     "react-dom": "^19.2.7",
     "size-limit": "^12.1.0",
+    "storybook": "^8.6.0",
     "ts-jest": "^29.2.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^5.4.11"
   },
   "jest": {
     "preset": "ts-jest",
