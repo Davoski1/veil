@@ -34,7 +34,8 @@
     "test:surface": "jest api-surface.test.ts",
     "stryker": "stryker run",
     "storybook": "storybook dev -p 6006 -c react/.storybook",
-    "build-storybook": "storybook build -c react/.storybook -o react/storybook-static"
+    "build-storybook": "storybook build -c react/.storybook -o react/storybook-static",
+    "test-d": "npm run build && tsd"
   },
   "keywords": [
     "stellar",
@@ -93,6 +94,7 @@
     "size-limit": "^12.1.0",
     "storybook": "^8.6.0",
     "ts-jest": "^29.2.0",
+    "tsd": "^0.33.0",
     "typescript": "^6.0.3",
     "vite": "^5.4.11",
     "vitest": "^1.3.0"
@@ -133,5 +135,15 @@
       "path": "dist/vanilla.js",
       "limit": "225 KB"
     }
-  ]
+  ],
+  "tsd": {
+    "directory": "test-d",
+    "compilerOptions": {
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "jsx": "react-jsx",
+      "lib": ["es2020", "dom"]
+    }
+  }
 }
