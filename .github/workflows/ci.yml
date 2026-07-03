@@ -54,14 +54,14 @@ jobs:
       - run: npm ci || npm install
       - run: npx tsc --noEmit
       - run: npm test --if-present
-    - name: Run Vitest coverage
-      run: npx vitest run --coverage
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/**/*.json
-        fail_ci_if_error: true
+      - name: Run Vitest coverage
+        run: npx vitest run --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/**/*.json
+          fail_ci_if_error: false
       - name: Bundle size budget (size-limit)
         run: npm run size
 
@@ -122,6 +122,13 @@ jobs:
     defaults:
       run:
         working-directory: frontend/wallet
+    # gitguardian:ignore=true — public testnet values (NEXT_PUBLIC_* are browser-exposed)
+    env:
+      NEXT_PUBLIC_NETWORK: testnet
+      NEXT_PUBLIC_FACTORY_CONTRACT_ID: CAUK4MWO3TTFM6PLURSH2GPK3AB747SZGABKTCVLKCU7W2MGKHKP35GA
+      NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
+      NEXT_PUBLIC_SOROBAN_RPC_URL: https://soroban-testnet.stellar.org
+      NEXT_PUBLIC_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -132,21 +139,14 @@ jobs:
       - run: npm ci || npm install
       - run: npm run typecheck
       - run: npm run build
-    - name: Run Vitest coverage
-      run: npx vitest run --coverage
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/**/*.json
-        fail_ci_if_error: true
-        # gitguardian:ignore=true — public testnet values (NEXT_PUBLIC_* are browser-exposed)
-        env:
-          NEXT_PUBLIC_NETWORK: testnet
-          NEXT_PUBLIC_FACTORY_CONTRACT_ID: CAUK4MWO3TTFM6PLURSH2GPK3AB747SZGABKTCVLKCU7W2MGKHKP35GA
-          NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
-          NEXT_PUBLIC_SOROBAN_RPC_URL: https://soroban-testnet.stellar.org
-          NEXT_PUBLIC_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+      - name: Run Vitest coverage
+        run: npx vitest run --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/**/*.json
+          fail_ci_if_error: false
 
   agent:
     name: Agent — typecheck & build

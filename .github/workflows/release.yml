@@ -51,3 +51,6 @@ jobs:
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Emit npm provenance via OIDC (changesets forwards this to `npm publish`;
+          # `changeset publish` has no --provenance flag). id-token: write is granted above.
+          NPM_CONFIG_PROVENANCE: 'true'
