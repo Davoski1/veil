@@ -20,7 +20,7 @@ import { Keypair } from '@stellar/stellar-sdk'
 const SALT = new TextEncoder().encode('veil:feepayer:salt:v1')
 const INFO = new TextEncoder().encode('veil:feepayer:ed25519:v1')
 
-function base64UrlToUint8Array(value: string): Uint8Array {
+function base64UrlToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
   const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
   const binary = atob(padded)
