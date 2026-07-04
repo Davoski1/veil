@@ -286,8 +286,17 @@ describe('sweepContractBalance', () => {
       CONTRACT_ADDRESS, FEE_PAYER_KP, mockSignAuthEntry, RPC_URL, NETWORK_PASSPHRASE
     )
 
-    for (let i = 0; i < 3; i++) {
-      await jest.advanceTimersByTimeAsync(1000)
+    // Drain the pre-poll async chain (simulate/sign/send) so the first
+    // getTransaction runs and schedules its retry timer before we start
+    // advancing — otherwise the first advance can fire against an empty timer
+    // queue and the poll falls out of sync, deadlocking the final await.
+    await jest.advanceTimersByTimeAsync(0)
+    // Then step through the 1s retry waits one at a time; each separate advance
+    // lets the awaited getTransaction resolve and schedule the next timer. A
+    // couple of spare iterations past SUCCESS are harmless (the loop has
+    // returned, so no further timers are scheduled).
+    for (let i = 0; i < 5; i++) {
+      await jest.advanceTimersByTimeAsync(1_000)
     }
 
     const hash = await promise

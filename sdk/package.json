@@ -116,6 +116,7 @@
     },
     "globals": {
       "ts-jest": {
+        "isolatedModules": true,
         "tsconfig": {
           "strict": true,
           "esModuleInterop": true,
