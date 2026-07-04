@@ -62,8 +62,15 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: sdk/package-lock.json
-      - run: npm ci || npm install
+          cache-dependency-path: package-lock.json
+      # Install from the workspace root: `npm ci` inside sdk/ walks up to the
+      # root package.json (workspaces) but validates against the standalone
+      # sdk/package-lock.json, so it errors "out of sync" and the fallback
+      # install leaves typescript unresolvable for ts-jest. Installing at the
+      # root pairs the root lockfile with the root manifest and hoists deps.
+      - name: Install workspace deps (root)
+        working-directory: ${{ github.workspace }}
+        run: npm ci || npm install
       - run: npx tsc --noEmit
       - run: npm test --if-present
       - name: Run Vitest coverage
@@ -151,13 +158,13 @@ jobs:
       - run: npm ci || npm install
       - run: npm run typecheck
       - run: npm run build
-      - name: Run Vitest coverage
-        run: npx vitest run --coverage
+      - name: Run Jest with coverage
+        run: npx jest --coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/**/*.json
+          files: ./coverage/lcov.info
           fail_ci_if_error: false
 
   agent:
