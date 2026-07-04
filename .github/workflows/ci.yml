@@ -63,12 +63,17 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: sdk/package-lock.json
-      # --no-workspaces installs the SDK standalone against its in-sync
-      # sdk/package-lock.json. Without it, npm walks up to the root workspaces
-      # manifest, desyncs against the sdk lockfile, and the fallback hoists
-      # typescript + @types/jest into the root node_modules where the SDK's
-      # ts-jest (typeRoots rooted at sdk/) can't find them.
-      - run: npm ci --no-workspaces || npm install --no-workspaces
+      # sdk is declared as a workspace member, so any npm command inside sdk/
+      # resolves the root manifest and desyncs against the standalone sdk
+      # lockfile — and a root/hoisted install scatters typescript, @types/jest
+      # and @stellar/stellar-sdk out of sdk/node_modules where the jest config's
+      # rootDir-based mappers expect them. Detach the root workspaces field (the
+      # CI checkout is ephemeral) so npm treats sdk/ as its own project and
+      # installs everything into sdk/node_modules, exactly as it works locally.
+      - name: Detach SDK from the workspace root
+        working-directory: ${{ github.workspace }}
+        run: node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.workspaces;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
+      - run: npm ci || npm install
       - run: npx tsc --noEmit
       - run: npm test --if-present
       - name: Run Vitest coverage
