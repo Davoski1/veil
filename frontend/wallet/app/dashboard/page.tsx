@@ -578,7 +578,8 @@ function DashboardPageContent() {
               setCopied(true)
               setTimeout(() => setCopied(false), 2000)
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            className='settings-button'
+            style={{ color: "var(--color-muted)"}}
             title="Copy wallet address"
           >
             <span className="address-chip">
@@ -593,10 +594,13 @@ function DashboardPageContent() {
           </button>
         )}
         <button
+          aria-label='Settings'
           onClick={() => router.push('/settings')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--warm-grey)', display: 'flex' }}
+          className='settings-button'
+          style={{ color: "var(--color-muted)"}}
           title="Settings"
         >
+          
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75"/>
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
@@ -637,7 +641,7 @@ function DashboardPageContent() {
               className="btn-gold"
               onClick={handleFund}
               disabled={isFunding}
-              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem' }}
+              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem', color:'var(--color-muted)', }}
             >
               {isFunding
                 ? <div className="spinner" style={{ width: '14px', height: '14px' }} />
@@ -664,7 +668,7 @@ function DashboardPageContent() {
               </p>
               <button
                 onClick={() => setSweepDismissed(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(246,247,248,0.4)', fontSize: '1rem', lineHeight: 1, padding: '0 0 0 0.5rem' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', fontSize: '1rem', lineHeight: 1, padding: '0 0 0 0.5rem' }}
                 title="Dismiss"
               >
                 ×
@@ -887,7 +891,7 @@ function DashboardPageContent() {
             </h2>
             <button
               onClick={() => fetchData()}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(246,247,248,0.4)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
