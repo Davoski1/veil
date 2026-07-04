@@ -62,15 +62,13 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: package-lock.json
-      # Install from the workspace root: `npm ci` inside sdk/ walks up to the
-      # root package.json (workspaces) but validates against the standalone
-      # sdk/package-lock.json, so it errors "out of sync" and the fallback
-      # install leaves typescript unresolvable for ts-jest. Installing at the
-      # root pairs the root lockfile with the root manifest and hoists deps.
-      - name: Install workspace deps (root)
-        working-directory: ${{ github.workspace }}
-        run: npm ci || npm install
+          cache-dependency-path: sdk/package-lock.json
+      # --no-workspaces installs the SDK standalone against its in-sync
+      # sdk/package-lock.json. Without it, npm walks up to the root workspaces
+      # manifest, desyncs against the sdk lockfile, and the fallback hoists
+      # typescript + @types/jest into the root node_modules where the SDK's
+      # ts-jest (typeRoots rooted at sdk/) can't find them.
+      - run: npm ci --no-workspaces || npm install --no-workspaces
       - run: npx tsc --noEmit
       - run: npm test --if-present
       - name: Run Vitest coverage
