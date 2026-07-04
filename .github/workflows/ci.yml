@@ -79,13 +79,13 @@ jobs:
       - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
       - run: npx tsc --noEmit
       - run: npm test --if-present
-      - name: Run Vitest coverage
-        run: npx vitest run --coverage
+      - name: Run Jest with coverage
+        run: npx jest --coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/**/*.json
+          files: ./coverage/lcov.info
           fail_ci_if_error: false
       - name: Bundle size budget (size-limit)
         run: npm run size
