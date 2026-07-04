@@ -73,7 +73,10 @@ jobs:
       - name: Detach SDK from the workspace root
         working-directory: ${{ github.workspace }}
         run: node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.workspaces;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-      - run: npm ci || npm install
+      # --legacy-peer-deps: detaching makes sdk/ the project root, so npm no
+      # longer reads the root .npmrc, and sdk's own @types/react 18 vs
+      # @types/react-dom 19 (storybook) peer set would otherwise ERESOLVE.
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
       - run: npx tsc --noEmit
       - run: npm test --if-present
       - name: Run Vitest coverage

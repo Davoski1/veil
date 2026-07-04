@@ -14,6 +14,13 @@ const config = {
       },
     }],
   },
+  // SDK source (compiled from ../../sdk/src) imports @stellar/stellar-sdk and
+  // friends, but its sibling sdk/node_modules isn't installed in the wallet CI
+  // job. Add the wallet's node_modules to the resolver search path (the jest
+  // analog of next.config's resolve.modules prepend) so those imports resolve
+  // to the wallet's copy through normal package resolution — a moduleNameMapper
+  // would instead force a specific build and break jsdom's browser-field logic.
+  modulePaths: ['<rootDir>/node_modules'],
   // Replicate tsconfig paths so Jest resolves workspace aliases
   moduleNameMapper: {
     '^@veil/utils$':    '<rootDir>/../../sdk/src/utils',
@@ -22,10 +29,6 @@ const config = {
     '^@veil/recovery$': '<rootDir>/../../sdk/src/recovery/sep30',
     '^@veil/backup$':   '<rootDir>/../../sdk/src/backup',
     '^@veil/sep7$':     '<rootDir>/../../sdk/src/sep7',
-    // SDK source (compiled from ../../sdk/src) imports @stellar/stellar-sdk,
-    // but its sibling sdk/node_modules isn't installed in the wallet CI job.
-    // Pin it to the wallet's own copy (mirrors next.config's webpack rule).
-    '^@stellar/stellar-sdk$': '<rootDir>/node_modules/@stellar/stellar-sdk',
   },
   setupFilesAfterEnv: [],
   collectCoverageFrom: [
