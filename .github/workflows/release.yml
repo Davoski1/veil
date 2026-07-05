@@ -46,7 +46,14 @@ jobs:
         uses: changesets/action@v1
         with:
           version: npm run version-packages
-          publish: npm run release
+          # Publishing is gated until npm trusted publishing is set up for
+          # @veil/agent, invisible-wallet-sdk and create-veil-app. A brand-new
+          # package's first publish can't be authorized by OIDC alone, so
+          # `changeset publish` E404s. Until then only the version flow runs
+          # (opens/updates the "Version Packages" PR). To enable real publishing,
+          # configure the packages on npmjs.com and set repository variable
+          # ENABLE_NPM_PUBLISH=true (Settings → Secrets and variables → Actions).
+          publish: ${{ vars.ENABLE_NPM_PUBLISH == 'true' && 'npm run release' || '' }}
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
