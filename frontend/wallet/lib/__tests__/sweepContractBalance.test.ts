@@ -282,20 +282,18 @@ describe('sweepContractBalance', () => {
       .mockResolvedValueOnce({ status: 'NOT_FOUND' })
       .mockResolvedValueOnce({ status: 'SUCCESS' })
 
+    let settled = false
     const promise = sweepContractBalance(
       CONTRACT_ADDRESS, FEE_PAYER_KP, mockSignAuthEntry, RPC_URL, NETWORK_PASSPHRASE
-    )
+    ).finally(() => { settled = true })
 
-    // Drain the pre-poll async chain (simulate/sign/send) so the first
-    // getTransaction runs and schedules its retry timer before we start
-    // advancing — otherwise the first advance can fire against an empty timer
-    // queue and the poll falls out of sync, deadlocking the final await.
-    await jest.advanceTimersByTimeAsync(0)
-    // Then step through the 1s retry waits one at a time; each separate advance
-    // lets the awaited getTransaction resolve and schedule the next timer. A
-    // couple of spare iterations past SUCCESS are harmless (the loop has
-    // returned, so no further timers are scheduled).
-    for (let i = 0; i < 5; i++) {
+    // Advance the 1s retry waits one at a time until the sweep settles, rather
+    // than a fixed count. Each advance flushes the awaited getTransaction and
+    // lets the poll schedule its next timer; looping until `settled` avoids the
+    // race where a fixed number of advances under-fires under CI load and the
+    // final await deadlocks past the 5s test timeout. Bounded by the poll's own
+    // max attempts, so it can't spin forever.
+    for (let i = 0; i < 40 && !settled; i++) {
       await jest.advanceTimersByTimeAsync(1_000)
     }
 
@@ -349,12 +347,16 @@ describe('sweepContractBalance', () => {
     mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'slow-hash' })
     mockServer.getTransaction.mockResolvedValue({ status: 'NOT_FOUND' })
 
+    let settled = false
     const promise = sweepContractBalance(
       CONTRACT_ADDRESS, FEE_PAYER_KP, mockSignAuthEntry, RPC_URL, NETWORK_PASSPHRASE
     )
-    promise.catch(() => {})
+    promise.catch(() => {}).finally(() => { settled = true })
 
-    for (let i = 0; i < 35; i++) {
+    // Advance one retry wait at a time until the sweep settles (rejects after
+    // its max attempts), rather than a fixed count that can under-fire under
+    // CI load. Bounded by the poll's own attempt cap.
+    for (let i = 0; i < 60 && !settled; i++) {
       await jest.advanceTimersByTimeAsync(1000)
     }
 
