@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       {/* Inline script runs before first paint to apply stored theme and prevent flash */}
       <head>
         <script
