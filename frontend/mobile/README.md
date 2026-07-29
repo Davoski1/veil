@@ -61,6 +61,15 @@ Every field of the envelope is authenticated. A backup opened with the wrong
 passphrase, or altered by so much as a bit, fails with `BackupTamperError` and
 changes nothing on the device — there is no partial restore.
 
+## Branded assets
+
+`assets/images/` holds the app icon, Android adaptive icon layers (foreground /
+background / monochrome), splash image, and web favicon — near-black
+(`#0F0F0F`) background, gold (`#FDDA24`) fingerprint mark and "VEIL" wordmark,
+matching `frontend/wallet/components/VeilLogo.tsx`. Wired in `app.json`'s
+`icon`, `android.adaptiveIcon`, `web.favicon`, and the `expo-splash-screen`
+plugin config.
+
 ## Structure
 
 - `app/_layout.tsx` — root Stack navigator (expo-router).
