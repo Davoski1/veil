@@ -49,10 +49,17 @@ forgotten.
 keys, settings — as an AES-256-GCM envelope sealed with a user passphrase, then
 hands the file to the system share sheet.
 
+The same screen restores from a backup file: pick it, enter the passphrase, and
+the decrypted wallet state is written back to device storage.
+
 The envelope format is byte-compatible with `sdk/src/backup.ts`, so a file
 exported on mobile restores in the web wallet and vice versa. Private key
 material never enters a backup: `assertNoSecretMaterial` in `lib/backup.ts`
 rejects the metadata before encryption if it finds a secret-looking field.
+
+Every field of the envelope is authenticated. A backup opened with the wrong
+passphrase, or altered by so much as a bit, fails with `BackupTamperError` and
+changes nothing on the device — there is no partial restore.
 
 ## Structure
 
