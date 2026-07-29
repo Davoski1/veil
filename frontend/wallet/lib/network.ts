@@ -50,6 +50,11 @@ export const walletConfig: WalletConfig = {
   factoryAddress: getNetwork().factoryContractId,
   rpcUrl: getNetwork().rpcUrl,
   networkPassphrase: getNetwork().networkPassphrase,
+  // Explicit rpId and origin allow native (Expo / React Native) builds to
+  // provide the relying-party id and origin via environment variables.
+  // When unset, the SDK falls back to window.location.hostname / origin.
+  rpId: process.env.NEXT_PUBLIC_RP_ID?.trim() || undefined,
+  origin: process.env.NEXT_PUBLIC_ORIGIN?.trim() || undefined,
 }
 
 export function getNativeAssetContractId(): string {
