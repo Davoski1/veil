@@ -8,6 +8,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { fontAssets } from "../theme/typography";
 import { useTheme } from "../hooks/useTheme";
 import { ConnectivityProvider, useConnectivity } from "../lib/connectivity";
+import { WalletConnectApprovalModal } from "../components/WalletConnectApprovalModal";
 
 // Hold the native splash screen until the brand fonts are ready, so the UI
 // never flashes a system font on first paint.
@@ -42,6 +43,9 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: colors.background },
           }}
         />
+        {/* Mounted once at the root so a dApp request is presented for approval
+            no matter which screen the user is on. */}
+        <WalletConnectApprovalModal />
         <StatusBar style={isDark ? "light" : "dark"} />
       </ConnectivityProvider>
     </SafeAreaProvider>
