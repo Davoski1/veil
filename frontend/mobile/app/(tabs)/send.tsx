@@ -1,66 +1,10 @@
-import { ScreenScaffold, ComingSoonBadge, NavRow, colors } from '@/components/ScreenScaffold';
+import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-/**
- * Send tab.
- *
- * This route owns the prefill contract deep links depend on — `to`, `amount`,
- * `asset` and `memo` arrive as query parameters from `veil://send`,
- * `https://app.veil.xyz/send`, or a SEP-7 request forwarded by `/pay`. The
- * fields are read-only placeholders until the send UI lands, but the values
- * are surfaced here so a deep link is visibly carried through end to end.
- */
-export default function SendTab() {
-  const params = useLocalSearchParams<{
-    to?: string;
-    amount?: string;
-    asset?: string;
-    memo?: string;
-  }>();
-
-  const recipient = firstValue(params.to);
-  const amount = firstValue(params.amount);
-  const asset = firstValue(params.asset) || 'XLM';
-  const memo = firstValue(params.memo);
-
-  return (
-    <ScreenScaffold
-      hideBack
-      eyebrow="Send"
-      title="Send funds"
-      description="Move XLM or any asset on Stellar. Sign with your passkey."
-    >
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Recipient</Text>
-        <Text testID="send-recipient" style={styles.cardPlaceholder} numberOfLines={1}>
-          {recipient || 'G… or C… address, contact, or @handle'}
-        </Text>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Amount</Text>
-        <Text testID="send-amount" style={styles.cardPlaceholder}>
-          {amount ? `${amount} ${asset}` : '0.00'}
-        </Text>
-      </View>
-
-      {memo ? (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Memo</Text>
-          <Text testID="send-memo" style={styles.cardPlaceholder}>
-            {memo}
-          </Text>
-        </View>
-      ) : null}
-
-      <View style={styles.stackLinks}>
-        <NavRow href="/contacts" label="Contacts" hint="Saved recipients" />
-      </View>
-
-      <ComingSoonBadge note="Send screen — UI lands in a follow-up issue" />
-    </ScreenScaffold>
-  );
-}
+import { isValidDestination } from '../../lib/address';
+import { ContactPicker } from '../../components/ContactPicker';
+import type { Contact } from '../../hooks/useContacts';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
 function firstValue(value: string | string[] | undefined): string {
@@ -68,25 +12,173 @@ function firstValue(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
+export default function SendScreen() {
+  // Deep links land here prefilled: `to`, `amount`, `asset` and `memo` arrive
+  // from veil://send, https://app.veil.xyz/send, or a SEP-7 request forwarded
+  // by /pay. Seeded as initial state so the fields stay editable afterwards.
+  const params = useLocalSearchParams<{
+    to?: string;
+    amount?: string;
+    asset?: string;
+    memo?: string;
+  }>();
+  const asset = firstValue(params.asset) || 'XLM';
+  const memo = firstValue(params.memo);
+
+  const [recipient, setRecipient] = useState(() => firstValue(params.to));
+  const [amount, setAmount] = useState(() => firstValue(params.amount));
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const trimmed = recipient.trim();
+  const recipientValid = isValidDestination(trimmed);
+  const showError = trimmed.length > 0 && !recipientValid;
+  const canSubmit = recipientValid && Number(amount) > 0;
+
+  function handleSelectContact(contact: Contact) {
+    setRecipient(contact.address);
+    setPickerOpen(false);
+  }
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.body}>
+        <Text style={styles.title}>Send</Text>
+
+        <View style={styles.field}>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>RECIPIENT</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setPickerOpen(true)}
+              hitSlop={8}
+            >
+              <Text style={styles.contactLink}>Choose contact</Text>
+            </Pressable>
+          </View>
+          <TextInput
+            style={[styles.input, showError && styles.inputError]}
+            testID="send-recipient"
+            value={recipient}
+            onChangeText={setRecipient}
+            placeholder="Address or name*domain"
+            placeholderTextColor="rgba(246,247,248,0.3)"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {showError && (
+            <Text style={styles.errorText}>
+              Enter a valid Stellar address (G/M/C…) or federated address (name*domain).
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>AMOUNT ({asset})</Text>
+          <TextInput
+            testID="send-amount"
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="0.00"
+            placeholderTextColor="rgba(246,247,248,0.3)"
+            keyboardType="decimal-pad"
+          />
+        </View>
+
+        {memo ? (
+          <View style={styles.field}>
+            <Text style={styles.label}>MEMO</Text>
+            <Text testID="send-memo" style={styles.input}>
+              {memo}
+            </Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canSubmit }}
+          disabled={!canSubmit}
+          style={[styles.submit, !canSubmit && styles.submitDisabled]}
+        >
+          <Text style={styles.submitText}>Review</Text>
+        </Pressable>
+      </View>
+
+      <ContactPicker
+        visible={pickerOpen}
+        onSelect={handleSelectContact}
+        onClose={() => setPickerOpen(false)}
+      />
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
-    padding: 18,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    gap: 6,
+  screen: {
+    flex: 1,
+    backgroundColor: '#0F0F0F',
   },
-  cardLabel: {
-    color: colors.muted,
-    fontSize: 11,
+  body: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 20,
+  },
+  title: {
+    color: '#F6F7F8',
+    fontSize: 28,
     fontWeight: '700',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
   },
-  cardPlaceholder: {
-    color: colors.offWhite,
+  field: {
+    gap: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  label: {
+    color: 'rgba(246,247,248,0.4)',
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  contactLink: {
+    color: '#FDDA24',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#F6F7F8',
     fontSize: 15,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  stackLinks: { gap: 8, marginTop: 4 },
+  inputError: {
+    borderColor: 'rgba(248,113,113,0.6)',
+  },
+  errorText: {
+    color: '#f87171',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  submit: {
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 100,
+    backgroundColor: '#FDDA24',
+  },
+  submitDisabled: {
+    opacity: 0.4,
+  },
+  submitText: {
+    color: '#0F0F0F',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });
