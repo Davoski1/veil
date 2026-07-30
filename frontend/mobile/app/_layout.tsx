@@ -9,6 +9,7 @@ import { fontAssets } from "../theme/typography";
 import { useTheme } from "../hooks/useTheme";
 import { ConnectivityProvider, useConnectivity } from "../lib/connectivity";
 import { WalletConnectApprovalModal } from "../components/WalletConnectApprovalModal";
+import { WalletProvider } from "../components/WalletProvider";
 
 // Hold the native splash screen until the brand fonts are ready, so the UI
 // never flashes a system font on first paint.
@@ -34,19 +35,21 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ConnectivityProvider>
-        <ConnectivityGate />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            // Painted behind every route, so a screen that is still loading (or
-            // shorter than the viewport) never shows the opposite theme.
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        />
-        {/* Mounted once at the root so a dApp request is presented for approval
-            no matter which screen the user is on. */}
-        <WalletConnectApprovalModal />
-        <StatusBar style={isDark ? "light" : "dark"} />
+        <WalletProvider>
+          <ConnectivityGate />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              // Painted behind every route, so a screen that is still loading (or
+              // shorter than the viewport) never shows the opposite theme.
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          {/* Mounted once at the root so a dApp request is presented for approval
+              no matter which screen the user is on. */}
+          <WalletConnectApprovalModal />
+          <StatusBar style={isDark ? "light" : "dark"} />
+        </WalletProvider>
       </ConnectivityProvider>
     </SafeAreaProvider>
   );

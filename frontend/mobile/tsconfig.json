@@ -11,7 +11,13 @@
       ],
       "@/assets/*": [
         "./assets/*"
-      ]
+      ],
+      "@veil/sdk": ["../../sdk/src/useInvisibleWallet"],
+      "@veil/events": ["../../sdk/src/events"],
+      "@veil/utils": ["../../sdk/src/utils"],
+      "@veil/recovery": ["../../sdk/src/recovery/sep30"],
+      "@veil/backup": ["../../sdk/src/backup"],
+      "@veil/sep7": ["../../sdk/src/sep7"]
     }
   },
   "include": [

@@ -45,3 +45,7 @@ export function getPasskeyPublicKey(): Promise<string | null> {
 export function getSignerSecret(): Promise<string | null> {
   return read(SIGNER_SECRET_KEY);
 }
+
+export function setSignerSecret(secret: string): Promise<void> {
+  return SecureStore.setItemAsync(SIGNER_SECRET_KEY, secret);
+}
