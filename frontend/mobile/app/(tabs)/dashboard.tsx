@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenScaffold, ComingSoonBadge, NavRow, colors } from '@/components/ScreenScaffold';
+import { QuickActions } from '../../components/QuickActions';
 import { ConnectDAppModal } from '../../components/ConnectDAppModal';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
@@ -42,12 +43,12 @@ export default function DashboardTab() {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Quick actions</Text>
-        <Text style={styles.sectionHint}>Tab destinations</Text>
+        <Text style={styles.sectionHint}>Send · Receive · Swap · Buy</Text>
       </View>
 
+      <QuickActions />
+
       <View style={styles.grid}>
-        <NavRow href="/send" label="Send" hint="Move XLM or assets" />
-        <NavRow href="/receive" label="Receive" hint="Share your address" />
         <NavRow href="/settings" label="Settings" hint="Wallet & app prefs" />
       </View>
 
