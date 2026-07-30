@@ -60,6 +60,24 @@ rejects the metadata before encryption if it finds a secret-looking field.
 Every field of the envelope is authenticated. A backup opened with the wrong
 passphrase, or altered by so much as a bit, fails with `BackupTamperError` and
 changes nothing on the device — there is no partial restore.
+## Agent chat
+
+`/agent` is the mobile client for the Claude-powered assistant in
+`packages/agent`. It speaks the same WebSocket protocol as the web wallet's
+`/agent` page — `chat` and `clear_history` out, `thinking` / `response` /
+`error` / `history_cleared` back — and shares its storage keys, so the profile
+you set up in the browser carries over.
+
+Point it at a server with `EXPO_PUBLIC_AGENT_WS_URL` (defaults to
+`ws://localhost:3001`).
+
+The transport lives in `lib/agentSocket.ts`, separated from the screen because a
+phone's socket drops constantly — backgrounding the app is enough. It reconnects
+with jittered exponential backoff, queues anything composed while offline and
+flushes it on reconnect, and tracks in-flight requests: the agent server keeps no
+outbox, so a reply interrupted by a drop is gone, and the screen says so instead
+of spinning forever. Every external dependency (socket constructor, timers,
+jitter) is injectable, which is how the reconnect paths are tested.
 
 ## Structure
 
