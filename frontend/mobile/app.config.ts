@@ -48,7 +48,15 @@ const config: ExpoConfig = {
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: BUNDLE_IDENTIFIER,
-    associatedDomains: ASSOCIATED_DOMAINS.map((domain) => `applinks:${domain}`),
+    // Two separate claims over the same hosts, and both are required:
+    // `applinks:` routes https URLs into the app, while `webcredentials:` is
+    // what lets iOS offer a passkey scoped to that domain as the relying party.
+    // Universal links work without the second one, but passkey registration
+    // and assertion do not.
+    associatedDomains: ASSOCIATED_DOMAINS.flatMap((domain) => [
+      `applinks:${domain}`,
+      `webcredentials:${domain}`,
+    ]),
   },
   android: {
     package: BUNDLE_IDENTIFIER,
@@ -80,6 +88,9 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // react-native-passkeys contains native code, so Expo Go cannot load it.
+    // The dev client is what makes passkey registration testable on a device.
+    'expo-dev-client',
     [
       'expo-splash-screen',
       {

@@ -45,9 +45,23 @@ describe('app.config.ts — schemes', () => {
 
 describe('app.config.ts — associated domains', () => {
   it('declares an applinks entry per associated domain', () => {
-    expect(config.ios?.associatedDomains).toEqual(
-      ASSOCIATED_DOMAINS.map((domain) => `applinks:${domain}`),
-    );
+    for (const domain of ASSOCIATED_DOMAINS) {
+      expect(config.ios?.associatedDomains).toContain(`applinks:${domain}`);
+    }
+  });
+
+  // Separate from applinks: iOS will not offer a passkey for a domain unless it
+  // is claimed as a webcredentials service, so losing these entries breaks
+  // passkey registration while leaving universal links working — a failure that
+  // would otherwise only show up on a device.
+  it('declares a webcredentials entry per associated domain', () => {
+    for (const domain of ASSOCIATED_DOMAINS) {
+      expect(config.ios?.associatedDomains).toContain(`webcredentials:${domain}`);
+    }
+  });
+
+  it('claims nothing beyond those two services', () => {
+    expect(config.ios?.associatedDomains).toHaveLength(ASSOCIATED_DOMAINS.length * 2);
   });
 
   it('verifies the same hosts on Android', () => {
