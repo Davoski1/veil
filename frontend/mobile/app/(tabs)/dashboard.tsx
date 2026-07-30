@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenScaffold, NavRow, colors } from '@/components/ScreenScaffold';
 import { QuickActions } from '../../components/QuickActions';
 import { FirstRunTutorial } from '../../components/OnboardingTutorial';
+import { TxDetailSheet } from '../../components/TxDetailSheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { ConnectDAppModal } from '../../components/ConnectDAppModal';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
@@ -11,7 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
 import { getWalletAddress } from '../../lib/walletStore';
 import ActivityFeed from '../../components/ActivityFeed';
-import { useInitActivityFeed } from '../../lib/activityFeed';
+import { useInitActivityFeed, type TxRecord } from '../../lib/activityFeed';
 
 const WRAITH_URL =
   process.env.EXPO_PUBLIC_WRAITH_URL?.replace(/\/+$/, '') ?? null;
@@ -28,6 +30,13 @@ export default function DashboardTab() {
   const { sessions, disconnectSession } = useWalletConnect();
   const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [selectedTx, setSelectedTx] = useState<TxRecord | null>(null);
+  const detailSheetRef = useRef<BottomSheetModal>(null);
+
+  const handleSelectTx = useCallback((tx: TxRecord) => {
+    setSelectedTx(tx);
+    detailSheetRef.current?.present();
+  }, []);
 
   // Load the wallet address from secure storage on mount
   useEffect(() => {
@@ -68,7 +77,7 @@ export default function DashboardTab() {
         <Text style={styles.sectionTitle}>Activity</Text>
         <Text style={styles.sectionHint}>Recent transfers</Text>
       </View>
-      <ActivityFeed filter="all" loading={loading} error={error} />
+      <ActivityFeed filter="all" loading={loading} error={error} onSelectTx={handleSelectTx} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -130,6 +139,9 @@ export default function DashboardTab() {
 
       {/* Shows once per install; self-gates on the persisted flag. */}
       <FirstRunTutorial />
+
+      {/* Opened by tapping a row in the activity feed. */}
+      <TxDetailSheet ref={detailSheetRef} tx={selectedTx} />
     </ScreenScaffold>
   );
 }
