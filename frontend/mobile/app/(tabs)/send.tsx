@@ -4,6 +4,7 @@ import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'reac
 
 import { isValidDestination } from '../../lib/address';
 import { ContactPicker } from '../../components/ContactPicker';
+import { QrScanner } from '../../components/QrScanner';
 import type { Contact } from '../../hooks/useContacts';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
@@ -28,6 +29,7 @@ export default function SendScreen() {
   const [recipient, setRecipient] = useState(() => firstValue(params.to));
   const [amount, setAmount] = useState(() => firstValue(params.amount));
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const trimmed = recipient.trim();
   const recipientValid = isValidDestination(trimmed);
@@ -47,13 +49,23 @@ export default function SendScreen() {
         <View style={styles.field}>
           <View style={styles.labelRow}>
             <Text style={styles.label}>RECIPIENT</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setPickerOpen(true)}
-              hitSlop={8}
-            >
-              <Text style={styles.contactLink}>Choose contact</Text>
-            </Pressable>
+            <View style={styles.labelActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Scan a QR code"
+                onPress={() => setScannerOpen(true)}
+                hitSlop={8}
+              >
+                <Text style={styles.contactLink}>Scan QR</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setPickerOpen(true)}
+                hitSlop={8}
+              >
+                <Text style={styles.contactLink}>Choose contact</Text>
+              </Pressable>
+            </View>
           </View>
           <TextInput
             style={[styles.input, showError && styles.inputError]}
@@ -104,6 +116,15 @@ export default function SendScreen() {
         </Pressable>
       </View>
 
+      <QrScanner
+        visible={scannerOpen}
+        onScan={(address) => {
+          setRecipient(address);
+          setScannerOpen(false);
+        }}
+        onClose={() => setScannerOpen(false)}
+      />
+
       <ContactPicker
         visible={pickerOpen}
         onSelect={handleSelectContact}
@@ -131,6 +152,10 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 8,
+  },
+  labelActions: {
+    flexDirection: 'row',
+    gap: 16,
   },
   labelRow: {
     flexDirection: 'row',
