@@ -55,6 +55,7 @@ const TESTNET: VeilNetwork = {
   horizonUrl: 'https://horizon-testnet.stellar.org',
   rpcUrl: 'https://soroban-testnet.stellar.org',
   factoryContractId: CONTRACT,
+  friendbotUrl: 'https://friendbot.stellar.org',
 };
 
 const MAINNET: VeilNetwork = {
@@ -64,6 +65,7 @@ const MAINNET: VeilNetwork = {
   horizonUrl: 'https://horizon.stellar.org',
   rpcUrl: '',
   factoryContractId: '',
+  friendbotUrl: null,
 };
 
 let openURLSpy: jest.SpyInstance<Promise<unknown>, [string]>;

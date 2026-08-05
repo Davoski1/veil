@@ -32,7 +32,6 @@ export type VeilNetwork = {
   rpcUrl: string;
   /** Wallet factory contract, or "" when it has not been configured for this network. */
   factoryContractId: string;
-  factoryContractId: string;
   friendbotUrl: string | null;
 };
 
@@ -54,13 +53,6 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_TESTNET']?.trim() ||
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID']?.trim() ||
       '',
-      process.env['EXPO_PUBLIC_SOROBAN_RPC_URL']?.trim()
-      || process.env['EXPO_PUBLIC_RPC_URL']?.trim()
-      || 'https://soroban-testnet.stellar.org',
-    factoryContractId:
-      process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_TESTNET']?.trim()
-      || process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID']?.trim()
-      || '',
     friendbotUrl: 'https://friendbot.stellar.org',
   },
   mainnet: {

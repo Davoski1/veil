@@ -305,6 +305,7 @@ describe('attachRecoverySignatures', () => {
     horizonUrl: 'https://horizon-testnet.stellar.org',
     rpcUrl: 'https://soroban-testnet.stellar.org',
     factoryContractId: '',
+    friendbotUrl: 'https://friendbot.stellar.org',
   } as const;
 
   /** A signed transaction, used only as a source of a real signature and XDR. */
