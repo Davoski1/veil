@@ -402,7 +402,7 @@ export default function SwapScreen() {
             <>
               <Text style={styles.quoteTitle}>Enter an amount</Text>
               <Text style={styles.quoteBody}>
-                Enter an amount above to see what you'll receive.
+                Enter an amount above to see what you&apos;ll receive.
               </Text>
             </>
           )}
