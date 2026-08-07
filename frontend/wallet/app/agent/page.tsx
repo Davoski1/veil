@@ -16,6 +16,24 @@ interface Message {
   pendingTxSummary?: string
 }
 
+// Agent output relays third-party data (transfer memos, token metadata, price
+// payloads), so it is untrusted. Escape all HTML *before* applying the inline
+// markup pass — the `**bold**` / `` `code` `` markers are not HTML-special, so
+// they still match, and the only real tags produced are the ones injected here.
+// Without the escape, a payload like `<img src=x onerror=...>` would execute in
+// a wallet origin that holds the signing key.
+function renderAgentMarkup(content: string): string {
+  const escaped = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code style="font-family:Inconsolata,monospace;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.8125rem">$1</code>')
+}
+
 // ── User roles ───────────────────────────────────────────────────────────────
 const ROLE_ICONS: Record<string, JSX.Element> = {
   trader: (
@@ -589,10 +607,7 @@ export default function AgentPage() {
               overflowWrap: 'anywhere',
             }}>
               <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}
-                dangerouslySetInnerHTML={{ __html: msg.content
-                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/`(.+?)`/g, '<code style="font-family:Inconsolata,monospace;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.8125rem">$1</code>')
-                }}
+                dangerouslySetInnerHTML={{ __html: renderAgentMarkup(msg.content) }}
               />
 
               {/* Transaction approval card */}
