@@ -21,9 +21,43 @@ const anthropicClient = new Anthropic()
 // ── Per-wallet conversation history ──────────────────────────────────────────
 const conversations = new Map<string, Anthropic.MessageParam[]>()
 
+// ── Access control ────────────────────────────────────────────────────────────
+// Allowed browser origins for both CORS and the WebSocket handshake. Set
+// ALLOWED_ORIGIN to a comma-separated list (e.g.
+// "https://veil.app,https://www.veil.app"). With none set we fall back to
+// localhost only — never a wildcard, so an unconfigured deploy is closed to the
+// public internet rather than open (the server bills a shared Anthropic key).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN ?? 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+
+function isOriginAllowed(origin: string | undefined): boolean {
+  // Non-browser requests (health checks, curl) send no Origin header.
+  if (!origin) return true
+  return ALLOWED_ORIGINS.includes(origin)
+}
+
+// Cap distinct wallets retained, so a caller cannot exhaust memory by opening
+// conversations under many (public) wallet addresses.
+const MAX_CONVERSATIONS = 1000
+// Per-connection sliding-window message cap, so a single connection cannot bill
+// the Anthropic key without bound.
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX_MESSAGES = 30
+
+function rememberConversation(walletAddress: string, history: Anthropic.MessageParam[]): void {
+  conversations.set(walletAddress, history.slice(-20))
+  if (conversations.size > MAX_CONVERSATIONS) {
+    // Map preserves insertion order → evict the oldest tracked wallet.
+    const oldest = conversations.keys().next().value
+    if (oldest !== undefined) conversations.delete(oldest)
+  }
+}
+
 // ── HTTP server ───────────────────────────────────────────────────────────────
 const app = express()
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN ?? '*' }))
+app.use(cors({ origin: ALLOWED_ORIGINS }))
 app.use(express.json())
 
 app.get('/health', (_req, res) => {
@@ -33,12 +67,32 @@ app.get('/health', (_req, res) => {
 const httpServer = createServer(app)
 
 // ── WebSocket server ──────────────────────────────────────────────────────────
-const wss = new WebSocketServer({ server: httpServer })
+// Reject the handshake up front for any origin not on the allowlist, so an
+// arbitrary page or script cannot open a socket and drive the shared agent.
+const wss = new WebSocketServer({
+  server: httpServer,
+  verifyClient: (info, cb) => {
+    if (isOriginAllowed(info.origin)) return cb(true)
+    console.warn(`[agent] rejected WS connection from origin: ${info.origin ?? '(none)'}`)
+    cb(false, 403, 'Forbidden origin')
+  },
+})
 
 wss.on('connection', (ws: WebSocket) => {
   console.log('[agent] Client connected')
 
+  // Per-connection sliding-window rate limiter.
+  const msgTimes: number[] = []
+
   ws.on('message', async (raw) => {
+    const now = Date.now()
+    while (msgTimes.length > 0 && now - msgTimes[0] > RATE_WINDOW_MS) msgTimes.shift()
+    if (msgTimes.length >= RATE_MAX_MESSAGES) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Rate limit exceeded. Please slow down.' }))
+      return
+    }
+    msgTimes.push(now)
+
     let msg: Record<string, unknown>
     try {
       msg = JSON.parse(raw.toString())
@@ -74,10 +128,10 @@ wss.on('connection', (ws: WebSocket) => {
           anthropicClient,
         )
 
-        // Update conversation history (keep last 20 turns)
+        // Update conversation history (keep last 20 turns, bounded wallet count)
         history.push({ role: 'user', content: userMessage })
         history.push({ role: 'assistant', content: response })
-        conversations.set(walletAddress, history.slice(-20))
+        rememberConversation(walletAddress, history)
 
         ws.send(JSON.stringify({
           type: 'response',
