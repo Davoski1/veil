@@ -9,6 +9,13 @@ import { getPasskeyId } from './walletStore';
  * passkey credential id — the native port of the web wallet's
  * `lib/deriveFeePayer.ts`.
  *
+ * SECURITY (known limitation — see docs/adr/0003-fee-payer-key-from-webauthn-prf.md):
+ * the credential id is NOT a secret (it is stored in the keychain and returned in
+ * every assertion's allowCredentials), so this derivation is not passkey-bound —
+ * anyone who can read the credential id can reconstruct this keypair. Blast radius
+ * is the G… fee account only. The planned fix derives the seed from a WebAuthn PRF
+ * output instead. Do not add callers that rely on this being biometric-gated.
+ *
  * The wallet is fee-sponsored, so this account must be **byte-identical** on web
  * and native: a mismatch would pay fees from the wrong account. The web derives
  * the seed with WebCrypto HKDF (`crypto.subtle`); React Native has no equivalent
