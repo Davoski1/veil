@@ -2,8 +2,8 @@
 
 | Field     | Value                          |
 |-----------|--------------------------------|
-| Status    | Proposed                       |
-| Date      | 2026-08-09                     |
+| Status    | Accepted — implemented (web wallet) 2026-08-10 |
+| Date      | 2026-08-09 (implemented 2026-08-10) |
 | Deciders  | Veil core team                 |
 | Supersedes | The `lib/deriveFeePayer.ts` credential-ID derivation |
 
@@ -111,6 +111,44 @@ in-memory cache + PRF-on-the-signing-assertion).
 and should follow the same pattern in a follow-up.
 
 ---
+
+## Implementation (2026-08-10, web wallet)
+
+Shipped, with two deliberate refinements to the plan above that make the rollout
+safe to land without a fund-moving migration:
+
+1. **Mode is pinned per wallet, not force-migrated.** `lib/feePayer.ts` records a
+   `veil_feepayer_mode` marker (`prf` | `legacy`). A **new** wallet tries PRF at
+   creation and pins whichever mode actually worked; an **existing** wallet (one
+   that already has a persisted secret) stays **legacy**, so its funded `G…`
+   address never moves. This avoids stranding balances entirely — there is no
+   forced sweep. To move an existing testnet wallet onto PRF, reset it (danger
+   zone) and re-create, or sweep its legacy `G…` manually.
+2. **PRF seed lives in `sessionStorage` + memory, never `localStorage`.** This is
+   the concrete form of "no plaintext at rest" (C3): the seed is cleared on lock /
+   tab close and re-derived from the passkey on the next assertion, so the
+   inactivity lock actually protects it. (A pure in-memory cache was rejected as
+   too fragile against the many synchronous read sites; sessionStorage-for-the-
+   active-session, with the acute XSS path already closed by C1/H1, is the
+   pragmatic middle ground.)
+
+Other implementation facts:
+
+- **New primitive** `deriveFeePayerSeedFromPrf()` + `evaluateFeePayerPrf()` in
+  `sdk/src/crypto/prf.ts` (the module previously produced only an AES cipher).
+- **PRF enabled at enrolment** — `webauthn.ts` registration now requests
+  `extensions: { prf: {} }`; authenticators without PRF ignore it and the wallet
+  falls back to legacy (**no brick** — the user's chosen safety property).
+- **Piggybacked on the unlock assertion** — `app/lock/page.tsx` adds `prf.eval`
+  to the single unlock `navigator.credentials.get`, so a PRF wallet unlocks with
+  no extra prompt.
+- **Single accessor** — create / recover / unlock / dashboard all establish the
+  key through `ensureFeePayer()`; the ~30 downstream read sites keep reading
+  `sessionStorage` (which the accessor populates), so no address mismatch.
+- **Not yet done:** the mobile app port (`frontend/mobile/lib/deriveFeePayer.ts`
+  — same pattern, `react-native-passkeys` PRF + noble HKDF) and the recovery key
+  (M7) follow in a follow-up. Mobile's exposure is milder (keychain, not
+  `localStorage`).
 
 ## Status of the interim state
 

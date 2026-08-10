@@ -23,10 +23,10 @@
  * stable across sessions for a given credential — the authenticator returns the
  * same PRF output for the same (credential, salt) pair every time.
  */
-const PRF_SALT = new TextEncoder().encode('invisible-wallet/prf/v1');
+const PRF_SALT = new Uint8Array(new TextEncoder().encode('invisible-wallet/prf/v1'));
 
 /** HKDF context string, separating this key from any other use of the PRF output. */
-const HKDF_INFO = new TextEncoder().encode('invisible-wallet/local-encryption/v1');
+const HKDF_INFO = new Uint8Array(new TextEncoder().encode('invisible-wallet/local-encryption/v1'));
 
 /** AES-GCM IV length in bytes (96-bit nonce, as recommended for GCM). */
 const IV_LENGTH = 12;
@@ -181,10 +181,10 @@ export async function deriveKeyFromPrf(prfOutput: Uint8Array): Promise<CryptoKey
  * the fee-payer seed is cryptographically separated from the local-encryption
  * key — the same passkey yields unrelated outputs for the two salts.
  */
-const FEE_PAYER_PRF_SALT = new TextEncoder().encode('invisible-wallet/prf/feepayer/v1');
+export const FEE_PAYER_PRF_SALT = new Uint8Array(new TextEncoder().encode('invisible-wallet/prf/feepayer/v1'));
 
 /** HKDF context string for the fee-payer Ed25519 seed. */
-const FEE_PAYER_HKDF_INFO = new TextEncoder().encode('invisible-wallet/feepayer-ed25519/v1');
+const FEE_PAYER_HKDF_INFO = new Uint8Array(new TextEncoder().encode('invisible-wallet/feepayer-ed25519/v1'));
 
 /**
  * Derive a 32-byte Ed25519 seed for the fee-payer key from raw WebAuthn PRF
@@ -195,8 +195,13 @@ const FEE_PAYER_HKDF_INFO = new TextEncoder().encode('invisible-wallet/feepayer-
  * in memory, never persisted (ADR 0003, fixing C2/C3).
  */
 export async function deriveFeePayerSeedFromPrf(prfOutput: Uint8Array): Promise<Uint8Array> {
+    // Pass a fresh Uint8Array view (a valid BufferSource) rather than a sliced
+    // ArrayBuffer — the latter trips cross-realm `instanceof ArrayBuffer` checks
+    // under jsdom, and the raw view works identically in the browser. The copy
+    // also fixes the buffer type to ArrayBuffer for strict BufferSource typing.
+    const ikm = new Uint8Array(prfOutput);
     const baseKey = await globalThis.crypto.subtle.importKey(
-        'raw', toArrayBuffer(prfOutput), 'HKDF', false, ['deriveBits']
+        'raw', ikm, 'HKDF', false, ['deriveBits']
     );
     const bits = await globalThis.crypto.subtle.deriveBits(
         { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: FEE_PAYER_HKDF_INFO },

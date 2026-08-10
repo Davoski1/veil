@@ -15,7 +15,7 @@ import { WalletConnectApprovalModal } from '@/components/WalletConnectApprovalMo
 import { DepositModal } from '@/components/DepositModal'
 import { TxDetailSheet, type TxRecord } from '@/components/TxDetailSheet'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
-import { deriveStoredFeePayer } from '@/lib/deriveFeePayer'
+import { ensureFeePayer } from '@/lib/feePayer'
 import { fetchPrices } from '@/lib/fetchPrice'
 import { buildFriendbotUrl, getNativeAssetContractId, getNetwork } from '@/lib/network'
 import { sweepContractBalance } from '@/lib/sweepContractBalance'
@@ -137,12 +137,10 @@ function DashboardPageContent() {
     if (!stored) { router.replace('/lock'); return }
     setWalletAddress(stored)
 
-    // Ensure veil_signer_secret is in localStorage so it survives lock/unlock.
-    // Wallets created before this fix only had it in sessionStorage.
-    const secret = sessionStorage.getItem('veil_signer_secret')
-    if (secret && !localStorage.getItem('veil_signer_secret')) {
-      localStorage.setItem('veil_signer_secret', secret)
-    }
+    // Establish the fee-payer for this session (idempotent, fire-and-forget).
+    // PRF wallets keep the seed in sessionStorage only — never copied to
+    // localStorage — so the lock protects it at rest (ADR 0003, C3).
+    void ensureFeePayer()
   }, [router])
 
   const fetchData = useCallback(async () => {
@@ -445,27 +443,12 @@ function DashboardPageContent() {
     setFundingError(null)
     try {
       // Friendbot only funds classic G... accounts, not C... contract addresses.
-      // Derive the G... public key from session secret or fall back to localStorage.
-      const signerSecret = sessionStorage.getItem('veil_signer_secret')
-      let signerPublicKey = signerSecret
-        ? Keypair.fromSecret(signerSecret).publicKey()
-        : (localStorage.getItem('veil_signer_public_key') || null)
+      // ensureFeePayer re-establishes the fee-payer (PRF-derived when supported,
+      // legacy fallback otherwise) without persisting the seed to localStorage.
+      const feePayer = await ensureFeePayer()
+      if (!feePayer) throw new Error('No passkey found. Please register again.')
+      const signerPublicKey = feePayer.publicKey()
 
-      // After cache clear or cross-device recovery — derive fee-payer from passkey.
-      // Same credential ID always produces the same keypair, so funds are never lost.
-      if (!signerPublicKey) {
-        const derived = await deriveStoredFeePayer()
-        if (!derived) throw new Error('No passkey found. Please register again.')
-        localStorage.setItem('veil_signer_public_key', derived.publicKey())
-        localStorage.setItem('veil_signer_secret', derived.secret())
-        sessionStorage.setItem('veil_signer_secret', derived.secret())
-        signerPublicKey = derived.publicKey()
-      }
-      // Always ensure the secret is persisted to localStorage so it survives lock/unlock
-      const currentSecret = sessionStorage.getItem('veil_signer_secret')
-      if (currentSecret && !localStorage.getItem('veil_signer_secret')) {
-        localStorage.setItem('veil_signer_secret', currentSecret)
-      }
       const friendbotUrl = buildFriendbotUrl(signerPublicKey)
       if (!friendbotUrl) {
         await fetchData()

@@ -21,6 +21,7 @@
       "@veil/utils": ["../../sdk/src/utils"],
       "@veil/recovery": ["../../sdk/src/recovery/sep30"],
       "@veil/backup": ["../../sdk/src/backup"],
+      "@veil/prf": ["../../sdk/src/crypto/prf"],
       "@veil/sep7": ["../../sdk/src/sep7"],
       "react": ["./node_modules/@types/react"],
       "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
