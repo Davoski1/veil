@@ -3,7 +3,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import express from 'express'
 import cors from 'cors'
 import { WebSocketServer, WebSocket } from 'ws'
-import { createServer } from 'http'
+import { createServer, type IncomingMessage } from 'http'
+import { timingSafeEqual } from 'crypto'
 import { Keypair } from '@stellar/stellar-sdk'
 import { runAgent, type UserProfile } from './agent.js'
 
@@ -32,10 +33,46 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN ?? 'http://localhost:3000')
   .map((o) => o.trim())
   .filter(Boolean)
 
-function isOriginAllowed(origin: string | undefined): boolean {
-  // Non-browser requests (health checks, curl) send no Origin header.
-  if (!origin) return true
-  return ALLOWED_ORIGINS.includes(origin)
+// Shared bearer token for non-browser clients (curl, server-to-server). A
+// request with no Origin header bypasses the browser-origin allowlist entirely,
+// so instead of trusting origin-less callers we require them to present this
+// token. If it is unset, origin-less access is closed rather than open — an
+// unconfigured deploy stays private (the server bills a shared Anthropic key).
+const AGENT_ACCESS_TOKEN = process.env.AGENT_ACCESS_TOKEN?.trim() ?? ''
+
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  // timingSafeEqual throws on length mismatch; compare against self to keep the
+  // work constant-time regardless, then fold in the length check.
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA)
+    return false
+  }
+  return timingSafeEqual(bufA, bufB)
+}
+
+// Non-browser clients present the token via an `x-agent-token` header or a
+// `?token=` query param (browsers cannot set custom WS headers, but curl/scripts
+// can use either).
+function tokenFromRequest(req: IncomingMessage): string {
+  const header = req.headers['x-agent-token']
+  if (typeof header === 'string' && header) return header
+  try {
+    const url = new URL(req.url ?? '', 'http://localhost')
+    return url.searchParams.get('token') ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function isHandshakeAllowed(info: { origin?: string; req: IncomingMessage }): boolean {
+  // Browser requests carry an Origin header — gate them on the allowlist.
+  if (info.origin) return ALLOWED_ORIGINS.includes(info.origin)
+  // Origin-less requests (curl, scripts, server-to-server) must present the
+  // shared token. With no token configured, origin-less access is closed.
+  if (!AGENT_ACCESS_TOKEN) return false
+  return timingSafeEqualStr(tokenFromRequest(info.req), AGENT_ACCESS_TOKEN)
 }
 
 // Cap distinct wallets retained, so a caller cannot exhaust memory by opening
@@ -72,9 +109,9 @@ const httpServer = createServer(app)
 const wss = new WebSocketServer({
   server: httpServer,
   verifyClient: (info, cb) => {
-    if (isOriginAllowed(info.origin)) return cb(true)
+    if (isHandshakeAllowed(info)) return cb(true)
     console.warn(`[agent] rejected WS connection from origin: ${info.origin ?? '(none)'}`)
-    cb(false, 403, 'Forbidden origin')
+    cb(false, 403, 'Forbidden')
   },
 })
 
