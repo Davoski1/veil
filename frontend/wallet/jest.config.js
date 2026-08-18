@@ -29,6 +29,7 @@ const config = {
     '^@veil/recovery$': '<rootDir>/../../sdk/src/recovery/sep30',
     '^@veil/backup$':   '<rootDir>/../../sdk/src/backup',
     '^@veil/sep7$':     '<rootDir>/../../sdk/src/sep7',
+    '^@veil/prf$':      '<rootDir>/../../sdk/src/crypto/prf',
   },
   setupFilesAfterEnv: [],
   collectCoverageFrom: [

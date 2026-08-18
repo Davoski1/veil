@@ -117,6 +117,11 @@ export const webAuthnProvider: WebAuthnProvider = {
                     userVerification: 'required',
                     ...(authenticatorAttachment ? { authenticatorAttachment } : {}),
                 },
+                // Enable the PRF extension at enrolment so this credential can
+                // later derive the passkey-bound fee-payer seed (ADR 0003).
+                // Authenticators without PRF simply ignore this — the credential
+                // still works and the wallet falls back to legacy derivation.
+                extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
             },
         }) as PublicKeyCredential;
 

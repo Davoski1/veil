@@ -6,7 +6,7 @@ import { Horizon, Keypair } from '@stellar/stellar-sdk'
 import { VeilLogo } from '@/components/VeilLogo'
 import { OnboardingTutorial } from '@/components/OnboardingTutorial'
 import { useInvisibleWallet } from '@veil/sdk'
-import { deriveFeePayerKeypair } from '@/lib/deriveFeePayer'
+import { ensureFeePayer } from '@/lib/feePayer'
 import { buildFriendbotUrl, getNetwork, walletConfig } from '@/lib/network'
 import { trackWalletCreated } from '@/lib/supabase'
 
@@ -62,13 +62,18 @@ export default function OnboardingPage() {
       // On cache clear the same passkey → same credential ID → same keypair.
       const credentialId = localStorage.getItem('invisible_wallet_key_id')
       if (!credentialId) throw new Error('Passkey credential not found after registration')
-      signerKeypair = await deriveFeePayerKeypair(credentialId)
+      // Establish the fee-payer for this new wallet. Fresh wallets use the
+      // passkey-bound PRF derivation (ADR 0003); authenticators without PRF fall
+      // back to the legacy credential-ID derivation. ensureFeePayer persists the
+      // seed per mode — PRF → sessionStorage only, legacy → localStorage.
+      const established = await ensureFeePayer()
+      if (!established) throw new Error('Could not establish fee-payer key')
+      signerKeypair = established
       const signerSecret = signerKeypair.secret()
 
-      // Persist the signer before deploy so a failed mainnet attempt can be retried
-      // after the account is funded externally.
+      // The public key is not secret — keep it in localStorage for display and
+      // funding retries regardless of derivation mode.
       localStorage.setItem('veil_signer_public_key', signerKeypair.publicKey())
-      localStorage.setItem('veil_signer_secret', signerSecret)
 
       const friendbotUrl = buildFriendbotUrl(signerKeypair.publicKey())
       if (friendbotUrl) {
@@ -89,9 +94,9 @@ export default function OnboardingPage() {
       // avoiding XDR type mismatches between two stellar-sdk copies.
       const deployed = await wallet.deploy(signerSecret)
 
-      // Persist minimal session to sessionStorage for the dashboard
+      // Persist minimal session to sessionStorage for the dashboard. The
+      // fee-payer secret is already in sessionStorage (ensureFeePayer set it).
       sessionStorage.setItem('invisible_wallet_address', deployed.walletAddress)
-      sessionStorage.setItem('veil_signer_secret', signerSecret)
       setAddress(deployed.walletAddress)
       setStep('done')
       success = true
