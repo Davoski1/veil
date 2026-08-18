@@ -3,11 +3,17 @@ import { Keypair } from '@stellar/stellar-sdk'
 /**
  * Deterministically derive a fee-payer Ed25519 keypair from a WebAuthn credential ID.
  *
- * The passkey credential ID is device-bound but recoverable via biometrics —
- * given the same credential, this always produces the same keypair. This means
- * clearing localStorage or moving to a new browser session doesn't lose access
- * to the fee-payer account: re-authenticating with the passkey gives back the
- * same credential ID, which derives the same keypair.
+ * SECURITY (known limitation — see docs/adr/0003-fee-payer-key-from-webauthn-prf.md):
+ * The WebAuthn credential ID is NOT a secret. It is stored in plaintext
+ * (`invisible_wallet_key_id`), returned in `allowCredentials` during every
+ * assertion, and observable by any relying party. This derivation therefore does
+ * NOT bind the fee-payer key to a biometric — anyone who can read the credential
+ * ID can reconstruct this keypair with no passkey prompt. The blast radius is the
+ * G… fee account only (the C… contract holds the funds), and the acute remote
+ * exfiltration path (agent-chat XSS) is closed, but this is weaker than the
+ * product's "no private keys" positioning implies. The planned fix (ADR 0003)
+ * derives the seed from a WebAuthn PRF output instead — a value only the passkey
+ * can produce. Do not add new callers that rely on this being passkey-bound.
  *
  * The derivation uses HKDF (RFC 5869) with SHA-256:
  *   - IKM  = raw credential ID bytes

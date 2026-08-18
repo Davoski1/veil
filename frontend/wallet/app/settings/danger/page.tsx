@@ -11,6 +11,7 @@ import {
 } from '@stellar/stellar-sdk'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork, walletConfig } from '@/lib/network'
+import { resetFeePayer } from '@/lib/feePayer'
 import { VeilLogo } from '@/components/VeilLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet } from '@veil/sdk'
@@ -174,7 +175,9 @@ export default function DangerPage() {
       setTxHash(result.hash)
       setStep('success')
 
-      // Clear local wallet data
+      // Clear local wallet data. resetFeePayer() drops the in-memory fee-payer
+      // cache and the pinned derivation mode as well (ADR 0003).
+      resetFeePayer()
       localStorage.removeItem('veil_signer_secret')
       localStorage.removeItem('veil_signer_public_key')
       localStorage.removeItem('invisible_wallet_address')

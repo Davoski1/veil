@@ -19,6 +19,10 @@ Object.defineProperty(globalThis, 'crypto', {
   configurable: true,
 })
 
+// The encrypted-backup round-trips run real PBKDF2 key derivation, which
+// exceeds Jest's default 5s timeout on slower CI runners. Give them headroom.
+jest.setTimeout(30_000)
+
 import {
   encryptBackup,
   decryptBackup,

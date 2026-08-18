@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { LockKeyhole, Fingerprint, AlertCircle } from 'lucide-react'
 import { useInvisibleWallet } from '@veil/sdk'
-import { deriveStoredFeePayer } from '@/lib/deriveFeePayer'
+import { ensureFeePayer } from '@/lib/feePayer'
+import { FEE_PAYER_PRF_SALT, type PrfEvaluator } from '@veil/prf'
 import { walletConfig } from '@/lib/network'
 
 // ── Lock screen ───────────────────────────────────────────────────────────────
@@ -31,6 +32,11 @@ export default function LockPage() {
         return
       }
 
+      // For a PRF wallet we reuse this single unlock assertion to also derive the
+      // fee-payer seed (ADR 0003) — piggybacking the PRF evaluation avoids a
+      // second biometric prompt.
+      let prfEvaluator: PrfEvaluator | undefined
+
       if (keyId !== 'recovery') {
         // Decode base64url key ID → ArrayBuffer
         const normalized = keyId.replace(/-/g, '+').replace(/_/g, '/')
@@ -40,13 +46,28 @@ export default function LockPage() {
         for (let i = 0; i < binary.length; i++) idBuffer[i] = binary.charCodeAt(i)
 
         const challenge = crypto.getRandomValues(new Uint8Array(32))
-        await navigator.credentials.get({
+        const saltBuf = new Uint8Array(FEE_PAYER_PRF_SALT).buffer
+        const assertion = (await navigator.credentials.get({
           publicKey: {
             challenge,
             allowCredentials: [{ id: idBuffer, type: 'public-key' }],
             userVerification: 'required',
+            extensions: { prf: { eval: { first: saltBuf } } } as AuthenticationExtensionsClientInputs,
           },
-        })
+        })) as PublicKeyCredential | null
+
+        const prfFirst = (
+          assertion?.getClientExtensionResults() as {
+            prf?: { results?: { first?: ArrayBuffer | ArrayBufferView } }
+          }
+        )?.prf?.results?.first
+        if (prfFirst) {
+          const bytes =
+            prfFirst instanceof ArrayBuffer
+              ? new Uint8Array(prfFirst)
+              : new Uint8Array((prfFirst as ArrayBufferView).buffer)
+          prfEvaluator = async () => bytes
+        }
       }
 
       // Step 2 — Biometric confirmed; verify wallet exists on-chain and restore session.
@@ -64,17 +85,14 @@ export default function LockPage() {
         return
       }
       sessionStorage.setItem('invisible_wallet_address', result.walletAddress)
-      // Restore fee-payer secret — derive from passkey if localStorage was cleared
-      let storedSecret = localStorage.getItem('veil_signer_secret')
-      if (!storedSecret) {
-        const derived = await deriveStoredFeePayer()
-        if (derived) {
-          storedSecret = derived.secret()
-          localStorage.setItem('veil_signer_secret', storedSecret)
-          localStorage.setItem('veil_signer_public_key', derived.publicKey())
-        }
-      }
-      if (storedSecret) sessionStorage.setItem('veil_signer_secret', storedSecret)
+
+      // Re-establish the fee-payer for this session. PRF wallets re-derive the
+      // seed from the assertion above (no extra prompt) and keep it in
+      // sessionStorage only — nothing plaintext is restored to localStorage, so
+      // the lock actually protects the key at rest (ADR 0003, C3). Legacy wallets
+      // restore from localStorage without a prompt. Best-effort — a failure here
+      // must not block entry to the dashboard.
+      await ensureFeePayer(prfEvaluator).catch(() => null)
 
       router.replace('/dashboard')
 
