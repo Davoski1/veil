@@ -21,6 +21,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Networks } from '@stellar/stellar-sdk';
+import type { WalletConfig } from '@veil/sdk';
 
 export type VeilNetworkName = 'testnet' | 'mainnet';
 
@@ -204,3 +205,14 @@ export function buildFriendbotUrl(address: string, network = getNetwork()): stri
   url.searchParams.set('addr', address);
   return url.toString();
 }
+
+/**
+ * SDK wallet config derived from the active network. Consumed by
+ * {@link ../components/WalletProvider} via `useInvisibleWallet`. Reads
+ * `getNetwork()` so it always reflects the current runtime override.
+ */
+export const walletConfig: WalletConfig = {
+  factoryAddress: getNetwork().factoryContractId,
+  rpcUrl: getNetwork().rpcUrl,
+  networkPassphrase: getNetwork().networkPassphrase,
+};

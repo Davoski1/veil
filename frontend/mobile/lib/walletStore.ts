@@ -67,3 +67,7 @@ export async function clearWalletStore(): Promise<void> {
     deleteSecureItem(SecureKey.signerSecret),
   ]);
 }
+
+export function setSignerSecret(secret: string): Promise<void> {
+  return SecureStore.setItemAsync(SIGNER_SECRET_KEY, secret);
+}
