@@ -161,6 +161,15 @@ submitted. Dismissing the prompt is a decline, not an error. A transaction sourc
 from any account other than this wallet's fee payer is refused before the prompt
 is ever raised.
 
+## Branded assets
+
+`assets/images/` holds the app icon, Android adaptive icon layers (foreground /
+background / monochrome), splash image, and web favicon — near-black
+(`#0F0F0F`) background, gold (`#FDDA24`) fingerprint mark and "VEIL" wordmark,
+matching `frontend/wallet/components/VeilLogo.tsx`. Wired in `app.json`'s
+`icon`, `android.adaptiveIcon`, `web.favicon`, and the `expo-splash-screen`
+plugin config.
+
 ## Structure
 
 - `app/_layout.tsx` — root Stack navigator (expo-router) wrapped in the connectivity provider.
