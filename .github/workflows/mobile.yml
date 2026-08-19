@@ -42,7 +42,7 @@ jobs:
       # fallback for the window after a dependency bump lands ahead of the lock.
       - run: npm ci || npm install
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
       - name: Lint
         run: npx expo lint
       - name: Test
