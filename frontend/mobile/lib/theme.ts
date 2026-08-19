@@ -59,37 +59,39 @@ export type ThemeColors = {
 };
 
 /**
- * Dark values are the ones the app already shipped with, so dark mode is
- * unchanged by this feature — only light mode is new.
+ * Veil brand palette — gold (`#FDDA24`) on near-black (`#0F0F0F`), matching the
+ * web wallet's `--gold` / `--near-black` / `--off-white` tokens. Light mode uses
+ * the web wallet's darker `#C4A800` gold so the accent keeps contrast on white.
+ * (Replaces an earlier indigo/slate palette that had drifted off-brand.)
  */
 export const THEMES: Record<Theme, ThemeColors> = {
   dark: {
-    background: '#0B0B0F',
-    surface: '#1e293b',
-    border: '#334155',
+    background: '#0F0F0F',
+    surface: '#171717',
+    border: '#262626',
     textStrong: '#FFFFFF',
-    textPrimary: '#f1f5f9',
-    textSecondary: '#9BA1A6',
-    textMuted: '#94a3b8',
-    textFaint: '#64748b',
-    accent: '#6366f1',
-    accentText: '#a5b4fc',
-    onAccent: '#FFFFFF',
-    danger: '#f87171',
-    dangerSurface: '#450a0a',
+    textPrimary: '#F6F7F8',
+    textSecondary: 'rgba(246,247,248,0.62)',
+    textMuted: 'rgba(246,247,248,0.45)',
+    textFaint: 'rgba(246,247,248,0.30)',
+    accent: '#FDDA24',
+    accentText: '#FDDA24',
+    onAccent: '#0F0F0F',
+    danger: '#F87171',
+    dangerSurface: 'rgba(248,113,113,0.14)',
   },
   light: {
-    background: '#F6F7F9',
-    surface: '#FFFFFF',
-    border: '#D9DEE7',
-    textStrong: '#0B0B0F',
-    textPrimary: '#1F2937',
-    textSecondary: '#5A6472',
+    background: '#FFFFFF',
+    surface: '#F6F7F8',
+    border: '#E5E7EB',
+    textStrong: '#0F0F0F',
+    textPrimary: '#1A1A1A',
+    textSecondary: '#4B5563',
     textMuted: '#6B7280',
-    textFaint: '#8B94A3',
-    accent: '#4F46E5',
-    accentText: '#4338CA',
-    onAccent: '#FFFFFF',
+    textFaint: '#9CA3AF',
+    accent: '#C4A800',
+    accentText: '#8A7600',
+    onAccent: '#0F0F0F',
     danger: '#DC2626',
     dangerSurface: '#FEE2E2',
   },
