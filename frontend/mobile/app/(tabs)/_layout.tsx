@@ -1,24 +1,28 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
+
 import { TabIcon } from '@/components/TabIcon';
-import { colors } from '@/components/ScreenScaffold';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * Bottom tab navigator — primary destinations only.
  *
- * Non-primary screens (swap, vault, agent, etc.) live in the root stack
- * and push over these tabs. The tab bar stays visible only on the four
- * primary screens listed below, mirroring the web wallet entry points.
+ * Non-primary screens (swap, vault, agent, etc.) live in the root stack and push
+ * over these tabs. Colours come from the theme (Veil gold on near-black), not the
+ * legacy ScreenScaffold tokens. The design's raised center-plus tab bar is a
+ * follow-up (a custom `tabBar`); this keeps the four primary tabs on-brand.
  */
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.gold,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textFaint,
         tabBarStyle: {
-          backgroundColor: colors.bg,
+          backgroundColor: colors.background,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
         },
@@ -34,7 +38,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          title: 'Home',
           tabBarIcon: ({ color }) => <TabIcon name="dashboard" color={color} />,
         }}
       />
