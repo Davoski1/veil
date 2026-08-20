@@ -12,9 +12,13 @@ import { Asset, BASE_FEE, Horizon, Keypair, Operation, TransactionBuilder } from
 
 import { getNetwork } from './network';
 
-/** Well-known testnet issuers for the assets we can price/route classically. */
+/**
+ * Well-known testnet issuers for the assets we route classically. USDC uses the
+ * SAME issuer the web wallet swaps against — the one with actual testnet DEX
+ * liquidity. (Note: this differs from the Lens price-oracle USDC issuer.)
+ */
 const TESTNET_ISSUERS: Record<string, string> = {
-  USDC: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+  USDC: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
 };
 
 /** Map a symbol to a classic Asset, or null when we don't know its issuer. */
