@@ -11,11 +11,11 @@ import {
   loadBlendPositions,
   type BlendPool,
   type BlendPosition,
-} from '../lib/blend';
-import { getNetwork } from '../lib/network';
-import { requirePasskey } from '../lib/passkey';
-import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
-import { getSignerSecret, getWalletAddress } from '../lib/walletStore';
+} from '../../lib/blend';
+import { getNetwork } from '../../lib/network';
+import { requirePasskey } from '../../lib/passkey';
+import { signAndSubmitSorobanXdr } from '../../lib/sorobanTx';
+import { getSignerSecret, getWalletAddress } from '../../lib/walletStore';
 
 /**
  * Earn — supply idle assets to Blend lending pools and redeem them.

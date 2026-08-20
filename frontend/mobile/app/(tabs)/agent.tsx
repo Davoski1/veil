@@ -31,7 +31,7 @@ import {
   View,
 } from 'react-native';
 
-import { Button, Card, Screen } from '../components/ui';
+import { Button, Card, Screen } from '../../components/ui';
 import {
   describeSubmissionError,
   isProposalForFeePayer,
@@ -43,12 +43,12 @@ import {
   type AgentMessage,
   type ProposalReview,
   type ProposalStatus,
-} from '../lib/agentMessages';
-import { getNetwork } from '../lib/network';
-import { signPayloadWithPasskey } from '../lib/passkey';
-import { getSignerSecret, getWalletAddress } from '../lib/walletStore';
-import { colors } from '../theme/colors';
-import { fontFamily, typography } from '../theme/typography';
+} from '../../lib/agentMessages';
+import { getNetwork } from '../../lib/network';
+import { signPayloadWithPasskey } from '../../lib/passkey';
+import { getSignerSecret, getWalletAddress } from '../../lib/walletStore';
+import { colors } from '../../theme/colors';
+import { fontFamily, typography } from '../../theme/typography';
 
 /**
  * Agent chat (`/agent`) — the assistant can read, explain, and *propose*, but it

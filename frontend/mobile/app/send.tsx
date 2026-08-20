@@ -2,13 +2,13 @@ import { useState, useCallback } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { isValidDestination } from '../../lib/address';
-import { ContactPicker } from '../../components/ContactPicker';
-import { QrScanner } from '../../components/QrScanner';
-import type { Contact } from '../../hooks/useContacts';
-import { requireSigner } from '../../lib/signer';
-import { sendPayment } from '../../lib/sendPayment';
-import { truncateAddress } from '../../components/ui/AddressChip';
+import { isValidDestination } from '../lib/address';
+import { ContactPicker } from '../components/ContactPicker';
+import { QrScanner } from '../components/QrScanner';
+import type { Contact } from '../hooks/useContacts';
+import { requireSigner } from '../lib/signer';
+import { sendPayment } from '../lib/sendPayment';
+import { truncateAddress } from '../components/ui/AddressChip';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
 function firstValue(value: string | string[] | undefined): string {

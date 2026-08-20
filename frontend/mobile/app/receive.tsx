@@ -3,7 +3,7 @@ import { Pressable, SafeAreaView, Share, StyleSheet, Text, View } from 'react-na
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 
-import { buildSep7PayUri } from '../../lib/sep7';
+import { buildSep7PayUri } from '../lib/sep7';
 
 // Placeholder address — the mobile shell has no wallet integration yet (that
 // lands with a later issue), so the screen renders a representative address.
