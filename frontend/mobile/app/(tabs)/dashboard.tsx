@@ -9,6 +9,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { VeilLogo } from '../../components/VeilLogo';
 import { SilverBalanceCard } from '../../components/SilverBalanceCard';
 import { PayForGrid } from '../../components/PayForGrid';
+import { AssetsList } from '../../components/AssetsList';
 import { fontFamily } from '../../theme/typography';
 import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
@@ -142,6 +143,8 @@ export default function DashboardTab() {
       />
 
       <PayForGrid />
+
+      <AssetsList address={walletAddress} />
 
       {/* Activity feed */}
       <View style={styles.sectionHeader}>
