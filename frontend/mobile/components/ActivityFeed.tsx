@@ -7,6 +7,9 @@ import {
   View,
 } from 'react-native';
 import { useActivityFeed, type TxRecord } from '../lib/activityFeed';
+import { useTheme } from '../hooks/useTheme';
+import type { ThemeColors } from '../lib/theme';
+import { fontFamily } from '../theme/typography';
 
 // ── Props ───────────────────────────────────────────────────────────────────
 
@@ -23,21 +26,6 @@ export interface ActivityFeedProps {
   onRefresh?: () => void;
 }
 
-// ── Color constants (matching Veil dark theme) ──────────────────────────────
-
-const COLORS = {
-  background: '#0B0B0F',
-  card: '#131317',
-  border: 'rgba(246,247,248,0.08)',
-  gold: '#FDDA24',
-  goldDim: 'rgba(253,218,36,0.35)',
-  offWhite: '#F6F7F8',
-  muted: 'rgba(246,247,248,0.4)',
-  warmGrey: '#9BA1A6',
-  teal: '#4DB6AC',
-  nearBlack: '#0E0E12',
-};
-
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function ActivityFeed({
@@ -47,6 +35,8 @@ export default function ActivityFeed({
   error = null,
 }: ActivityFeedProps) {
   const transactions = useActivityFeed();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return transactions;
@@ -162,96 +152,97 @@ export default function ActivityFeed({
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  rowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  rowLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  rowLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.offWhite,
-  },
-  rowCounterparty: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 2,
-    fontFamily: 'monospace',
-  },
-  rowRight: {
-    alignItems: 'flex-end',
-  },
-  rowAmount: {
-    fontFamily: 'monospace',
-    fontSize: 14,
-    color: COLORS.offWhite,
-  },
-  rowAmountTeal: {
-    color: COLORS.teal,
-    marginTop: 2,
-  },
-  // Skeleton
-  skeletonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  skeletonLeft: {
-    gap: 4,
-  },
-  skeletonLineSmall: {
-    width: 48,
-    height: 12,
-    borderRadius: 4,
-    backgroundColor: 'rgba(246,247,248,0.06)',
-  },
-  skeletonLineTiny: {
-    width: 96,
-    height: 10,
-    borderRadius: 4,
-    backgroundColor: 'rgba(246,247,248,0.04)',
-  },
-  skeletonLineMedium: {
-    width: 72,
-    height: 14,
-    borderRadius: 4,
-    backgroundColor: 'rgba(246,247,248,0.06)',
-  },
-  // Empty state
-  emptyContainer: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.muted,
-    textAlign: 'center',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      width: '100%',
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    rowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    rowLeft: {
+      flex: 1,
+      marginRight: 12,
+    },
+    rowLabel: {
+      fontSize: 14,
+      fontFamily: fontFamily.bodyMedium,
+      color: colors.textPrimary,
+    },
+    rowCounterparty: {
+      fontSize: 12,
+      color: colors.textFaint,
+      marginTop: 2,
+      fontFamily: fontFamily.address,
+    },
+    rowRight: {
+      alignItems: 'flex-end',
+    },
+    rowAmount: {
+      fontFamily: fontFamily.address,
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    rowAmountTeal: {
+      color: colors.positive,
+      marginTop: 2,
+    },
+    // Skeleton
+    skeletonRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    skeletonLeft: {
+      gap: 4,
+    },
+    skeletonLineSmall: {
+      width: 48,
+      height: 12,
+      borderRadius: 4,
+      backgroundColor: colors.surfaceMd,
+    },
+    skeletonLineTiny: {
+      width: 96,
+      height: 10,
+      borderRadius: 4,
+      backgroundColor: colors.surface,
+    },
+    skeletonLineMedium: {
+      width: 72,
+      height: 14,
+      borderRadius: 4,
+      backgroundColor: colors.surfaceMd,
+    },
+    // Empty state
+    emptyContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 32,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textFaint,
+      textAlign: 'center',
+    },
+  });
