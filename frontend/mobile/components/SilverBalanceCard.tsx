@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useCurrency } from '../hooks/useCurrency';
 import { useHiddenAmounts } from '../hooks/useHiddenAmounts';
@@ -48,27 +48,22 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
 
   return (
     <View style={styles.card}>
-      {/* Metallic face + diagonal shine. */}
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#3a3d42" />
-            <Stop offset="0.22" stopColor="#8f959c" />
-            <Stop offset="0.38" stopColor="#e8ebee" />
-            <Stop offset="0.52" stopColor="#9aa0a7" />
-            <Stop offset="0.70" stopColor="#5c6066" />
-            <Stop offset="0.88" stopColor="#caced3" />
-            <Stop offset="1" stopColor="#75797f" />
-          </LinearGradient>
-          <LinearGradient id="shine" x1="0.05" y1="0" x2="0.75" y2="0.35">
-            <Stop offset="0.38" stopColor="#ffffff" stopOpacity="0" />
-            <Stop offset="0.46" stopColor="#ffffff" stopOpacity="0.55" />
-            <Stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#silver)" />
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#shine)" />
-      </Svg>
+      {/* Metallic face + diagonal shine — expo-linear-gradient fills the whole
+          card reliably (react-native-svg percentage sizing did not). */}
+      <LinearGradient
+        colors={['#3a3d42', '#8f959c', '#e8ebee', '#9aa0a7', '#5c6066', '#caced3', '#75797f']}
+        locations={[0, 0.22, 0.38, 0.52, 0.7, 0.88, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(255,255,255,0.55)', 'transparent']}
+        locations={[0.38, 0.46, 0.55]}
+        start={{ x: 0.05, y: 0 }}
+        end={{ x: 0.75, y: 0.35 }}
+        style={StyleSheet.absoluteFill}
+      />
 
       <View style={styles.headerRow}>
         <Text style={styles.label}>Total balance</Text>
