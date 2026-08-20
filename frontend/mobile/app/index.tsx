@@ -7,7 +7,7 @@ import { useTheme } from "../hooks/useTheme";
 import type { ThemeColors } from "../lib/theme";
 import { fontFamily } from "../theme/typography";
 import { VeilLogo } from "../components/VeilLogo";
-import { getWalletAddress } from "../lib/walletStore";
+import { getWalletAddress, getSignerSecret, getPasskeyId } from "../lib/walletStore";
 
 // Whether the intro has been seen is presentation state, not a secret, so it
 // lives in AsyncStorage. The wallet address itself is read through walletStore,
@@ -22,10 +22,16 @@ async function readEntryState(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const [wallet, seenWelcome] = await Promise.all([
+      // A wallet only counts as usable when there's a SIGNER (keypair secret or
+      // a registered passkey) — an address with neither is a stale preview stub
+      // that can't sign, so we route such state back to onboarding.
+      const [address, secret, passkeyId, seenWelcome] = await Promise.all([
         getWalletAddress(),
+        getSignerSecret(),
+        getPasskeyId(),
         AsyncStorage.getItem(SEEN_WELCOME_KEY),
       ]);
+      const wallet = address && (secret || passkeyId) ? address : null;
       return { wallet, seenWelcome };
     } catch (error) {
       lastError = error;

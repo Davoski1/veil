@@ -9,7 +9,7 @@ import { CURRENCIES, CURRENCY_CODES } from '../../lib/currency';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
 import { getNetwork } from '../../lib/network';
-import { getWalletAddress } from '../../lib/walletStore';
+import { getWalletAddress, clearWalletStore } from '../../lib/walletStore';
 import { fundWithFriendbot } from '../../lib/testnetWallet';
 
 type Row = {
@@ -66,8 +66,26 @@ export default function SettingsScreen() {
     const ok = await fundWithFriendbot(address);
     Alert.alert(ok ? 'Funded' : 'Friendbot busy', ok ? 'Test XLM is on its way to your wallet.' : 'Try again in a moment.');
   };
+  const resetWallet = () => {
+    Alert.alert(
+      'Reset wallet?',
+      'Removes the wallet key from this device so you can create a fresh testnet wallet. Back up your secret first if you need it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await clearWalletStore();
+            router.replace('/welcome');
+          },
+        },
+      ],
+    );
+  };
   const developer: Row[] = [
     { key: 'fund', title: 'Fund test XLM', subtitle: 'Top up this wallet from Friendbot', value: 'Testnet', onPress: fundTestXlm },
+    { key: 'reset', title: 'Reset wallet', subtitle: 'Clear this wallet and start fresh', onPress: resetWallet },
   ];
 
   const group = (heading: string, rows: Row[]) => (
