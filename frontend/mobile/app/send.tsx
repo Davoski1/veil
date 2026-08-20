@@ -96,10 +96,9 @@ export default function SendScreen() {
   const recipientValid = isValidDestination(trimmed);
   const showError = trimmed.length > 0 && !recipientValid;
   const editable = step === 'form' || step === 'error';
-  // Only native XLM sends are wired end-to-end today.
-  const sendable = selected ? selected.native : true;
   const amtNum = Number(amount);
-  const canSubmit = recipientValid && amtNum > 0 && editable && sendable;
+  const canSubmit = recipientValid && amtNum > 0 && editable;
+  const nonNative = !!selected && !selected.native;
 
   const up = selected ? unitPrice(selected) : null;
   const fiatOfAmount = up !== null && isFinite(amtNum) && amtNum > 0 ? format(amtNum * up) : null;
@@ -124,7 +123,13 @@ export default function SendScreen() {
       setStep('authorizing');
       const signer = await requireSigner();
       setStep('submitting');
-      const result = await sendPayment(recipient, amount, signer, memo);
+      const result = await sendPayment(
+        recipient,
+        amount,
+        signer,
+        memo,
+        nonNative && selected ? { code: selected.code, issuer: selected.issuer } : undefined,
+      );
       setHash(result.hash);
       setStep('done');
     } catch (err) {
@@ -280,8 +285,10 @@ export default function SendScreen() {
           </View>
         )}
         {step === 'error' && error && <Text style={styles.errorBanner}>{error}</Text>}
-        {!sendable && (
-          <Text style={styles.note}>Sending {assetCode} is coming soon — only XLM transfers are enabled right now.</Text>
+        {nonNative && (
+          <Text style={styles.note}>
+            Sending {assetCode} — the recipient needs a {assetCode} trustline, at a classic (G…) address.
+          </Text>
         )}
 
         <View style={styles.spacer} />

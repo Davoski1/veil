@@ -125,6 +125,7 @@ export async function sendPayment(
   amount: string,
   signer: WalletSigner,
   memo?: string,
+  asset?: { code: string; issuer: string | null },
 ): Promise<SendResult> {
   const errors = validateSend(recipient, amount);
   if (errors.recipient) throw new Error(errors.recipient);
@@ -133,6 +134,12 @@ export async function sendPayment(
   const to = recipient.trim();
   const memoText = memo?.trim();
 
+  // Native XLM unless a classic (issued) asset is supplied.
+  const sendAsset =
+    asset && asset.code.toUpperCase() !== 'XLM' && asset.issuer
+      ? new Asset(asset.code, asset.issuer)
+      : Asset.native();
+
   if (isClassicAddress(to)) {
     const server = new Horizon.Server(HORIZON_URL);
     const account = await server.loadAccount(signer.publicKey);
@@ -140,7 +147,7 @@ export async function sendPayment(
       fee: BASE_FEE,
       networkPassphrase: NETWORK_PASSPHRASE,
     })
-      .addOperation(Operation.payment({ destination: to, asset: Asset.native(), amount: amount.trim() }))
+      .addOperation(Operation.payment({ destination: to, asset: sendAsset, amount: amount.trim() }))
       .setTimeout(30);
     // Classic memos: only attach for text that fits the 28-byte limit.
     if (memoText && new TextEncoder().encode(memoText).length <= 28) {
@@ -150,6 +157,13 @@ export async function sendPayment(
     signer.sign(tx);
     const res = await server.submitTransaction(tx);
     return { hash: res.hash };
+  }
+
+  // Contract (C…) recipient below. Only native XLM is wired over the SAC path.
+  if (!sendAsset.isNative()) {
+    throw new Error(
+      `Sending ${sendAsset.getCode()} to a smart-contract wallet isn't supported yet — use a classic (G…) address.`,
+    );
   }
 
   if (!NATIVE_SAC) {
