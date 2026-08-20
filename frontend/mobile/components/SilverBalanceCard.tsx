@@ -132,10 +132,19 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
 
   return (
     <View style={styles.wrap}>
-      <Animated.View style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: frontRotate }] }]}>
+      {/* Only the visible face is interactive: the turned-away face is hidden by
+          backfaceVisibility but still holds live, mirror-flipped touch targets on
+          Android — which would intercept taps and swap Send/Receive. */}
+      <Animated.View
+        pointerEvents={flipped ? 'none' : 'auto'}
+        style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: frontRotate }] }]}
+      >
         {face('Total balance', cryptoText, hasFiat ? `≈ ${format(usd)}` : 'no price yet')}
       </Animated.View>
-      <Animated.View style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: backRotate }] }]}>
+      <Animated.View
+        pointerEvents={flipped ? 'auto' : 'none'}
+        style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: backRotate }] }]}
+      >
         {face(`Balance · ${currency}`, fiatText, `≈ ${trimAmount(balance)} XLM`)}
       </Animated.View>
     </View>
