@@ -98,12 +98,15 @@ export default function SendScreen() {
   const showError = trimmed.length > 0 && !recipientValid;
   const editable = step === 'form' || step === 'error';
   const amtNum = Number(amount);
-  const canSubmit = recipientValid && amtNum > 0 && editable;
   const nonNative = !!selected && !selected.native;
+  const balanceNum = selected ? Number(selected.balance) : 0;
+  // Native sends must leave ~1.5 XLM for the base reserve + fee.
+  const spendable = selected ? (selected.native ? Math.max(0, balanceNum - 1.5) : balanceNum) : null;
+  const insufficient = spendable !== null && amtNum > 0 && amtNum > spendable;
+  const canSubmit = recipientValid && amtNum > 0 && editable && !insufficient;
 
   const up = selected ? unitPrice(selected) : null;
   const fiatOfAmount = up !== null && isFinite(amtNum) && amtNum > 0 ? format(amtNum * up) : null;
-  const balanceNum = selected ? Number(selected.balance) : 0;
 
   const handleSelectContact = useCallback((contact: Contact) => {
     setRecipient(contact.address);
@@ -218,8 +221,10 @@ export default function SendScreen() {
             <Text style={styles.amountUnit}>{assetCode}</Text>
           </View>
           <Text style={styles.amountFiat}>{fiatOfAmount ? `≈ ${fiatOfAmount}` : ' '}</Text>
-          <Text style={styles.balanceLine}>
-            Balance {selected ? `${mask(fmtAmount(selected.balance))} ${assetCode}` : '—'}
+          <Text style={[styles.balanceLine, insufficient && styles.balanceWarn]}>
+            {insufficient && selected
+              ? `Not enough ${assetCode} — you have ${mask(fmtAmount(selected.balance))}`
+              : `Balance ${selected ? `${mask(fmtAmount(selected.balance))} ${assetCode}` : '—'}`}
           </Text>
           <View style={styles.chips}>
             {QUICK.map((q) => {
@@ -303,7 +308,9 @@ export default function SendScreen() {
           <SlideToConfirm label="Slide to send" onConfirm={handleSend} />
         ) : (
           <View style={[styles.cta, styles.disabled]} testID="send-submit">
-            <Text style={styles.ctaText}>{step === 'error' ? 'Try again' : 'Enter details to send'}</Text>
+            <Text style={styles.ctaText}>
+              {insufficient ? 'Not enough balance' : step === 'error' ? 'Try again' : 'Enter details to send'}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -381,6 +388,7 @@ const createStyles = (colors: ThemeColors) =>
     amountUnit: { color: colors.textSecondary, fontFamily: fontFamily.bodySemiBold, fontSize: 18 },
     amountFiat: { color: colors.textMuted, fontFamily: fontFamily.address, fontSize: 14, marginTop: 8 },
     balanceLine: { color: colors.textFaint, fontFamily: fontFamily.body, fontSize: 12, marginTop: 14 },
+    balanceWarn: { color: colors.danger, fontFamily: fontFamily.bodyMedium },
     chips: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center' },
     chip: {
       borderWidth: 1,
