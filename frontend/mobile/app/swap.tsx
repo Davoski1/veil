@@ -13,6 +13,7 @@ import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQ
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
 import { getWalletAddress, getSignerSecret } from '../lib/walletStore';
+import { loadHoldings, type Holding } from '../lib/holdings';
 
 type Token = { code: string; name: string };
 type Step = 'form' | 'signing' | 'submitting' | 'done' | 'error';
@@ -28,13 +29,33 @@ const SLIPPAGE_BPS = 50; // 0.5 %
 const DEBOUNCE_MS = 600;
 
 export default function SwapScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [tokenIn, setTokenIn] = useState<Token>(TOKENS[0]!);
   const [tokenOut, setTokenOut] = useState<Token>(TOKENS[1]!);
   const [amountIn, setAmountIn] = useState('');
   const [picker, setPicker] = useState<null | 'in' | 'out'>(null);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const addr = await getWalletAddress().catch(() => null);
+      if (!addr) return;
+      const hs = await loadHoldings(addr).catch(() => [] as Holding[]);
+      if (alive) setHoldings(hs);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const balanceOf = (code: string): number | null => {
+    const h = holdings.find((x) => x.code.toUpperCase() === code.toUpperCase());
+    return h ? Number(h.balance) : null;
+  };
+  const fmtBal = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 4 });
 
   const [quote, setQuote] = useState<SwapQuote | null>(null);
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
@@ -107,10 +128,12 @@ export default function SwapScreen() {
         getWalletAddress(),
         getSignerSecret(),
       ]);
-      if (!tokenInAddr || !tokenOutAddr || !walletAddress) {
-        throw new Error('Missing token addresses or wallet not configured.');
-      }
+      if (!walletAddress) throw new Error('Wallet not configured.');
       if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
+      if (!tokenInAddr || !tokenOutAddr) {
+        const missing = !tokenInAddr ? tokenIn.code : tokenOut.code;
+        throw new Error(`${missing} isn't listed on Soroswap for this network — swaps use Soroswap liquidity (mainnet).`);
+      }
       const unsignedXdr = await buildSoroswapSwapXdr({
         tokenIn: tokenInAddr,
         tokenOut: tokenOutAddr,
@@ -201,6 +224,18 @@ export default function SwapScreen() {
           <View style={[styles.leg, styles.legTop]}>
             <View style={styles.legHead}>
               <Text style={styles.legLabel}>You pay</Text>
+              {balanceOf(tokenIn.code) !== null && (
+                <Pressable
+                  hitSlop={6}
+                  onPress={() => {
+                    const b = balanceOf(tokenIn.code) ?? 0;
+                    const usable = tokenIn.code.toUpperCase() === 'XLM' ? Math.max(0, b - 1.5) : b;
+                    setAmountIn(usable.toFixed(usable >= 1 ? 2 : 4));
+                  }}
+                >
+                  <Text style={styles.legBalance}>Balance {fmtBal(balanceOf(tokenIn.code)!)} · Max</Text>
+                </Pressable>
+              )}
             </View>
             <View style={styles.legRow}>
               <TextInput
@@ -218,7 +253,12 @@ export default function SwapScreen() {
           </View>
 
           <View style={[styles.leg, styles.legBottom]}>
-            <Text style={styles.legLabel}>You receive</Text>
+            <View style={styles.legHead}>
+              <Text style={styles.legLabel}>You receive</Text>
+              {balanceOf(tokenOut.code) !== null && (
+                <Text style={styles.legBalance}>Balance {fmtBal(balanceOf(tokenOut.code)!)}</Text>
+              )}
+            </View>
             <View style={styles.legRow}>
               <Text style={[styles.legAmount, styles.legAmountOut]} numberOfLines={1}>
                 {isFetchingQuote ? '…' : amountOutDisplay}
@@ -271,7 +311,7 @@ export default function SwapScreen() {
       {/* Token picker */}
       <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setPicker(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.sheetTitle}>Select token</Text>
             {TOKENS.map((t) => (
               <Pressable key={t.code} style={styles.sheetRow} onPress={() => handleSelect(t)}>
@@ -350,6 +390,7 @@ const createStyles = (colors: ThemeColors) =>
       letterSpacing: 1.2,
       textTransform: 'uppercase',
     },
+    legBalance: { color: colors.accent, fontFamily: fontFamily.bodyMedium, fontSize: 11.5 },
     legRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12 },
     legAmount: {
       flex: 1,
