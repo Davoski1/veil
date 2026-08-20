@@ -16,6 +16,15 @@ const TIMEOUT_MS = 5_000;
 /** Testnet USDC issuer — everything is quoted against USDC. */
 const USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 
+/**
+ * Approximate USD prices used only when the Lens oracle can't answer (402-gated,
+ * offline, testnet). Deliberately rough — like the currency `fallbackRate`, this
+ * exists so the balance renders a plausible fiat figure (and switching display
+ * currency visibly does something) rather than collapsing to an em dash. A live
+ * quote always overrides it.
+ */
+const FALLBACK_USD: Record<string, number> = { XLM: 0.11 };
+
 function assetParam(code: string, issuer: string | null | undefined): string {
   if (code === 'XLM') return 'native';
   if (!issuer) return code;
@@ -33,7 +42,9 @@ export async function fetchPrice(
   code: string,
   issuer: string | null | undefined,
 ): Promise<number | null> {
-  if (code.toUpperCase() === 'USDC') return 1.0;
+  const upper = code.toUpperCase();
+  if (upper === 'USDC') return 1.0;
+  const fallback = FALLBACK_USD[upper] ?? null;
 
   const assetA = assetParam(code, issuer);
   const assetB = `USDC:${USDC_ISSUER}`;
@@ -44,14 +55,14 @@ export async function fetchPrice(
 
   try {
     const res = await fetch(url, { signal: controller.signal });
-    // 402 = payment required, 404 = unknown pair — both are graceful no-price.
-    if (!res.ok) return null;
+    // 402 = payment required, 404 = unknown pair — both fall back to an estimate.
+    if (!res.ok) return fallback;
     const data = (await res.json()) as Record<string, unknown>;
     // Lens may return the price under any of several field names.
     const price = data['price'] ?? data['ask'] ?? data['last'] ?? data['close'];
-    return typeof price === 'number' ? price : null;
+    return typeof price === 'number' ? price : fallback;
   } catch {
-    return null; // AbortError (timeout), network error, or parse error.
+    return fallback; // AbortError (timeout), network error, or parse error.
   } finally {
     clearTimeout(timerId);
   }
