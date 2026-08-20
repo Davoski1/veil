@@ -11,6 +11,7 @@ import { SwapVerticalIcon } from '../components/icons';
 import { TokenIcon } from '../components/TokenIcon';
 import { SuccessAnimation } from '../components/SuccessAnimation';
 import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
+import { getSdexQuote, sdexSwap, sdexSupported } from '../lib/sdexSwap';
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
 import { getWalletAddress, getSignerSecret } from '../lib/walletStore';
@@ -32,6 +33,8 @@ const DEBOUNCE_MS = 600;
 export default function SwapScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  // Soroswap is mainnet-only; on testnet we route through the classic DEX.
+  const onTestnet = getNetwork().name === 'testnet';
 
   const [tokenIn, setTokenIn] = useState<Token>(TOKENS[0]!);
   const [tokenOut, setTokenOut] = useState<Token>(TOKENS[1]!);
@@ -81,18 +84,43 @@ export default function SwapScreen() {
       setIsFetchingQuote(true);
       setQuoteError(null);
       try {
-        const [tokenInAddr, tokenOutAddr, walletAddress] = await Promise.all([
-          resolveTokenAddress(tokenIn.code),
-          resolveTokenAddress(tokenOut.code),
-          getWalletAddress(),
-        ]);
-        if (!tokenInAddr || !tokenOutAddr) {
-          setQuoteError('Token not found in Soroswap list.');
+        const walletAddress = await getWalletAddress();
+        if (!walletAddress) {
+          setQuoteError('Wallet not set up yet.');
           setQuote(null);
           return;
         }
-        if (!walletAddress) {
-          setQuoteError('Wallet not set up yet.');
+
+        if (onTestnet) {
+          if (!sdexSupported(tokenIn.code) || !sdexSupported(tokenOut.code)) {
+            const missing = !sdexSupported(tokenIn.code) ? tokenIn.code : tokenOut.code;
+            setQuoteError(`${missing} isn't available for testnet swaps (XLM ↔ USDC).`);
+            setQuote(null);
+            return;
+          }
+          const sdex = await getSdexQuote(tokenIn.code, parsed.toString(), tokenOut.code);
+          if (!sdex) {
+            setQuoteError('No DEX path for this pair — no testnet liquidity bridges it.');
+            setQuote(null);
+            return;
+          }
+          setQuote({
+            amountOut: Math.round(Number(sdex.amountOut) * 1e7).toString(),
+            priceImpact: 0,
+            path: sdex.path.map((a) => (a.isNative() ? 'native' : `${a.getCode()}:${a.getIssuer()}`)),
+            protocols: ['SDEX'],
+            rawQuote: sdex,
+            ttl: Date.now() + 30_000,
+          });
+          return;
+        }
+
+        const [tokenInAddr, tokenOutAddr] = await Promise.all([
+          resolveTokenAddress(tokenIn.code),
+          resolveTokenAddress(tokenOut.code),
+        ]);
+        if (!tokenInAddr || !tokenOutAddr) {
+          setQuoteError('Token not found in Soroswap list.');
           setQuote(null);
           return;
         }
@@ -115,7 +143,7 @@ export default function SwapScreen() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [amountIn, tokenIn.code, tokenOut.code]);
+  }, [amountIn, tokenIn.code, tokenOut.code, onTestnet]);
 
   // ── Execution — unchanged engine ───────────────────────────────────────────
   async function handleExecute() {
@@ -123,14 +151,31 @@ export default function SwapScreen() {
     setStep('signing');
     try {
       const parsed = parseFloat(amountIn);
-      const [tokenInAddr, tokenOutAddr, walletAddress, signerSecret] = await Promise.all([
+      const signerSecret = await getSignerSecret();
+      if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
+
+      // Testnet → classic DEX path payment (adds the destination trustline
+      // when missing). Mainnet → Soroswap.
+      if (onTestnet) {
+        setStep('submitting');
+        const hash = await sdexSwap({
+          signerSecret,
+          sourceCode: tokenIn.code,
+          amountIn: parsed.toString(),
+          destCode: tokenOut.code,
+          slippageBps: SLIPPAGE_BPS,
+        });
+        setTxHash(hash);
+        setStep('done');
+        return;
+      }
+
+      const [tokenInAddr, tokenOutAddr, walletAddress] = await Promise.all([
         resolveTokenAddress(tokenIn.code),
         resolveTokenAddress(tokenOut.code),
         getWalletAddress(),
-        getSignerSecret(),
       ]);
       if (!walletAddress) throw new Error('Wallet not configured.');
-      if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
       if (!tokenInAddr || !tokenOutAddr) {
         const missing = !tokenInAddr ? tokenIn.code : tokenOut.code;
         throw new Error(`${missing} isn't listed on Soroswap for this network — swaps use Soroswap liquidity (mainnet).`);
