@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -8,6 +8,9 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { CURRENCIES, CURRENCY_CODES } from '../../lib/currency';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
+import { getNetwork } from '../../lib/network';
+import { getWalletAddress } from '../../lib/walletStore';
+import { fundWithFriendbot } from '../../lib/testnetWallet';
 
 type Row = {
   key: string;
@@ -53,6 +56,20 @@ export default function SettingsScreen() {
     { key: 'about', title: 'About', subtitle: 'Version, licenses, and support', onPress: () => {} },
   ];
 
+  const onTestnet = getNetwork().name === 'testnet';
+  const fundTestXlm = async () => {
+    const address = await getWalletAddress();
+    if (!address) {
+      Alert.alert('No wallet', 'Create a wallet first.');
+      return;
+    }
+    const ok = await fundWithFriendbot(address);
+    Alert.alert(ok ? 'Funded' : 'Friendbot busy', ok ? 'Test XLM is on its way to your wallet.' : 'Try again in a moment.');
+  };
+  const developer: Row[] = [
+    { key: 'fund', title: 'Fund test XLM', subtitle: 'Top up this wallet from Friendbot', value: 'Testnet', onPress: fundTestXlm },
+  ];
+
   const group = (heading: string, rows: Row[]) => (
     <View style={styles.group}>
       <Text style={styles.groupHeading}>{heading}</Text>
@@ -84,6 +101,7 @@ export default function SettingsScreen() {
         {group('Appearance', appearance)}
         {group('Security', security)}
         {group('General', general)}
+        {onTestnet && group('Developer', developer)}
       </ScrollView>
 
       <Modal visible={currencyPickerOpen} transparent animationType="fade" onRequestClose={() => setCurrencyPickerOpen(false)}>

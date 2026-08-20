@@ -54,7 +54,7 @@ export default function CreateWallet() {
             <Text style={styles.label}>Address</Text>
             <Text testID="create-wallet-address" style={styles.addr}>{shortAddr(result.address)}</Text>
             <Text style={[styles.fund, { color: result.funded ? colors.positive : colors.textMuted }]}>
-              {result.funded ? 'Funded with test XLM ✓' : 'Not funded yet — top up from Settings'}
+              {result.funded ? 'Funded with test XLM ✓' : 'Friendbot was busy — you can still receive funds and retry later'}
             </Text>
           </View>
           <View style={styles.spacer} />
