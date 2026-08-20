@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { NavRow, colors } from '@/components/ScreenScaffold';
+import { colors } from '@/components/ScreenScaffold';
 import { FirstRunTutorial } from '../../components/OnboardingTutorial';
 import { TxDetailSheet } from '../../components/TxDetailSheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { ConnectDAppModal } from '../../components/ConnectDAppModal';
 import { VeilLogo } from '../../components/VeilLogo';
 import { SilverBalanceCard } from '../../components/SilverBalanceCard';
 import { PayForGrid } from '../../components/PayForGrid';
 import { fontFamily } from '../../theme/typography';
-import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
 import { getWalletAddress } from '../../lib/walletStore';
@@ -38,8 +36,6 @@ const WRAITH_URL =
 export default function DashboardTab() {
   const { colors: themeColors } = useTheme();
   const themedStyles = useMemo(() => createThemedStyles(themeColors), [themeColors]);
-  const { sessions, disconnectSession } = useWalletConnect();
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>('—');
   const [price, setPrice] = useState<number | null>(null);
@@ -160,57 +156,6 @@ export default function DashboardTab() {
         </View>
       ) : null}
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Stack routes</Text>
-        <Text style={styles.sectionHint}>Available screens</Text>
-      </View>
-
-      <View style={styles.grid}>
-        <NavRow href="/swap" label="Swap" hint="DEX + Soroswap" />
-        <NavRow href="/agent" label="Agent" hint="Activity feed" />
-        <NavRow href="/vault" label="Vault" hint="Time-locked balance" />
-        <NavRow href="/multisig" label="Multisig" hint="M-of-N wallets" />
-        <NavRow href="/earn" label="Earn" hint="Blend yield" />
-        <NavRow href="/pools" label="Pools" hint="Liquidity pools" />
-        <NavRow href="/buy" label="Buy" hint="Transak / SEP-24" />
-        <NavRow href="/withdraw" label="Withdraw" hint="Fiat off-ramp" />
-        <NavRow href="/token/XLM" label="Token · XLM" hint="Dynamic route demo" />
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Connected dApps</Text>
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => setIsConnectOpen(true)}
-        style={({ pressed }) => [themedStyles.connectButton, pressed && themedStyles.pressed]}
-      >
-        <Text style={themedStyles.connectLabel}>Connect dApp</Text>
-      </Pressable>
-
-      {sessions.length > 0 && (
-        <View style={themedStyles.sessions}>
-          {sessions.map((session) => (
-            <View key={session.topic} style={themedStyles.sessionRow}>
-              <Text style={themedStyles.sessionName} numberOfLines={1}>
-                {session.peer?.name || 'Unknown dApp'}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  disconnectSession(session.topic).catch(() => {});
-                }}
-              >
-                <Text style={themedStyles.disconnect}>Disconnect</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <ConnectDAppModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
-
       {/* Shows once per install; self-gates on the persisted flag. */}
       <FirstRunTutorial />
 
@@ -264,7 +209,8 @@ const createThemedStyles = (themeColors: ThemeColors) =>
     },
     scrollContent: {
       padding: 20,
-      paddingBottom: 48,
+      // Extra bottom room so the floating VeilTabBar never covers the last row.
+      paddingBottom: 130,
       gap: 14,
     },
     homeHeader: {
