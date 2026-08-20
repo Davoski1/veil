@@ -72,6 +72,57 @@ export function SwapIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: Ic
   );
 }
 
+/** QR-scan viewfinder — the "scan a recipient" affordance. */
+export function ScanIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Line x1="4" y1="12" x2="20" y2="12" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+/** Two figures — the contacts / address-book affordance. */
+export function UsersIcon({ size, color = 'currentColor', strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M15 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-4A3.5 3.5 0 0 0 4 18.5V20" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="9.5" cy="8" r="3" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M17 15.2a3.5 3.5 0 0 1 3 3.3V20M16 5.2a3 3 0 0 1 0 5.6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+/** Down-into-tray — the "save QR" affordance. */
+export function DownloadIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M12 3v11M8 10l4 4 4-4M5 20h14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+/** Three linked nodes — the share affordance. */
+export function ShareIcon({ size, color = 'currentColor', strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Circle cx="18" cy="5" r="2.6" stroke={color} strokeWidth={strokeWidth} />
+      <Circle cx="6" cy="12" r="2.6" stroke={color} strokeWidth={strokeWidth} />
+      <Circle cx="18" cy="19" r="2.6" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+/** Flat-top hexagon — the passkey / Soroban-contract mark. */
+export function HexagonIcon({ size, color = 'currentColor', strokeWidth = 1.8, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <Base size={size}>
+      <Path d="M7.7 4h8.6L21 12l-4.7 8H7.7L3 12z" fill={filled ? color : 'none'} stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+    </Base>
+  );
+}
+
 export function BuyIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
   return (
     <Base size={size}>

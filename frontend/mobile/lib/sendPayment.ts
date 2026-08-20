@@ -19,6 +19,7 @@ import {
   BASE_FEE,
   Contract,
   Horizon,
+  Memo,
   Operation,
   StrKey,
   TransactionBuilder,
@@ -123,23 +124,29 @@ export async function sendPayment(
   recipient: string,
   amount: string,
   signer: WalletSigner,
+  memo?: string,
 ): Promise<SendResult> {
   const errors = validateSend(recipient, amount);
   if (errors.recipient) throw new Error(errors.recipient);
   if (errors.amount) throw new Error(errors.amount);
 
   const to = recipient.trim();
+  const memoText = memo?.trim();
 
   if (isClassicAddress(to)) {
     const server = new Horizon.Server(HORIZON_URL);
     const account = await server.loadAccount(signer.publicKey);
-    const tx = new TransactionBuilder(account, {
+    const builder = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: NETWORK_PASSPHRASE,
     })
       .addOperation(Operation.payment({ destination: to, asset: Asset.native(), amount: amount.trim() }))
-      .setTimeout(30)
-      .build();
+      .setTimeout(30);
+    // Classic memos: only attach for text that fits the 28-byte limit.
+    if (memoText && new TextEncoder().encode(memoText).length <= 28) {
+      builder.addMemo(Memo.text(memoText));
+    }
+    const tx = builder.build();
     signer.sign(tx);
     const res = await server.submitTransaction(tx);
     return { hash: res.hash };
