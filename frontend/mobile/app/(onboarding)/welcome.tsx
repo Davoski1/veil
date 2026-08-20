@@ -77,7 +77,7 @@ export default function Welcome() {
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
           testID="welcome-create"
         >
-          <Text style={styles.primaryLabel}>Create wallet with a passkey</Text>
+          <Text style={styles.primaryLabel}>Create testnet wallet</Text>
         </Pressable>
         <Pressable
           onPress={handleRecover}

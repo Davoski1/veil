@@ -1,32 +1,44 @@
 /**
- * Resolving the wallet signer — the one native piece the send flow can't do
- * portably yet.
+ * Resolving the wallet signer.
  *
- * On this wallet the signer that authorizes and pays for a transfer is derived
- * from the device passkey (the PRF-based key described in `lib/backup.ts`); the
- * secret is never persisted, so it must be produced live from the passkey each
- * time. React Native has no passkey module wired yet — the web relies on
- * WebAuthn (`navigator.credentials`), which has no React Native equivalent
- * without a native module and config plugin.
+ * The production wallet derives its signer from the device passkey (PRF key,
+ * see `lib/backup.ts`) and never persists a secret. That path needs a native
+ * passkey module + dev build and does not run in Expo Go.
  *
- * Until that module lands this fails closed with a clear, typed error. The rest
- * of the send flow (`lib/sendPayment.ts`) is complete and works the instant a
- * real {@link WalletSigner} is returned here — that is the only line to change.
+ * For testnet testing we run a simpler model: the wallet is a plain Stellar
+ * keypair whose secret lives in secure storage ({@link getSignerSecret}). This
+ * signer signs transactions directly with that key, so every already-wired flow
+ * (send, swap, earn) works end-to-end in Expo Go against testnet. When the
+ * passkey/smart-wallet path lands it can take precedence here.
  */
 
+import { Keypair } from '@stellar/stellar-sdk';
+
 import type { WalletSigner } from './sendPayment';
+import { getSignerSecret } from './walletStore';
 
 export class SignerUnavailableError extends Error {
-  constructor(message = 'Passkey signing is not available on this device yet.') {
+  constructor(message = 'No wallet key on this device. Create a testnet wallet first.') {
     super(message);
     this.name = 'SignerUnavailableError';
   }
 }
 
+/** Build a {@link WalletSigner} from a raw Stellar secret seed. */
+export function keypairSigner(secret: string): WalletSigner {
+  const kp = Keypair.fromSecret(secret);
+  return {
+    publicKey: kp.publicKey(),
+    sign: (tx) => tx.sign(kp),
+  };
+}
+
 /**
- * Produces the passkey-derived signer for the active wallet, or throws
- * {@link SignerUnavailableError} while the mobile passkey module is pending.
+ * Produce the signer for the active wallet. Reads the stored testnet keypair
+ * secret; throws {@link SignerUnavailableError} when none is present.
  */
 export async function requireSigner(): Promise<WalletSigner> {
-  throw new SignerUnavailableError();
+  const secret = await getSignerSecret();
+  if (!secret) throw new SignerUnavailableError();
+  return keypairSigner(secret);
 }

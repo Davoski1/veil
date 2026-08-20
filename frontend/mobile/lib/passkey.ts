@@ -35,7 +35,7 @@ import {
   type WebAuthnSignature,
 } from './walletConnect';
 import { isUserRejection } from './walletConnectHelpers';
-import { getPasskeyId, getPasskeyPublicKey } from './walletStore';
+import { getPasskeyId, getPasskeyPublicKey, getSignerSecret } from './walletStore';
 import { base64UrlToUint8Array, derToRawSignature, hexToUint8Array, uint8ArrayToBase64Url } from './webauthn';
 
 /**
@@ -125,6 +125,9 @@ export function registerPasskeySigner(): () => void {
  * Throws when the sheet is dismissed, so a caller can abort rather than sign.
  */
 export async function requirePasskey(): Promise<void> {
+  // Testnet keypair mode: a stored signer secret authorises transactions
+  // directly, so there is no passkey to assert against — skip the gate.
+  if (await getSignerSecret()) return;
   const challenge = Crypto.getRandomBytes(32);
   const assertion = await signPayloadWithPasskey(challenge);
   if (!assertion) throw new Error('Passkey cancelled. Please try again.');

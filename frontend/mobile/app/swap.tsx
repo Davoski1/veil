@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { rpc as SorobanRpc, TransactionBuilder } from '@stellar/stellar-sdk';
 
 import { useTheme } from '../hooks/useTheme';
 import type { ThemeColors } from '../lib/theme';
@@ -9,11 +8,10 @@ import { fontFamily } from '../theme/typography';
 import { FlowHeader } from '../components/FlowHeader';
 import { SlideToConfirm } from '../components/SlideToConfirm';
 import { SwapVerticalIcon } from '../components/icons';
-import { registerPasskeySigner } from '../lib/passkey';
 import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
 import { getNetwork } from '../lib/network';
-import { signXdrPayload } from '../lib/walletConnect';
-import { getWalletAddress } from '../lib/walletStore';
+import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
+import { getWalletAddress, getSignerSecret } from '../lib/walletStore';
 
 type Token = { code: string; name: string };
 type Step = 'form' | 'signing' | 'submitting' | 'done' | 'error';
@@ -100,17 +98,18 @@ export default function SwapScreen() {
   async function handleExecute() {
     setExecError(null);
     setStep('signing');
-    const unregister = registerPasskeySigner();
     try {
       const parsed = parseFloat(amountIn);
-      const [tokenInAddr, tokenOutAddr, walletAddress] = await Promise.all([
+      const [tokenInAddr, tokenOutAddr, walletAddress, signerSecret] = await Promise.all([
         resolveTokenAddress(tokenIn.code),
         resolveTokenAddress(tokenOut.code),
         getWalletAddress(),
+        getSignerSecret(),
       ]);
       if (!tokenInAddr || !tokenOutAddr || !walletAddress) {
         throw new Error('Missing token addresses or wallet not configured.');
       }
+      if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
       const unsignedXdr = await buildSoroswapSwapXdr({
         tokenIn: tokenInAddr,
         tokenOut: tokenOutAddr,
@@ -119,35 +118,23 @@ export default function SwapScreen() {
         feePayerAddress: walletAddress,
       });
       if (!unsignedXdr) throw new Error('Failed to build swap transaction.');
-      const signedXdr = await signXdrPayload(unsignedXdr);
 
       setStep('submitting');
       const network = getNetwork();
-      const rpc = new SorobanRpc.Server(network.rpcUrl);
-      const signedTx = TransactionBuilder.fromXDR(signedXdr, network.networkPassphrase);
-      const sendResult = await rpc.sendTransaction(signedTx);
-      if (sendResult.status === 'ERROR') {
-        throw new Error(`Network rejected the transaction: ${sendResult.errorResult?.toXDR('base64') ?? 'unknown'}`);
-      }
-      for (let i = 0; i < 30; i++) {
-        await new Promise<void>((r) => setTimeout(r, 1_000));
-        const poll = await rpc.getTransaction(sendResult.hash);
-        if (poll.status !== SorobanRpc.Api.GetTransactionStatus.NOT_FOUND) {
-          if (poll.status !== SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
-            throw new Error(`Transaction failed on-chain: ${poll.status}`);
-          }
-          setTxHash(sendResult.hash);
-          setStep('done');
-          return;
-        }
-      }
-      throw new Error('Transaction timed out. Check your wallet history.');
+      // Testnet keypair mode: simulate → assemble → sign with the wallet key →
+      // submit → poll to completion (source-account auth covers the swap).
+      const hash = await signAndSubmitSorobanXdr({
+        xdr: unsignedXdr,
+        signerSecret,
+        rpcUrl: network.rpcUrl,
+        networkPassphrase: network.networkPassphrase,
+      });
+      setTxHash(hash);
+      setStep('done');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setExecError(msg === 'USER_REJECTED' ? 'Passkey authentication was declined.' : msg);
+      setExecError(msg === 'USER_REJECTED' ? 'Signing was declined.' : msg);
       setStep('error');
-    } finally {
-      unregister();
     }
   }
 

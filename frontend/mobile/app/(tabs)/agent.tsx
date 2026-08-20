@@ -46,7 +46,7 @@ import {
 } from '../../lib/agentMessages';
 import { getNetwork } from '../../lib/network';
 import { signPayloadWithPasskey } from '../../lib/passkey';
-import { getSignerSecret, getWalletAddress } from '../../lib/walletStore';
+import { getPasskeyId, getSignerSecret, getWalletAddress } from '../../lib/walletStore';
 import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily, typography } from '../../theme/typography';
@@ -307,12 +307,6 @@ export default function AgentScreen() {
       // the agent's proposal and the fee-payer key held on this device, and
       // binding it to the hash means a stale confirmation cannot be reused for a
       // different transaction.
-      const confirmation = await signPayloadWithPasskey(new Uint8Array(tx.hash()));
-      if (!confirmation) {
-        updateProposal(message.id, { state: 'declined' });
-        return;
-      }
-
       const secret = await getSignerSecret();
       if (!secret) {
         updateProposal(message.id, {
@@ -320,6 +314,17 @@ export default function AgentScreen() {
           reason: 'The signing key for this wallet is missing from this device.',
         });
         return;
+      }
+
+      // The passkey confirmation applies only when a passkey is registered
+      // (smart-wallet / dev build). Testnet keypair mode has no passkey, so we
+      // authorise with the stored key directly.
+      if (await getPasskeyId()) {
+        const confirmation = await signPayloadWithPasskey(new Uint8Array(tx.hash()));
+        if (!confirmation) {
+          updateProposal(message.id, { state: 'declined' });
+          return;
+        }
       }
 
       tx.sign(Keypair.fromSecret(secret));
