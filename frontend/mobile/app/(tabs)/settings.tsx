@@ -88,7 +88,7 @@ export default function SettingsScreen() {
 
       <Modal visible={currencyPickerOpen} transparent animationType="fade" onRequestClose={() => setCurrencyPickerOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setCurrencyPickerOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.sheetTitle}>Display currency</Text>
             {CURRENCY_CODES.map((code) => {
               const c = CURRENCIES[code];

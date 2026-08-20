@@ -79,7 +79,7 @@ export default function ReceiveScreen() {
         <FlowHeader title="Receive" />
 
         {/* Spending address */}
-        <View style={styles.card}>
+        <View style={[styles.card, styles.spendingCard]}>
           <Text style={styles.cardLabel}>Spending address</Text>
           <Text style={styles.cardSub}>Use this for most senders & exchanges</Text>
 
@@ -139,7 +139,7 @@ export default function ReceiveScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    body: { flex: 1, paddingHorizontal: 24, paddingTop: 16 },
+    body: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
 
     card: {
       backgroundColor: colors.surface,
@@ -147,6 +147,7 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.border,
       borderRadius: 20,
     },
+    spendingCard: { marginTop: 32 },
     cardLabel: {
       color: colors.accent,
       fontFamily: fontFamily.bodySemiBold,

@@ -67,7 +67,7 @@ function AssetBadge({ code, colors }: { code: string; colors: ThemeColors }) {
 }
 
 export default function SendScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { format } = useCurrency();
   const { mask } = useHiddenAmounts();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -325,7 +325,7 @@ export default function SendScreen() {
       {/* Asset picker sheet */}
       <Modal visible={assetSheet} transparent animationType="fade" onRequestClose={() => setAssetSheet(false)}>
         <Pressable style={styles.backdrop} onPress={() => setAssetSheet(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.sheetTitle}>Select asset</Text>
             {holdings.map((h) => {
               const isSel = selected ? keyOf(h) === keyOf(selected) : false;
