@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 
 import { createIdleWatcher } from '../lib/appLock';
+import { getWalletAddress } from '../lib/walletStore';
 
 /**
  * Locks the wallet after inactivity or when the app is backgrounded, so a lost
@@ -13,6 +14,12 @@ import { createIdleWatcher } from '../lib/appLock';
  * immediately; returning to the foreground restarts the idle countdown. Either
  * trigger routes to `/lock`, which re-prompts a biometric. It re-arms itself off
  * the current route so it never fights the lock screen it just pushed.
+ *
+ * The lock only arms once a wallet exists. Before then there is nothing to
+ * protect, and `/lock` would be a dead end — there is no passkey to unlock with —
+ * so an onboarding user must never be sent there. (This is also what stops a
+ * fresh install from being trapped on the lock screen the moment Expo Go hands
+ * off to the project and fires an `AppState` background event.)
  *
  * Mount once at the app root (alongside the connectivity gate in `_layout.tsx`).
  */
@@ -25,21 +32,34 @@ export function useInactivityLock(): void {
     // Already locked — don't re-arm on top of the lock screen.
     if (onLockRoute) return;
 
-    const lock = () => router.replace('/lock');
-    const watcher = createIdleWatcher({ onLock: lock });
-    watcher.start();
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
 
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
-        // Backgrounded: lock now so returning requires a biometric.
+    (async () => {
+      const wallet = await getWalletAddress().catch(() => null);
+      if (cancelled || !wallet) return; // no wallet → never lock
+
+      const lock = () => router.replace('/lock');
+      const watcher = createIdleWatcher({ onLock: lock });
+      watcher.start();
+
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'background') {
+          // Backgrounded: lock now so returning requires a biometric.
+          watcher.stop();
+          lock();
+        }
+      });
+
+      cleanup = () => {
         watcher.stop();
-        lock();
-      }
-    });
+        subscription.remove();
+      };
+    })();
 
     return () => {
-      watcher.stop();
-      subscription.remove();
+      cancelled = true;
+      cleanup?.();
     };
   }, [router, onLockRoute]);
 }
