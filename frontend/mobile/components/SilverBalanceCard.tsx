@@ -8,7 +8,7 @@ import { useHiddenAmounts } from '../hooks/useHiddenAmounts';
 import { fontFamily } from '../theme/typography';
 import { formatUsd } from '../lib/fetchPrice';
 import { VeilLogo } from './VeilLogo';
-import { PaperPlaneIcon, ReceiveIcon } from './icons';
+import { EyeIcon, EyeOffIcon, PaperPlaneIcon, ReceiveIcon } from './icons';
 
 /** Ink used on the light silver face. */
 const INK = '#0F0F0F';
@@ -66,7 +66,7 @@ function Metal() {
 export function SilverBalanceCard({ balance, usd = null, loading, error }: SilverBalanceCardProps) {
   const router = useRouter();
   const { currency, format } = useCurrency();
-  const { mask } = useHiddenAmounts();
+  const { mask, hidden, toggle: toggleHidden } = useHiddenAmounts();
   const styles = useMemo(() => createStyles(), []);
 
   const flip = useRef(new Animated.Value(0)).current;
@@ -86,22 +86,43 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
   const cryptoText = balance !== undefined ? `${trimAmount(balance)} XLM` : '—';
   const fiatText = hasFiat ? format(usd) : '—';
 
-  // Only the balance display flips; the Send / Receive actions live in one
-  // overlay OUTSIDE the rotating faces (below), so they can never mirror or
-  // double-fire.
+  // The whole card flips (Send/Receive included). Only the VISIBLE face is
+  // interactive (pointerEvents + zIndex/elevation below): the turned-away face
+  // is mirror-flipped and would otherwise steal taps / swap Send↔Receive.
   const face = (label: string, big: string, sub: string) => (
     <>
       <Metal />
-      <Pressable onPress={toggleFlip} accessibilityRole="button" accessibilityLabel="Flip balance" style={styles.balanceArea}>
-        <View style={styles.headerRow}>
-          <Text style={styles.label}>{label}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={toggleHidden}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? 'Show balance' : 'Hide balance'}
+            style={({ pressed }) => [styles.eyeBtn, pressed && styles.pressed]}
+          >
+            {hidden ? <EyeOffIcon size={18} color={INK_55} /> : <EyeIcon size={18} color={INK_55} />}
+          </Pressable>
           <VeilLogo size={26} color={INK} />
         </View>
+      </View>
+      <Pressable onPress={toggleFlip} accessibilityRole="button" accessibilityLabel="Flip balance" style={styles.balanceArea}>
         <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
           {mask(big)}
         </Text>
-        <Text style={styles.sub}>{sub}</Text>
+        <Text style={styles.sub}>{hidden ? '••••' : sub}</Text>
       </Pressable>
+      <View style={styles.actions}>
+        <Pressable onPress={() => router.push('/send')} accessibilityRole="button" accessibilityLabel="Send" style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}>
+          <PaperPlaneIcon size={15} color="#FDDA24" />
+          <Text style={styles.sendText}>Send</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/receive')} accessibilityRole="button" accessibilityLabel="Receive" style={({ pressed }) => [styles.receiveBtn, pressed && styles.pressed]}>
+          <ReceiveIcon size={15} color={INK} strokeWidth={2} />
+          <Text style={styles.receiveText}>Receive</Text>
+        </Pressable>
+      </View>
     </>
   );
 
@@ -126,30 +147,17 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
   return (
     <View style={styles.wrap}>
       <Animated.View
-        pointerEvents="box-none"
-        style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: frontRotate }] }]}
+        pointerEvents={flipped ? 'none' : 'auto'}
+        style={[styles.face, { zIndex: flipped ? 0 : 2, elevation: flipped ? 0 : 12, transform: [{ perspective: 1400 }, { rotateY: frontRotate }] }]}
       >
         {face('Total balance', cryptoText, hasFiat ? `≈ ${format(usd)}` : 'no price yet')}
       </Animated.View>
       <Animated.View
-        pointerEvents="box-none"
-        style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: backRotate }] }]}
+        pointerEvents={flipped ? 'auto' : 'none'}
+        style={[styles.face, { zIndex: flipped ? 2 : 0, elevation: flipped ? 12 : 0, transform: [{ perspective: 1400 }, { rotateY: backRotate }] }]}
       >
         {face(`Balance · ${currency}`, fiatText, `≈ ${trimAmount(balance)} XLM`)}
       </Animated.View>
-
-      {/* Actions overlay — rendered last (on top), never inside a rotated face,
-          so it's always interactive with a single tap regardless of flip state. */}
-      <View style={styles.actions} pointerEvents="box-none">
-        <Pressable onPress={() => router.push('/send')} accessibilityRole="button" accessibilityLabel="Send" style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}>
-          <PaperPlaneIcon size={15} color="#FDDA24" />
-          <Text style={styles.sendText}>Send</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/receive')} accessibilityRole="button" accessibilityLabel="Receive" style={({ pressed }) => [styles.receiveBtn, pressed && styles.pressed]}>
-          <ReceiveIcon size={15} color={INK} strokeWidth={2} />
-          <Text style={styles.receiveText}>Receive</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -169,7 +177,7 @@ const createStyles = () =>
       shadowOffset: { width: 0, height: 18 },
       shadowOpacity: 0.5,
       shadowRadius: 40,
-      elevation: 10,
+      // elevation is set per-face inline so only the visible face casts a shadow.
     },
     staticFace: {
       ...StyleSheet.absoluteFillObject,
@@ -182,8 +190,19 @@ const createStyles = () =>
     },
     headerRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    eyeBtn: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     label: {
       color: INK_55,
