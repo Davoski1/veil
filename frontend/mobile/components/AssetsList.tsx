@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Horizon } from '@stellar/stellar-sdk';
-import Svg, { Path } from 'react-native-svg';
 
+import { TokenIcon } from './TokenIcon';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { useHiddenAmounts } from '../hooks/useHiddenAmounts';
@@ -112,7 +112,7 @@ export function AssetsList({ address }: { address: string | null }) {
         holdings.map((h, i) => (
           <View key={`${h.code}-${h.issuer ?? 'native'}`} style={[styles.row, i > 0 && styles.rowBorder]}>
             <View style={styles.left}>
-              <TokenBadge code={h.code} colors={colors} />
+              <TokenIcon code={h.code} size={38} />
               <View>
                 <Text style={styles.name}>{h.name}</Text>
                 <Text style={styles.code}>{h.code}</Text>
@@ -128,49 +128,6 @@ export function AssetsList({ address }: { address: string | null }) {
     </View>
   );
 }
-
-/** A circular token badge — recognisable marks for XLM/USDC, a lettered fallback. */
-function TokenBadge({ code, colors }: { code: string; colors: ThemeColors }) {
-  if (code === 'XLM') {
-    return (
-      <View style={[badge.base, { backgroundColor: '#0F0F0F', borderWidth: 1, borderColor: colors.border }]}>
-        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-          {/* Stellar-style rocket/spark */}
-          <Path d="M3 17l18-9M7 20l5-2M4 12l16-8" stroke="#FDDA24" strokeWidth={1.8} strokeLinecap="round" />
-        </Svg>
-      </View>
-    );
-  }
-  if (code === 'USDC') {
-    return (
-      <View style={[badge.base, { backgroundColor: '#2775CA' }]}>
-        <Text style={badge.symbol}>$</Text>
-      </View>
-    );
-  }
-  // Fallback: first two chars over a hashed brand-ish tint.
-  const hue = [...code].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-  return (
-    <View style={[badge.base, { backgroundColor: `hsl(${hue},45%,32%)` }]}>
-      <Text style={badge.symbol}>{code.slice(0, 2)}</Text>
-    </View>
-  );
-}
-
-const badge = StyleSheet.create({
-  base: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  symbol: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({

@@ -8,6 +8,7 @@ import { fontFamily } from '../theme/typography';
 import { FlowHeader } from '../components/FlowHeader';
 import { SlideToConfirm } from '../components/SlideToConfirm';
 import { SwapVerticalIcon } from '../components/icons';
+import { TokenIcon } from '../components/TokenIcon';
 import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
@@ -300,12 +301,9 @@ function TokenChip({
   static?: boolean;
 }) {
   const s = chipStyles(colors, accent);
-  const badgeBg = token.code === 'USDC' ? '#2775CA' : token.code === 'XLM' ? '#0F0F0F' : colors.surfaceMd;
   const content = (
     <View style={s.chip}>
-      <View style={[s.badge, { backgroundColor: badgeBg }]}>
-        <Text style={s.badgeText}>{token.code === 'USDC' ? '$' : token.code.slice(0, 1)}</Text>
-      </View>
+      <TokenIcon code={token.code} size={26} />
       <Text style={s.code}>{token.code}</Text>
       {!isStatic && <Text style={s.chev}>▾</Text>}
     </View>
@@ -332,14 +330,6 @@ const chipStyles = (colors: ThemeColors, accent: boolean) =>
       paddingRight: 12,
       paddingVertical: 6,
     },
-    badge: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    badgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
     code: { color: colors.textPrimary, fontFamily: fontFamily.bodySemiBold, fontSize: 14 },
     chev: { color: colors.textFaint, fontSize: 11 },
   });

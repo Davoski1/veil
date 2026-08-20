@@ -19,6 +19,7 @@ import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
 import { loadHoldings, unitPrice, type Holding } from '../lib/holdings';
 import { ChevronDownIcon, HexagonIcon, ScanIcon, UsersIcon } from '../components/icons';
+import { TokenIcon } from '../components/TokenIcon';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
 function firstValue(value: string | string[] | undefined): string {
@@ -41,30 +42,6 @@ const QUICK = [
 ];
 
 type Step = 'form' | 'authorizing' | 'submitting' | 'done' | 'error';
-
-/** A circular token badge — teal $ for USDC, gold spark for XLM, lettered otherwise. */
-function AssetBadge({ code, colors }: { code: string; colors: ThemeColors }) {
-  if (code === 'USDC') {
-    return (
-      <View style={[badge.base, { backgroundColor: 'rgba(0,167,181,0.15)', borderColor: 'rgba(0,167,181,0.35)', borderWidth: 1 }]}>
-        <Text style={[badge.txt, { color: colors.positive }]}>$</Text>
-      </View>
-    );
-  }
-  if (code === 'XLM') {
-    return (
-      <View style={[badge.base, { backgroundColor: 'rgba(253,218,36,0.14)', borderColor: 'rgba(253,218,36,0.35)', borderWidth: 1 }]}>
-        <Text style={[badge.txt, { color: colors.accent }]}>✦</Text>
-      </View>
-    );
-  }
-  const hue = [...code].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-  return (
-    <View style={[badge.base, { backgroundColor: `hsl(${hue},45%,32%)` }]}>
-      <Text style={[badge.txt, { color: '#fff' }]}>{code.slice(0, 2)}</Text>
-    </View>
-  );
-}
 
 export default function SendScreen() {
   const { colors, isDark } = useTheme();
@@ -200,7 +177,7 @@ export default function SendScreen() {
           style={({ pressed }) => [styles.card, styles.rowBetween, pressed && styles.pressed]}
         >
           <View style={styles.rowLeft}>
-            <AssetBadge code={assetCode} colors={colors} />
+            <TokenIcon code={assetCode} size={34} />
             <View>
               <Text style={styles.assetCode}>{assetCode}</Text>
               <Text style={styles.assetSub}>
@@ -335,7 +312,7 @@ export default function SendScreen() {
                   onPress={() => { setSelectedKey(keyOf(h)); setAssetSheet(false); }}
                   style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}
                 >
-                  <AssetBadge code={h.code} colors={colors} />
+                  <TokenIcon code={h.code} size={34} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.assetCode}>{h.code}</Text>
                     <Text style={styles.assetSub}>{h.name}</Text>
@@ -353,11 +330,6 @@ export default function SendScreen() {
     </SafeAreaView>
   );
 }
-
-const badge = StyleSheet.create({
-  base: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  txt: { fontFamily: fontFamily.bodySemiBold, fontSize: 15 },
-});
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
