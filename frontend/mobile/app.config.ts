@@ -83,7 +83,12 @@ const config: ExpoConfig = {
     ],
   },
   web: {
-    output: 'static',
+    // 'single' (SPA) not 'static': the wallet renders client-side (localStorage,
+    // WebAuthn, secure storage) and has ~30 routes. Static output pre-renders
+    // every route on the server, which OOMs Node (4 GB heap) pulling the full
+    // stellar-sdk/WalletConnect graph per route. A client-rendered SPA is the
+    // correct model here and avoids the server-render pass entirely.
+    output: 'single',
     favicon: './assets/images/favicon.png',
   },
   plugins: [
