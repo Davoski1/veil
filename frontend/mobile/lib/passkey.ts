@@ -51,11 +51,8 @@ import { base64UrlToUint8Array, derToRawSignature, hexToUint8Array, uint8ArrayTo
  * payload the wallet contract will verify.
  */
 
-/** Relying-party id the passkey was registered against. Must match the domain
- *  serving the app-association files (associatedDomains / assetlinks). */
-export function getRelyingPartyId(): string {
-  return process.env['EXPO_PUBLIC_PASSKEY_RP_ID']?.trim() || 'app.veil.xyz';
-}
+export { getRelyingPartyId } from './relyingParty';
+import { getRelyingPartyId } from './relyingParty';
 
 export function isPasskeySupported(): boolean {
   try {

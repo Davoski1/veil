@@ -23,6 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Networks } from '@stellar/stellar-sdk';
 import type { WalletConfig } from '@veil/sdk';
 
+import { getRelyingPartyId } from './relyingParty';
+
 export type VeilNetworkName = 'testnet' | 'mainnet';
 
 export type VeilNetwork = {
@@ -216,4 +218,7 @@ export const walletConfig: WalletConfig = {
   factoryAddress: getNetwork().factoryContractId,
   rpcUrl: getNetwork().rpcUrl,
   networkPassphrase: getNetwork().networkPassphrase,
+  // Required on React Native: there is no window.location to infer the
+  // relying party from, and 'localhost' would fail domain association.
+  rpId: getRelyingPartyId(),
 };
