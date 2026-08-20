@@ -4,6 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 
 import { createIdleWatcher } from '../lib/appLock';
 import { getWalletAddress } from '../lib/walletStore';
+import { isPasskeySupported } from '../lib/passkey';
 
 /**
  * Locks the wallet after inactivity or when the app is backgrounded, so a lost
@@ -38,6 +39,11 @@ export function useInactivityLock(): void {
     (async () => {
       const wallet = await getWalletAddress().catch(() => null);
       if (cancelled || !wallet) return; // no wallet → never lock
+
+      // The lock screen can only be dismissed with a passkey. Where passkeys are
+      // unavailable (Expo Go — no native module), locking would trap the user with
+      // no way back in, so don't arm it. A dev build (real passkeys) locks normally.
+      if (!isPasskeySupported()) return;
 
       const lock = () => router.replace('/lock');
       const watcher = createIdleWatcher({ onLock: lock });

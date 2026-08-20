@@ -8,12 +8,9 @@ import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
 import { VeilLogo } from '../../components/VeilLogo';
+import { setWalletAddress } from '../../lib/walletStore';
 
 const SEEN_WELCOME_KEY = 'veil_seen_welcome';
-
-/** Heights (px) of the little equaliser bars in the header motif. */
-const BAR_HEIGHTS = [34, 22, 40, 16, 28, 36, 20, 30];
-const BAR_OPACITY = [1, 0.6, 0.85, 0.4, 0.7, 1, 0.5, 0.8];
 
 /**
  * Landing / onboarding entry — the design's "4b" screen.
@@ -44,6 +41,14 @@ export default function Welcome() {
     router.push('/recover');
   };
 
+  // Dev-only: seed a wallet address so the router lets us into the app, to
+  // iterate on the post-login UI (dashboard, send, etc.) without a real passkey /
+  // dev build. Gated on __DEV__, so it never ships in a release build.
+  const handleDevPreview = async () => {
+    await setWalletAddress('CCRVWU6JPRKWWC2H6U6IWQ6EECN5K54W2QA243RYFN2PAZVMJFYMITSK');
+    router.replace('/dashboard');
+  };
+
   if (!ready) return <View style={styles.screen} />;
 
   return (
@@ -58,31 +63,11 @@ export default function Welcome() {
           <Text style={styles.network}>SOROBAN · TESTNET</Text>
         </View>
 
-        {/* Ticker + equaliser motif */}
-        <View style={styles.motifRow}>
-          <Text style={styles.ticker}>EST · 2026 / LAGOS → GLOBAL</Text>
-          <View style={styles.motifDivider} />
-          <View style={styles.bars}>
-            {BAR_HEIGHTS.map((h, i) => (
-              <View
-                key={i}
-                style={[styles.bar, { height: h, opacity: BAR_OPACITY[i] }]}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Statement */}
+        {/* Statement — placeholder copy; headline still being decided. */}
         <Text style={styles.statement}>
-          Spend{'\n'}naira.{'\n'}Earn{'\n'}dollars.{'\n'}
+          Spend{'\n'}anywhere.{'\n'}Earn{'\n'}dollars.{'\n'}
           <Text style={styles.statementGold}>No keys.</Text>
         </Text>
-
-        {/* Footer facts */}
-        <View style={styles.facts}>
-          <Text style={styles.factAddr}>GDKF…9QX3</Text>
-          <Text style={styles.factYield}>6.2% APY · FEES SPONSORED</Text>
-        </View>
 
         <View style={styles.spacer} />
 
@@ -92,7 +77,7 @@ export default function Welcome() {
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
           testID="welcome-create"
         >
-          <Text style={styles.primaryLabel}>Create wallet with Face ID</Text>
+          <Text style={styles.primaryLabel}>Create wallet with a passkey</Text>
         </Pressable>
         <Pressable
           onPress={handleRecover}
@@ -101,6 +86,16 @@ export default function Welcome() {
         >
           <Text style={styles.recoverLabel}>I already have a wallet</Text>
         </Pressable>
+
+        {__DEV__ && (
+          <Pressable
+            onPress={handleDevPreview}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.devBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.devLabel}>Preview dashboard (dev)</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -229,5 +224,20 @@ const createStyles = (colors: ThemeColors) =>
     },
     pressed: {
       opacity: 0.7,
+    },
+    devBtn: {
+      alignSelf: 'center',
+      marginTop: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    devLabel: {
+      color: colors.textFaint,
+      fontFamily: fontFamily.address,
+      fontSize: 12,
     },
   });
