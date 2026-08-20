@@ -211,10 +211,12 @@ const createThemedStyles = (themeColors: ThemeColors) =>
       backgroundColor: themeColors.background,
     },
     scrollContent: {
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingTop: 12,
       // Extra bottom room so the floating VeilTabBar never covers the last row.
-      paddingBottom: 130,
-      gap: 14,
+      paddingBottom: 140,
+      // Breathing room between the card, Pay-for, Assets, and Activity.
+      gap: 22,
     },
     homeHeader: {
       flexDirection: 'row',

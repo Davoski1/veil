@@ -97,12 +97,7 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
         <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
           {mask(big)}
         </Text>
-        <View style={styles.subRow}>
-          <Text style={styles.sub}>{sub}</Text>
-          <View style={styles.earnChip}>
-            <Text style={styles.earnChipText}>tap to flip</Text>
-          </View>
-        </View>
+        <Text style={styles.sub}>{sub}</Text>
       </Pressable>
       <View style={styles.actions}>
         <Pressable onPress={() => router.push('/send')} accessibilityRole="button" accessibilityLabel="Send" style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}>
@@ -202,6 +197,7 @@ const createStyles = () =>
       color: INK_60,
       fontFamily: fontFamily.address,
       fontSize: 12,
+      marginTop: 12,
     },
     earnChip: {
       backgroundColor: 'rgba(15,15,15,0.85)',
