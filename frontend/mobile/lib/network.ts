@@ -53,7 +53,8 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     factoryContractId:
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_TESTNET']?.trim() ||
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID']?.trim() ||
-      '',
+      // Deployed testnet passkey-wallet factory (see reference_veil_testnet).
+      'CAUK4MWO3TTFM6PLURSH2GPK3AB747SZGABKTCVLKCU7W2MGKHKP35GA',
     friendbotUrl: 'https://friendbot.stellar.org',
   },
   mainnet: {

@@ -51,9 +51,10 @@ import { base64UrlToUint8Array, derToRawSignature, hexToUint8Array, uint8ArrayTo
  * payload the wallet contract will verify.
  */
 
-/** Relying-party id the passkey was registered against. */
-function getRelyingPartyId(): string | undefined {
-  return process.env['EXPO_PUBLIC_PASSKEY_RP_ID']?.trim() || undefined;
+/** Relying-party id the passkey was registered against. Must match the domain
+ *  serving the app-association files (associatedDomains / assetlinks). */
+export function getRelyingPartyId(): string {
+  return process.env['EXPO_PUBLIC_PASSKEY_RP_ID']?.trim() || 'app.veil.xyz';
 }
 
 export function isPasskeySupported(): boolean {
@@ -131,4 +132,35 @@ export async function requirePasskey(): Promise<void> {
   const challenge = Crypto.getRandomBytes(32);
   const assertion = await signPayloadWithPasskey(challenge);
   if (!assertion) throw new Error('Passkey cancelled. Please try again.');
+}
+
+/**
+ * A native `PrfEvaluator` (SDK shape: `(salt) => Promise<Uint8Array | null>`)
+ * backed by the WebAuthn PRF extension via react-native-passkeys. Runs a passkey
+ * assertion requesting `prf.eval.first = salt` and returns the PRF output, or
+ * null when PRF is unsupported / the user declines. Used to derive the fee-payer
+ * key deterministically from the passkey.
+ */
+export function nativePrfEvaluator(credentialId: string): (salt: Uint8Array) => Promise<Uint8Array | null> {
+  return async (salt: Uint8Array) => {
+    try {
+      const assertion = await passkeys().get({
+        challenge: uint8ArrayToBase64Url(Crypto.getRandomBytes(32)),
+        rpId: getRelyingPartyId(),
+        allowCredentials: [{ id: credentialId, type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60_000,
+        extensions: { prf: { eval: { first: uint8ArrayToBase64Url(salt) } } },
+      });
+      const results = (assertion as { clientExtensionResults?: { prf?: { results?: { first?: unknown } } } })
+        ?.clientExtensionResults?.prf?.results?.first;
+      if (!results) return null;
+      if (typeof results === 'string') return base64UrlToUint8Array(results);
+      if (results instanceof ArrayBuffer) return new Uint8Array(results);
+      if (ArrayBuffer.isView(results)) return new Uint8Array(results.buffer as ArrayBuffer);
+      return null;
+    } catch {
+      return null;
+    }
+  };
 }

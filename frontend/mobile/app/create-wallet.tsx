@@ -2,12 +2,18 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 import { useTheme } from '../hooks/useTheme';
 import type { ThemeColors } from '../lib/theme';
 import { fontFamily } from '../theme/typography';
 import { FlowHeader } from '../components/FlowHeader';
 import { createTestnetWallet, importTestnetWallet, type CreatedWallet } from '../lib/testnetWallet';
+import { createPasskeyWallet } from '../lib/passkeyWallet';
+import { useWallet } from '../components/WalletProvider';
+
+// Passkeys need the native module — unavailable in Expo Go.
+const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 type Status = 'idle' | 'busy' | 'created' | 'error';
 
@@ -24,6 +30,7 @@ function shortAddr(a: string): string {
 export default function CreateWallet() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { wallet } = useWallet();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [status, setStatus] = useState<Status>('idle');
@@ -76,8 +83,9 @@ export default function CreateWallet() {
       <View style={styles.body}>
         <FlowHeader title="Create wallet" />
         <Text style={styles.caption}>
-          Spin up a testnet wallet to try Veil end-to-end. It&apos;s a real Stellar account, funded with
-          test XLM — no seed phrase to write down.
+          {IN_EXPO_GO
+            ? "Spin up a testnet wallet to try Veil end-to-end. It's a real Stellar account, funded with test XLM — no seed phrase to write down."
+            : 'Create a passkey smart wallet (a C-address secured by your Face ID / fingerprint, with a PRF-derived fee-payer), or use a plain testnet keypair. Both fund automatically.'}
         </Text>
 
         {importing ? (
@@ -109,14 +117,35 @@ export default function CreateWallet() {
         ) : (
           <>
             <View style={styles.spacer} />
+            {!IN_EXPO_GO && (
+              <Pressable
+                testID="create-passkey-button"
+                accessibilityRole="button"
+                disabled={status === 'busy'}
+                onPress={() => run(() => createPasskeyWallet(wallet))}
+                style={({ pressed }) => [styles.cta, status === 'busy' && styles.disabled, pressed && styles.pressed]}
+              >
+                {status === 'busy' ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.ctaText}>Create with passkey</Text>}
+              </Pressable>
+            )}
             <Pressable
               testID="create-wallet-button"
               accessibilityRole="button"
               disabled={status === 'busy'}
               onPress={() => run(createTestnetWallet)}
-              style={({ pressed }) => [styles.cta, status === 'busy' && styles.disabled, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                IN_EXPO_GO ? styles.cta : styles.ctaSecondary,
+                status === 'busy' && styles.disabled,
+                pressed && styles.pressed,
+              ]}
             >
-              {status === 'busy' ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.ctaText}>Create testnet wallet</Text>}
+              {status === 'busy' && IN_EXPO_GO ? (
+                <ActivityIndicator color={colors.onAccent} />
+              ) : (
+                <Text style={IN_EXPO_GO ? styles.ctaText : styles.ctaSecondaryText}>
+                  {IN_EXPO_GO ? 'Create testnet wallet' : 'Use a testnet keypair instead'}
+                </Text>
+              )}
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => setImporting(true)} style={styles.linkBtn}>
               <Text style={styles.link}>I already have a secret key</Text>
@@ -169,6 +198,15 @@ const createStyles = (colors: ThemeColors) =>
     },
     disabled: { opacity: 0.4 },
     ctaText: { color: colors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 15 },
+    ctaSecondary: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 100,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    ctaSecondaryText: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, fontSize: 14 },
     linkBtn: { alignItems: 'center', paddingVertical: 14 },
     link: { color: colors.accent, fontFamily: fontFamily.bodyMedium, fontSize: 14 },
     errorText: { color: colors.danger, fontFamily: fontFamily.body, fontSize: 13, lineHeight: 18, marginTop: 14, textAlign: 'center' },
