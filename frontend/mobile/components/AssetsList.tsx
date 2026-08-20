@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Horizon } from '@stellar/stellar-sdk';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { TokenIcon } from './TokenIcon';
 import { useTheme } from '../hooks/useTheme';
@@ -78,6 +79,7 @@ async function loadHoldings(address: string): Promise<Holding[]> {
  * Mirrors the assets list every consumer wallet shows under the balance.
  */
 export function AssetsList({ address }: { address: string | null }) {
+  const router = useRouter();
   const { colors } = useTheme();
   const { format } = useCurrency();
   const { mask } = useHiddenAmounts();
@@ -101,6 +103,13 @@ export function AssetsList({ address }: { address: string | null }) {
     void load();
   }, [load]);
 
+  // Reload on focus so new trustlines/balances (e.g. USDC after a swap) appear.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
   return (
     <View style={styles.card}>
       <Text style={styles.heading}>Assets</Text>
@@ -110,7 +119,13 @@ export function AssetsList({ address }: { address: string | null }) {
         <Text style={styles.empty}>No assets yet. Fund this wallet to get started.</Text>
       ) : (
         holdings.map((h, i) => (
-          <View key={`${h.code}-${h.issuer ?? 'native'}`} style={[styles.row, i > 0 && styles.rowBorder]}>
+          <Pressable
+            key={`${h.code}-${h.issuer ?? 'native'}`}
+            onPress={() => router.push(`/token/${encodeURIComponent(h.issuer ? `${h.code}:${h.issuer}` : h.code)}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`${h.name} details`}
+            style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && styles.pressed]}
+          >
             <View style={styles.left}>
               <TokenIcon code={h.code} size={38} />
               <View>
@@ -122,7 +137,7 @@ export function AssetsList({ address }: { address: string | null }) {
               <Text style={styles.balance}>{mask(fmtAmount(h.balance))}</Text>
               <Text style={styles.fiat}>{h.usd === null ? '—' : mask(format(h.usd))}</Text>
             </View>
-          </View>
+          </Pressable>
         ))
       )}
     </View>
@@ -164,6 +179,7 @@ const createStyles = (colors: ThemeColors) =>
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
+    pressed: { opacity: 0.6 },
     left: {
       flexDirection: 'row',
       alignItems: 'center',
