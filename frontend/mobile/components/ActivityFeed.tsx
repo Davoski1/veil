@@ -24,6 +24,8 @@ export interface ActivityFeedProps {
   error?: string | null;
   /** Called when the user taps the refresh button */
   onRefresh?: () => void;
+  /** Cap the number of rows shown (e.g. 3 on the dashboard preview). */
+  limit?: number;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -33,17 +35,21 @@ export default function ActivityFeed({
   onSelectTx,
   loading = false,
   error = null,
+  limit,
 }: ActivityFeedProps) {
   const transactions = useActivityFeed();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return transactions;
-    if (filter === 'swaps')
-      return transactions.filter((tx) => tx.type === 'swapped');
-    return transactions.filter((tx) => tx.type !== 'swapped');
-  }, [transactions, filter]);
+    const base =
+      filter === 'all'
+        ? transactions
+        : filter === 'swaps'
+          ? transactions.filter((tx) => tx.type === 'swapped')
+          : transactions.filter((tx) => tx.type !== 'swapped');
+    return limit ? base.slice(0, limit) : base;
+  }, [transactions, filter, limit]);
 
   const renderItem = ({ item, index }: { item: TxRecord; index: number }) => {
     const isLast = index === filtered.length - 1;

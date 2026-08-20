@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { colors } from '@/components/ScreenScaffold';
 import { FirstRunTutorial } from '../../components/OnboardingTutorial';
@@ -38,6 +38,7 @@ const WRAITH_URL =
  * sourced from the Wraith indexer.
  */
 export default function DashboardTab() {
+  const router = useRouter();
   const { colors: themeColors } = useTheme();
   const themedStyles = useMemo(() => createThemedStyles(themeColors), [themeColors]);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -156,12 +157,14 @@ export default function DashboardTab() {
 
       <AssetsList address={walletAddress} />
 
-      {/* Activity feed */}
+      {/* Activity feed — 3 most recent, full history on the transactions page */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Activity</Text>
-        <Text style={styles.sectionHint}>Recent transfers</Text>
+        <Pressable onPress={() => router.push('/transactions')} hitSlop={8} accessibilityRole="button">
+          <Text style={styles.sectionLink}>See all →</Text>
+        </Pressable>
       </View>
-      <ActivityFeed filter="all" loading={loading} error={error} onSelectTx={handleSelectTx} />
+      <ActivityFeed filter="all" loading={loading} error={error} onSelectTx={handleSelectTx} limit={3} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -196,6 +199,11 @@ const styles = StyleSheet.create({
   sectionHint: {
     color: colors.muted,
     fontSize: 11,
+  },
+  sectionLink: {
+    color: colors.gold,
+    fontSize: 12,
+    fontFamily: fontFamily.bodyMedium,
   },
   grid: {
     gap: 8,
