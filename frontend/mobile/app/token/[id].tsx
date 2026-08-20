@@ -13,7 +13,8 @@ import { TokenIcon } from '../../components/TokenIcon';
 import { PaperPlaneIcon, ReceiveIcon, SwapIcon, type IconProps } from '../../components/icons';
 import { truncateAddress } from '../../components/ui/AddressChip';
 import { fetchPrice } from '../../lib/price';
-import { fetchTokenDetail, loadWalletAddress, parseAssetId, type TokenActivity, type TokenDetail } from '../../lib/token';
+import { fetchTokenDetail, parseAssetId, type TokenActivity, type TokenDetail } from '../../lib/token';
+import { getWalletAddress } from '../../lib/walletStore';
 
 const NAMES: Record<string, string> = { XLM: 'Stellar Lumens', USDC: 'USD Coin', EURC: 'Euro Coin' };
 
@@ -40,7 +41,7 @@ export default function TokenDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      const address = await loadWalletAddress();
+      const address = await getWalletAddress();
       if (!address) {
         setDetail(null);
         return;
