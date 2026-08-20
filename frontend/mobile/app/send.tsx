@@ -18,9 +18,10 @@ import { sendPayment } from '../lib/sendPayment';
 import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
 import { loadHoldings, unitPrice, type Holding } from '../lib/holdings';
-import { ChevronDownIcon, HexagonIcon, ScanIcon, UsersIcon } from '../components/icons';
+import { ChevronDownIcon, ScanIcon, UsersIcon } from '../components/icons';
 import { TokenIcon } from '../components/TokenIcon';
 import { SuccessAnimation } from '../components/SuccessAnimation';
+import { SlideToConfirm } from '../components/SlideToConfirm';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
 function firstValue(value: string | string[] | undefined): string {
@@ -147,8 +148,7 @@ export default function SendScreen() {
     setError(null);
   };
 
-  const buttonText =
-    step === 'authorizing' ? 'Waiting for passkey…' : step === 'submitting' ? 'Submitting…' : step === 'error' ? 'Try again' : 'Review & sign with passkey';
+  const busy = step === 'authorizing' || step === 'submitting';
 
   if (step === 'done') {
     return (
@@ -278,12 +278,6 @@ export default function SendScreen() {
           <Text style={styles.feeValue}>Sponsored</Text>
         </View>
 
-        {(step === 'authorizing' || step === 'submitting') && (
-          <View style={styles.status}>
-            <ActivityIndicator color={colors.accent} />
-            <Text style={styles.statusText}>{step === 'authorizing' ? 'Waiting for passkey…' : 'Submitting…'}</Text>
-          </View>
-        )}
         {step === 'error' && error && <Text style={styles.errorBanner}>{error}</Text>}
         {nonNative && (
           <Text style={styles.note}>
@@ -293,17 +287,18 @@ export default function SendScreen() {
 
         <View style={styles.spacer} />
 
-        <Pressable
-          testID="send-submit"
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit }}
-          disabled={!canSubmit}
-          style={({ pressed }) => [styles.cta, !canSubmit && styles.disabled, pressed && styles.pressed]}
-          onPress={handleSend}
-        >
-          <HexagonIcon size={17} color={colors.onAccent} />
-          <Text style={styles.ctaText}>{buttonText}</Text>
-        </Pressable>
+        {busy ? (
+          <View style={[styles.cta, styles.disabled]} testID="send-submit">
+            <ActivityIndicator color={colors.onAccent} />
+            <Text style={styles.ctaText}>{step === 'authorizing' ? 'Waiting for passkey…' : 'Submitting…'}</Text>
+          </View>
+        ) : canSubmit ? (
+          <SlideToConfirm label="Slide to send" onConfirm={handleSend} />
+        ) : (
+          <View style={[styles.cta, styles.disabled]} testID="send-submit">
+            <Text style={styles.ctaText}>{step === 'error' ? 'Try again' : 'Enter details to send'}</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Asset picker sheet */}
