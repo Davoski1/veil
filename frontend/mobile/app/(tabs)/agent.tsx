@@ -1,4 +1,4 @@
-import '../lib/polyfills';
+import '../../lib/polyfills';
 
 import { Horizon, Keypair, TransactionBuilder, type Transaction } from '@stellar/stellar-sdk';
 /**
