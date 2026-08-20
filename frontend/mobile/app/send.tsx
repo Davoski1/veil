@@ -1,7 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTheme } from '../hooks/useTheme';
+import type { ThemeColors } from '../lib/theme';
+import { fontFamily } from '../theme/typography';
+import { FlowHeader } from '../components/FlowHeader';
 import { isValidDestination } from '../lib/address';
 import { ContactPicker } from '../components/ContactPicker';
 import { QrScanner } from '../components/QrScanner';
@@ -19,15 +24,12 @@ function firstValue(value: string | string[] | undefined): string {
 type Step = 'form' | 'authorizing' | 'submitting' | 'done' | 'error';
 
 export default function SendScreen() {
-  // Deep links land here prefilled: `to`, `amount`, `asset` and `memo` arrive
-  // from veil://send, https://app.veil.xyz/send, or a SEP-7 request forwarded
-  // by /pay. Seeded as initial state so the fields stay editable afterwards.
-  const params = useLocalSearchParams<{
-    to?: string;
-    amount?: string;
-    asset?: string;
-    memo?: string;
-  }>();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Deep links land here prefilled: `to`, `amount`, `asset`, `memo` from
+  // veil://send, https://app.veil.xyz/send, or a SEP-7 request forwarded by /pay.
+  const params = useLocalSearchParams<{ to?: string; amount?: string; asset?: string; memo?: string }>();
   const asset = firstValue(params.asset) || 'XLM';
   const memo = firstValue(params.memo);
 
@@ -43,12 +45,13 @@ export default function SendScreen() {
   const trimmed = recipient.trim();
   const recipientValid = isValidDestination(trimmed);
   const showError = trimmed.length > 0 && !recipientValid;
-  const canSubmit = recipientValid && Number(amount) > 0 && (step === 'form' || step === 'error');
+  const editable = step === 'form' || step === 'error';
+  const canSubmit = recipientValid && Number(amount) > 0 && editable;
 
-  function handleSelectContact(contact: Contact) {
+  const handleSelectContact = useCallback((contact: Contact) => {
     setRecipient(contact.address);
     setPickerOpen(false);
-  }
+  }, []);
 
   const handleSend = async () => {
     if (!canSubmit) return;
@@ -56,10 +59,8 @@ export default function SendScreen() {
     try {
       setStep('authorizing');
       const signer = await requireSigner();
-
       setStep('submitting');
       const result = await sendPayment(recipient, amount, signer);
-
       setHash(result.hash);
       setStep('done');
     } catch (err) {
@@ -76,23 +77,13 @@ export default function SendScreen() {
     setError(null);
   };
 
-  const getButtonText = () => {
-    switch (step) {
-      case 'authorizing':
-        return 'Waiting for passkey…';
-      case 'submitting':
-        return 'Submitting…';
-      case 'error':
-        return 'Try again';
-      default:
-        return 'Send';
-    }
-  };
+  const buttonText =
+    step === 'authorizing' ? 'Waiting for passkey…' : step === 'submitting' ? 'Submitting…' : step === 'error' ? 'Try again' : 'Review & confirm';
 
   return (
-    <SafeAreaView style={styles.screen} testID="send-screen">
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="send-screen">
       <View style={styles.body}>
-        <Text style={styles.title}>Send</Text>
+        <FlowHeader title="Send" />
 
         {step === 'done' ? (
           <View style={styles.resultCard}>
@@ -101,234 +92,177 @@ export default function SendScreen() {
             <Text style={styles.hash} numberOfLines={1} testID="send-hash">
               {hash ? truncateAddress(hash, 8, 8) : ''}
             </Text>
-            <Pressable style={styles.submit} onPress={reset} testID="send-reset">
-              <Text style={styles.submitText}>Send another</Text>
+            <Pressable style={styles.primaryBtn} onPress={reset} testID="send-reset">
+              <Text style={styles.primaryText}>Send another</Text>
             </Pressable>
           </View>
         ) : (
           <>
+            {/* Recipient */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>RECIPIENT</Text>
+                <Text style={styles.label}>Recipient</Text>
                 <View style={styles.labelActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Scan a QR code"
-                    onPress={() => setScannerOpen(true)}
-                    hitSlop={8}
-                    disabled={step === 'authorizing' || step === 'submitting'}
-                  >
-                    <Text style={styles.contactLink}>Scan QR</Text>
+                  <Pressable onPress={() => setScannerOpen(true)} hitSlop={8} disabled={!editable} accessibilityRole="button" accessibilityLabel="Scan a QR code">
+                    <Text style={styles.link}>Scan QR</Text>
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setPickerOpen(true)}
-                    hitSlop={8}
-                    disabled={step === 'authorizing' || step === 'submitting'}
-                  >
-                    <Text style={styles.contactLink}>Choose contact</Text>
+                  <Pressable onPress={() => setPickerOpen(true)} hitSlop={8} disabled={!editable} accessibilityRole="button">
+                    <Text style={styles.link}>Contacts</Text>
                   </Pressable>
                 </View>
               </View>
               <TextInput
-                style={[styles.input, showError && styles.inputError]}
+                style={[styles.recipientInput, showError && styles.inputError]}
                 testID="send-recipient"
                 value={recipient}
                 onChangeText={setRecipient}
                 placeholder="Address or name*domain"
-                placeholderTextColor="rgba(246,247,248,0.3)"
+                placeholderTextColor={colors.textFaint}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={step === 'form' || step === 'error'}
+                editable={editable}
               />
               {showError && (
-                <Text style={styles.errorText}>
-                  Enter a valid Stellar address (G/M/C…) or federated address (name*domain).
-                </Text>
+                <Text style={styles.errorText}>Enter a valid Stellar address (G/M/C…) or federated address (name*domain).</Text>
               )}
             </View>
 
+            {/* Amount */}
             <View style={styles.field}>
-              <Text style={styles.label}>AMOUNT ({asset})</Text>
-              <TextInput
-                testID="send-amount"
-                style={styles.input}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="0.00"
-                placeholderTextColor="rgba(246,247,248,0.3)"
-                keyboardType="decimal-pad"
-                editable={step === 'form' || step === 'error'}
-              />
+              <Text style={styles.label}>Amount</Text>
+              <View style={styles.amountRow}>
+                <TextInput
+                  testID="send-amount"
+                  style={styles.amountInput}
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder="0"
+                  placeholderTextColor={colors.textFaint}
+                  keyboardType="decimal-pad"
+                  editable={editable}
+                />
+                <Text style={styles.assetUnit}>{asset}</Text>
+              </View>
             </View>
 
             {memo ? (
               <View style={styles.field}>
-                <Text style={styles.label}>MEMO</Text>
-                <Text testID="send-memo" style={styles.input}>
-                  {memo}
-                </Text>
+                <Text style={styles.label}>Memo</Text>
+                <Text testID="send-memo" style={styles.memo}>{memo}</Text>
               </View>
             ) : null}
 
-            {step === 'authorizing' && (
+            {/* Sponsored fee */}
+            <View style={styles.feeRow}>
+              <Text style={styles.feeLabel}>Network fee</Text>
+              <Text style={styles.feeValue}>Sponsored — you pay nothing</Text>
+            </View>
+
+            {(step === 'authorizing' || step === 'submitting') && (
               <View style={styles.status}>
-                <ActivityIndicator color="#FDDA24" />
-                <Text style={styles.statusText}>Waiting for passkey…</Text>
+                <ActivityIndicator color={colors.accent} />
+                <Text style={styles.statusText}>{step === 'authorizing' ? 'Waiting for passkey…' : 'Submitting…'}</Text>
               </View>
             )}
-            {step === 'submitting' && (
-              <View style={styles.status}>
-                <ActivityIndicator color="#FDDA24" />
-                <Text style={styles.statusText}>Submitting…</Text>
-              </View>
-            )}
-            {step === 'error' && error && <Text style={styles.errorBannerText}>{error}</Text>}
+            {step === 'error' && error && <Text style={styles.errorBanner}>{error}</Text>}
+
+            <View style={styles.spacer} />
 
             <Pressable
               testID="send-submit"
               accessibilityRole="button"
               accessibilityState={{ disabled: !canSubmit }}
               disabled={!canSubmit}
-              style={[styles.submit, !canSubmit && styles.submitDisabled]}
+              style={[styles.primaryBtn, !canSubmit && styles.disabled]}
               onPress={handleSend}
             >
-              <Text style={styles.submitText}>{getButtonText()}</Text>
+              <Text style={styles.primaryText}>{buttonText}</Text>
             </Pressable>
           </>
         )}
       </View>
 
-      <QrScanner
-        visible={scannerOpen}
-        onScan={(address) => {
-          setRecipient(address);
-          setScannerOpen(false);
-        }}
-        onClose={() => setScannerOpen(false)}
-      />
-
-      <ContactPicker
-        visible={pickerOpen}
-        onSelect={handleSelectContact}
-        onClose={() => setPickerOpen(false)}
-      />
+      <QrScanner visible={scannerOpen} onScan={(address) => { setRecipient(address); setScannerOpen(false); }} onClose={() => setScannerOpen(false)} />
+      <ContactPicker visible={pickerOpen} onSelect={handleSelectContact} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#0F0F0F',
-  },
-  body: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    gap: 20,
-  },
-  title: {
-    color: '#F6F7F8',
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  field: {
-    gap: 8,
-  },
-  labelActions: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  label: {
-    color: 'rgba(246,247,248,0.4)',
-    fontSize: 12,
-    letterSpacing: 1,
-  },
-  contactLink: {
-    color: '#FDDA24',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#F6F7F8',
-    fontSize: 15,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  inputError: {
-    borderColor: 'rgba(248,113,113,0.6)',
-  },
-  errorText: {
-    color: '#f87171',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  submit: {
-    marginTop: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 100,
-    backgroundColor: '#FDDA24',
-  },
-  submitDisabled: {
-    opacity: 0.4,
-  },
-  submitText: {
-    color: '#0F0F0F',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  resultCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 20,
-    gap: 8,
-    marginTop: 8,
-  },
-  resultTitle: {
-    color: '#F6F7F8',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  resultLabel: {
-    color: 'rgba(246,247,248,0.4)',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  hash: {
-    color: '#FDDA24',
-    fontSize: 14,
-    fontFamily: 'monospace',
-  },
-  status: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
-  },
-  statusText: {
-    color: 'rgba(246,247,248,0.6)',
-    fontSize: 14,
-  },
-  errorBannerText: {
-    color: '#f87171',
-    fontSize: 13,
-    backgroundColor: 'rgba(248,113,113,0.1)',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    body: { flex: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 32, gap: 26 },
+    field: { gap: 10 },
+    labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    labelActions: { flexDirection: 'row', gap: 16 },
+    label: {
+      color: colors.textFaint,
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 11,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+    },
+    link: { color: colors.accent, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
+    recipientInput: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingVertical: 12,
+      color: colors.textPrimary,
+      fontFamily: fontFamily.address,
+      fontSize: 16,
+    },
+    inputError: { borderBottomColor: colors.danger },
+    errorText: { color: colors.danger, fontFamily: fontFamily.body, fontSize: 13, lineHeight: 18 },
+    amountRow: { flexDirection: 'row', alignItems: 'baseline', borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4 },
+    amountInput: {
+      flex: 1,
+      color: colors.textStrong,
+      fontFamily: fontFamily.heading,
+      fontSize: 44,
+      paddingVertical: 4,
+    },
+    assetUnit: { color: colors.textSecondary, fontFamily: fontFamily.bodySemiBold, fontSize: 18 },
+    memo: { color: colors.textPrimary, fontFamily: fontFamily.body, fontSize: 15 },
+    feeRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: colors.border,
+    },
+    feeLabel: { color: colors.textSecondary, fontFamily: fontFamily.body, fontSize: 13 },
+    feeValue: { color: colors.positive, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
+    status: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    statusText: { color: colors.textSecondary, fontFamily: fontFamily.body, fontSize: 14 },
+    errorBanner: {
+      color: colors.danger,
+      fontFamily: fontFamily.body,
+      fontSize: 13,
+      backgroundColor: colors.dangerSurface,
+      borderRadius: 10,
+      padding: 12,
+    },
+    spacer: { flex: 1 },
+    primaryBtn: {
+      backgroundColor: colors.accent,
+      borderRadius: 999,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    disabled: { opacity: 0.4 },
+    primaryText: { color: colors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 15 },
+    resultCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 20,
+      gap: 8,
+      marginTop: 20,
+    },
+    resultTitle: { color: colors.textStrong, fontFamily: fontFamily.heading, fontSize: 22 },
+    resultLabel: { color: colors.textFaint, fontFamily: fontFamily.body, fontSize: 13, marginTop: 4 },
+    hash: { color: colors.accent, fontFamily: fontFamily.address, fontSize: 14 },
+  });
