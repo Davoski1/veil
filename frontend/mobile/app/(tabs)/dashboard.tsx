@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 
 import { colors } from '@/components/ScreenScaffold';
 import { FirstRunTutorial } from '../../components/OnboardingTutorial';
@@ -15,10 +16,12 @@ import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
 import { getWalletAddress } from '../../lib/walletStore';
 import ActivityFeed from '../../components/ActivityFeed';
-import { useInitActivityFeed, type TxRecord } from '../../lib/activityFeed';
+import { useInitActivityFeed, hydrateActivityFeed, type TxRecord } from '../../lib/activityFeed';
+import { loadHorizonActivity } from '../../lib/horizonActivity';
 import { usePolling } from '../../hooks/usePolling';
 import { fetchDashboardData } from '../../lib/activity';
 import { fetchPrice, usdValue } from '../../lib/fetchPrice';
+import { getNetwork } from '../../lib/network';
 
 /** Shorten a Stellar address for the header chip: `GDKF…9QX3`. */
 function shortAddress(addr: string): string {
@@ -49,64 +52,71 @@ export default function DashboardTab() {
     detailSheetRef.current?.present();
   }, []);
 
-  // Load the wallet address, balance, and price from secure storage on mount
-  useEffect(() => {
-    getWalletAddress()
-      .then(async (addr) => {
-        setWalletAddress(addr);
-        if (addr) {
-          try {
-            const [data, p] = await Promise.all([
-              fetchDashboardData(addr),
-              fetchPrice('XLM', null),
-            ]);
-            setBalance(data.xlmBalance);
-            setPrice(p);
-          } catch {
-            setBalance('0');
-          }
-        }
-      })
-      .catch(() => setWalletAddress(null));
-  }, []);
+  const onTestnet = getNetwork().name === 'testnet';
 
-  // Initialise the activity feed (no-op when address is null — renders empty state)
-  const { loading, error, refresh: refreshFeed } = useInitActivityFeed(walletAddress, WRAITH_URL);
-
-  // Background polling for XLM balance and price every 15s
-  usePolling(async () => {
-    if (walletAddress) {
+  // Refetch balance + price, and (on testnet) rebuild the activity feed from
+  // Horizon — the Wraith indexer doesn't cover testnet accounts.
+  const refreshAll = useCallback(
+    async (addr: string) => {
       try {
-        const [data, p] = await Promise.all([
-          fetchDashboardData(walletAddress),
-          fetchPrice('XLM', null),
-        ]);
+        const [data, p] = await Promise.all([fetchDashboardData(addr), fetchPrice('XLM', null)]);
         setBalance(data.xlmBalance);
         setPrice(p);
       } catch {
-        // fail silently during background poll
+        // keep the last-known values
       }
-    }
-  }, 15_000, !!walletAddress);
+      if (onTestnet) {
+        try {
+          hydrateActivityFeed(await loadHorizonActivity(addr));
+        } catch {
+          // activity stays as-is
+        }
+      }
+    },
+    [onTestnet],
+  );
 
-  // Handle pull-to-refresh gesture
+  // Load the wallet address, then its balance / price / activity on mount.
+  useEffect(() => {
+    getWalletAddress()
+      .then((addr) => {
+        setWalletAddress(addr);
+        if (addr) void refreshAll(addr);
+      })
+      .catch(() => setWalletAddress(null));
+  }, [refreshAll]);
+
+  // Wraith feed init — skipped on testnet (Horizon covers it in refreshAll).
+  const { loading, error, refresh: refreshFeed } = useInitActivityFeed(
+    walletAddress,
+    onTestnet ? null : WRAITH_URL,
+  );
+
+  // Refresh whenever the tab regains focus (e.g. returning from a send/swap).
+  useFocusEffect(
+    useCallback(() => {
+      if (walletAddress) void refreshAll(walletAddress);
+    }, [walletAddress, refreshAll]),
+  );
+
+  // Background polling every 15s.
+  usePolling(
+    async () => {
+      if (walletAddress) await refreshAll(walletAddress);
+    },
+    15_000,
+    !!walletAddress,
+  );
+
+  // Pull-to-refresh.
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     if (walletAddress) {
-      try {
-        const [data, p] = await Promise.all([
-          fetchDashboardData(walletAddress),
-          fetchPrice('XLM', null),
-          refreshFeed(),
-        ]);
-        setBalance(data.xlmBalance);
-        setPrice(p);
-      } catch {
-        // ignore errors to finish refreshing
-      }
+      await refreshAll(walletAddress);
+      if (!onTestnet) await refreshFeed().catch(() => undefined);
     }
     setRefreshing(false);
-  }, [walletAddress, refreshFeed]);
+  }, [walletAddress, refreshAll, refreshFeed, onTestnet]);
 
   const usd = useMemo(() => usdValue(balance, price), [balance, price]);
 

@@ -89,7 +89,7 @@ export default function SendScreen() {
     holdings.find((h) => h.native) ??
     holdings[0] ??
     null;
-  const assetCode = selected?.code ?? firstValue(params.asset) ?? 'XLM';
+  const assetCode = selected?.code || firstValue(params.asset) || 'XLM';
 
   const trimmed = recipient.trim();
   const recipientValid = isValidDestination(trimmed);
