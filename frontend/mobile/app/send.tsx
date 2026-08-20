@@ -155,11 +155,10 @@ export default function SendScreen() {
             <Text style={styles.hash} numberOfLines={1} testID="send-hash">
               {hash ? `tx ${truncateAddress(hash, 8, 8)}` : ''}
             </Text>
+            <Pressable style={[styles.cta, styles.doneCta]} onPress={reset} testID="send-reset">
+              <Text style={styles.ctaText}>Send another</Text>
+            </Pressable>
           </View>
-          <View style={styles.spacer} />
-          <Pressable style={styles.cta} onPress={reset} testID="send-reset">
-            <Text style={styles.ctaText}>Send another</Text>
-          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -427,7 +426,8 @@ const createStyles = (colors: ThemeColors) =>
     disabled: { opacity: 0.4 },
     ctaText: { color: colors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 15 },
 
-    doneWrap: { alignItems: 'center', marginTop: 52, gap: 22 },
+    doneWrap: { alignItems: 'center', marginTop: 52, gap: 20 },
+    doneCta: { alignSelf: 'stretch', marginTop: 16 },
     resultCard: {
       backgroundColor: colors.surface,
       borderRadius: 20,

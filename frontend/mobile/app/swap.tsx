@@ -204,11 +204,10 @@ export default function SwapScreen() {
               FromIcon={SwapVerticalIcon}
             />
             {txHash ? <Text style={styles.resultHash}>tx {txHash.slice(0, 8)}…{txHash.slice(-6)}</Text> : null}
+            <Pressable style={[styles.primaryBtn, styles.doneCta]} onPress={() => { setStep('form'); setAmountIn(''); setTxHash(null); }}>
+              <Text style={styles.primaryText}>Done</Text>
+            </Pressable>
           </View>
-          <View style={styles.spacer} />
-          <Pressable style={styles.primaryBtn} onPress={() => { setStep('form'); setAmountIn(''); setTxHash(null); }}>
-            <Text style={styles.primaryText}>Done</Text>
-          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -393,7 +392,8 @@ const createStyles = (colors: ThemeColors) =>
       textTransform: 'uppercase',
     },
     legBalance: { color: colors.accent, fontFamily: fontFamily.bodyMedium, fontSize: 11.5 },
-    doneWrap: { alignItems: 'center', marginTop: 52, gap: 22 },
+    doneWrap: { alignItems: 'center', marginTop: 52, gap: 20 },
+    doneCta: { alignSelf: 'stretch', marginTop: 16 },
     legRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12 },
     legAmount: {
       flex: 1,
