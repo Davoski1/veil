@@ -36,6 +36,7 @@
     "@walletconnect/web3wallet": "^1.16.1",
     "buffer": "^6.0.3",
     "expo": "~54.0.0",
+    "expo-application": "~7.0.8",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",

@@ -1,5 +1,33 @@
 import * as Crypto from 'expo-crypto';
-import * as Passkeys from 'react-native-passkeys';
+// react-native-passkeys is a NATIVE module absent in Expo Go: a top-level import
+// crashes the app at startup (this file loads via _layout → WalletConnectApprovalModal
+// → registerPasskeySigner). Load it lazily so the app boots in Expo Go; a passkey
+// ceremony throws a clear "use a dev build" error only when actually invoked. The
+// type-only import is erased at compile time and never triggers the native require.
+import type * as PasskeysModule from 'react-native-passkeys';
+
+let cachedPasskeys: typeof PasskeysModule | null | undefined;
+function loadPasskeys(): typeof PasskeysModule | null {
+  if (cachedPasskeys !== undefined) return cachedPasskeys;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedPasskeys = require('react-native-passkeys') as typeof PasskeysModule;
+  } catch {
+    cachedPasskeys = null;
+  }
+  return cachedPasskeys;
+}
+
+function passkeys(): typeof PasskeysModule {
+  const m = loadPasskeys();
+  if (!m) {
+    throw new Error(
+      'Native passkeys are unavailable in this build. Expo Go cannot load the ' +
+        'react-native-passkeys native module — use a development build.',
+    );
+  }
+  return m;
+}
 
 import {
   registerAuthEntrySigner,
@@ -30,7 +58,7 @@ function getRelyingPartyId(): string | undefined {
 
 export function isPasskeySupported(): boolean {
   try {
-    return Passkeys.isSupported();
+    return passkeys().isSupported();
   } catch {
     return false;
   }
@@ -55,9 +83,9 @@ export async function signPayloadWithPasskey(
     throw new Error('Passkeys are not supported on this device.');
   }
 
-  let assertion: Awaited<ReturnType<typeof Passkeys.get>>;
+  let assertion: Awaited<ReturnType<typeof PasskeysModule.get>>;
   try {
-    assertion = await Passkeys.get({
+    assertion = await passkeys().get({
       challenge: uint8ArrayToBase64Url(payloadHash),
       rpId: getRelyingPartyId(),
       allowCredentials: [{ id: keyId, type: 'public-key' }],
