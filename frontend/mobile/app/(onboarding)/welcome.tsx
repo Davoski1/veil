@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 import { useTheme } from '../../hooks/useTheme';
 import type { ThemeColors } from '../../lib/theme';
@@ -11,6 +12,9 @@ import { VeilLogo } from '../../components/VeilLogo';
 import { setWalletAddress } from '../../lib/walletStore';
 
 const SEEN_WELCOME_KEY = 'veil_seen_welcome';
+
+// In the dev build (not Expo Go) the create screen leads with the passkey flow.
+const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 /**
  * Landing / onboarding entry — the design's "4b" screen.
@@ -77,7 +81,9 @@ export default function Welcome() {
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
           testID="welcome-create"
         >
-          <Text style={styles.primaryLabel}>Create testnet wallet</Text>
+          <Text style={styles.primaryLabel}>
+            {IN_EXPO_GO ? 'Create testnet wallet' : 'Create wallet with a passkey'}
+          </Text>
         </Pressable>
         <Pressable
           onPress={handleRecover}
