@@ -28,8 +28,10 @@ const META: Record<string, TabMeta> = {
  */
 export function VeilTabBar({ state, navigation }: BottomTabBarProps) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  // Near-opaque so page content doesn't show through the floating bar.
+  const barBg = isDark ? 'rgba(22,22,22,0.97)' : 'rgba(246,247,248,0.97)';
 
   const activeName = state.routes[state.index]?.name;
 
@@ -55,7 +57,7 @@ export function VeilTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View style={styles.wrap} pointerEvents="box-none">
-      <View style={styles.bar}>
+      <View style={[styles.bar, { backgroundColor: barBg }]}>
         {renderTab('dashboard')}
         {renderTab('earn')}
         <Pressable
