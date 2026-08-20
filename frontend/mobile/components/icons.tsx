@@ -214,3 +214,40 @@ export function ArrowDownIcon({ size = 12, color = 'currentColor', strokeWidth =
     </Base>
   );
 }
+
+/** Earn / yield — a ringed circle (◎). */
+export function EarnIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={strokeWidth} />
+      <Circle cx="12" cy="12" r="3.5" stroke={color} strokeWidth={strokeWidth} />
+    </Base>
+  );
+}
+
+/** Plus — the universal pay/send action on the tab bar. */
+export function PlusIcon({ size, color = 'currentColor', strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+/** Back chevron. */
+export function BackIcon({ size = 24, color = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M15 5l-7 7 7 7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+/** Vertical swap arrows (⇅) — the swap-direction toggle. */
+export function SwapVerticalIcon({ size, color = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
