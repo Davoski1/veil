@@ -46,6 +46,16 @@ export function SendIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: Ic
   );
 }
 
+/** Filled paper-plane (the FontAwesome "send" glyph), for the primary Send action. */
+export function PaperPlaneIcon({ size, color = 'currentColor' }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M21.5 2.5 2.6 11.1l6.9 2.4 2.4 6.9L21.5 2.5Z" fill={color} />
+      <Path d="M21.5 2.5 9.5 13.5" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.35} />
+    </Base>
+  );
+}
+
 export function ReceiveIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: IconProps) {
   return (
     <Base size={size}>

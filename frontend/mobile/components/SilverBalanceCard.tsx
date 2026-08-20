@@ -8,7 +8,7 @@ import { useHiddenAmounts } from '../hooks/useHiddenAmounts';
 import { fontFamily } from '../theme/typography';
 import { formatUsd } from '../lib/fetchPrice';
 import { VeilLogo } from './VeilLogo';
-import { ReceiveIcon, SendIcon } from './icons';
+import { PaperPlaneIcon, ReceiveIcon } from './icons';
 
 /** Ink used on the light silver face. */
 const INK = '#0F0F0F';
@@ -86,6 +86,9 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
   const cryptoText = balance !== undefined ? `${trimAmount(balance)} XLM` : '—';
   const fiatText = hasFiat ? format(usd) : '—';
 
+  // Only the balance display flips; the Send / Receive actions live in one
+  // overlay OUTSIDE the rotating faces (below), so they can never mirror or
+  // double-fire.
   const face = (label: string, big: string, sub: string) => (
     <>
       <Metal />
@@ -99,16 +102,6 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
         </Text>
         <Text style={styles.sub}>{sub}</Text>
       </Pressable>
-      <View style={styles.actions}>
-        <Pressable onPress={() => router.push('/send')} accessibilityRole="button" accessibilityLabel="Send" style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}>
-          <SendIcon size={18} color="#FDDA24" strokeWidth={2} />
-          <Text style={styles.sendText}>Send</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/receive')} accessibilityRole="button" accessibilityLabel="Receive" style={({ pressed }) => [styles.receiveBtn, pressed && styles.pressed]}>
-          <ReceiveIcon size={18} color={INK} strokeWidth={2} />
-          <Text style={styles.receiveText}>Receive</Text>
-        </Pressable>
-      </View>
     </>
   );
 
@@ -132,21 +125,31 @@ export function SilverBalanceCard({ balance, usd = null, loading, error }: Silve
 
   return (
     <View style={styles.wrap}>
-      {/* Only the visible face is interactive: the turned-away face is hidden by
-          backfaceVisibility but still holds live, mirror-flipped touch targets on
-          Android — which would intercept taps and swap Send/Receive. */}
       <Animated.View
-        pointerEvents={flipped ? 'none' : 'auto'}
+        pointerEvents="box-none"
         style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: frontRotate }] }]}
       >
         {face('Total balance', cryptoText, hasFiat ? `≈ ${format(usd)}` : 'no price yet')}
       </Animated.View>
       <Animated.View
-        pointerEvents={flipped ? 'auto' : 'none'}
+        pointerEvents="box-none"
         style={[styles.face, { transform: [{ perspective: 1400 }, { rotateY: backRotate }] }]}
       >
         {face(`Balance · ${currency}`, fiatText, `≈ ${trimAmount(balance)} XLM`)}
       </Animated.View>
+
+      {/* Actions overlay — rendered last (on top), never inside a rotated face,
+          so it's always interactive with a single tap regardless of flip state. */}
+      <View style={styles.actions} pointerEvents="box-none">
+        <Pressable onPress={() => router.push('/send')} accessibilityRole="button" accessibilityLabel="Send" style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}>
+          <PaperPlaneIcon size={15} color="#FDDA24" />
+          <Text style={styles.sendText}>Send</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/receive')} accessibilityRole="button" accessibilityLabel="Receive" style={({ pressed }) => [styles.receiveBtn, pressed && styles.pressed]}>
+          <ReceiveIcon size={15} color={INK} strokeWidth={2} />
+          <Text style={styles.receiveText}>Receive</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -233,7 +236,7 @@ const createStyles = () =>
       position: 'absolute',
       left: 24,
       right: 24,
-      bottom: 24,
+      bottom: 20,
       flexDirection: 'row',
       gap: 10,
     },
@@ -245,12 +248,12 @@ const createStyles = () =>
       gap: 6,
       backgroundColor: INK,
       borderRadius: 999,
-      paddingVertical: 12,
+      paddingVertical: 9,
     },
     sendText: {
       color: '#FDDA24',
       fontFamily: fontFamily.bodySemiBold,
-      fontSize: 14,
+      fontSize: 13,
     },
     receiveBtn: {
       flex: 1,
@@ -261,12 +264,12 @@ const createStyles = () =>
       borderWidth: 1.5,
       borderColor: INK_55,
       borderRadius: 999,
-      paddingVertical: 10.5,
+      paddingVertical: 7.5,
     },
     receiveText: {
       color: INK,
       fontFamily: fontFamily.bodySemiBold,
-      fontSize: 14,
+      fontSize: 13,
     },
     pressed: {
       opacity: 0.7,
