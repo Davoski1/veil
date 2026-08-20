@@ -251,3 +251,77 @@ export function SwapVerticalIcon({ size, color = 'currentColor', strokeWidth = 2
     </Base>
   );
 }
+
+// ── Pay-for services ─────────────────────────────────────────────────────────
+
+export function AirtimeIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Rect x="7" y="2" width="10" height="20" rx="2.5" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M11 18h2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function DataIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M4 11a12 12 0 0116 0M7 14.5a7 7 0 0110 0" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M12 18h.01" stroke={color} strokeWidth={strokeWidth + 0.6} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function PowerIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M13 2L5 13h6l-1 9 9-12h-6l1-8z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+export function TVIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Rect x="2" y="6" width="20" height="13" rx="2.5" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M8 3l4 3 4-3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+export function BillsIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <Path d="M9 8h6M9 12h6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function BankIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M3 9l9-5 9 5M5 9v9M9 9v9M15 9v9M19 9v9M3 21h18" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+export function BettingIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Rect x="4" y="4" width="16" height="16" rx="3.5" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01" stroke={color} strokeWidth={strokeWidth + 0.8} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function GridIcon({ size, color = 'currentColor', strokeWidth = DEFAULT_STROKE }: IconProps) {
+  return (
+    <Base size={size}>
+      <Rect x="4" y="4" width="6" height="6" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <Rect x="14" y="4" width="6" height="6" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <Rect x="4" y="14" width="6" height="6" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <Rect x="14" y="14" width="6" height="6" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+    </Base>
+  );
+}
