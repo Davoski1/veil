@@ -34,6 +34,8 @@ export type ThemeColors = {
   background: string;
   /** Cards, inputs, and list containers sitting on the background. */
   surface: string;
+  /** Raised surface — quick-action tiles, tx icon chips (artboard `surface-md`). */
+  surfaceMd: string;
   /** Borders, dividers, and secondary button fills. */
   border: string;
   /** Screen and section titles. */
@@ -56,6 +58,14 @@ export type ThemeColors = {
   danger: string;
   /** Fill behind error text. */
   dangerSurface: string;
+  /** Uppercase Anton section labels (artboard `grey`). */
+  label: string;
+  /** Positive movement — gains, received transfers, up-deltas (artboard `teal`). */
+  positive: string;
+  /** Fill/border behind positive pills. */
+  positiveSurface: string;
+  /** Swaps and secondary accents (artboard `lilac`). */
+  lilac: string;
 };
 
 /**
@@ -67,23 +77,29 @@ export type ThemeColors = {
 export const THEMES: Record<Theme, ThemeColors> = {
   dark: {
     background: '#0F0F0F',
-    surface: '#171717',
-    border: '#262626',
+    surface: 'rgba(255,255,255,0.03)',
+    surfaceMd: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.08)',
     textStrong: '#FFFFFF',
     textPrimary: '#F6F7F8',
     textSecondary: 'rgba(246,247,248,0.62)',
-    textMuted: 'rgba(246,247,248,0.45)',
-    textFaint: 'rgba(246,247,248,0.30)',
+    textMuted: 'rgba(246,247,248,0.55)',
+    textFaint: 'rgba(246,247,248,0.35)',
     accent: '#FDDA24',
     accentText: '#FDDA24',
     onAccent: '#0F0F0F',
-    danger: '#F87171',
-    dangerSurface: 'rgba(248,113,113,0.14)',
+    danger: '#E06A5B',
+    dangerSurface: 'rgba(224,106,91,0.14)',
+    label: '#D6D2C4',
+    positive: '#00A7B5',
+    positiveSurface: 'rgba(0,167,181,0.12)',
+    lilac: '#B7ACE8',
   },
   light: {
     background: '#FFFFFF',
-    surface: '#F6F7F8',
-    border: '#E5E7EB',
+    surface: 'rgba(0,0,0,0.02)',
+    surfaceMd: 'rgba(0,0,0,0.04)',
+    border: 'rgba(0,0,0,0.10)',
     textStrong: '#0F0F0F',
     textPrimary: '#1A1A1A',
     textSecondary: '#4B5563',
@@ -92,8 +108,12 @@ export const THEMES: Record<Theme, ThemeColors> = {
     accent: '#C4A800',
     accentText: '#8A7600',
     onAccent: '#0F0F0F',
-    danger: '#DC2626',
-    dangerSurface: '#FEE2E2',
+    danger: '#C4442F',
+    dangerSurface: 'rgba(196,68,47,0.10)',
+    label: '#6B7280',
+    positive: '#00838F',
+    positiveSurface: 'rgba(0,131,143,0.10)',
+    lilac: '#6C5CB0',
   },
 };
 
