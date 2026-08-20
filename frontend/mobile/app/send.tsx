@@ -20,6 +20,7 @@ import { getWalletAddress } from '../lib/walletStore';
 import { loadHoldings, unitPrice, type Holding } from '../lib/holdings';
 import { ChevronDownIcon, HexagonIcon, ScanIcon, UsersIcon } from '../components/icons';
 import { TokenIcon } from '../components/TokenIcon';
+import { SuccessAnimation } from '../components/SuccessAnimation';
 
 /** expo-router yields `string | string[]` for a repeated query key. */
 function firstValue(value: string | string[] | undefined): string {
@@ -149,16 +150,16 @@ export default function SendScreen() {
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="send-screen">
         <View style={styles.body}>
           <FlowHeader title="Send" />
-          <View style={styles.resultCard}>
-            <Text style={styles.resultTitle}>Payment sent</Text>
-            <Text style={styles.label}>Transaction</Text>
+          <View style={styles.doneWrap}>
+            <SuccessAnimation title="Payment sent" subtitle={`${amount} ${assetCode} is on its way`} />
             <Text style={styles.hash} numberOfLines={1} testID="send-hash">
-              {hash ? truncateAddress(hash, 8, 8) : ''}
+              {hash ? `tx ${truncateAddress(hash, 8, 8)}` : ''}
             </Text>
-            <Pressable style={styles.cta} onPress={reset} testID="send-reset">
-              <Text style={styles.ctaText}>Send another</Text>
-            </Pressable>
           </View>
+          <View style={styles.spacer} />
+          <Pressable style={styles.cta} onPress={reset} testID="send-reset">
+            <Text style={styles.ctaText}>Send another</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -426,6 +427,7 @@ const createStyles = (colors: ThemeColors) =>
     disabled: { opacity: 0.4 },
     ctaText: { color: colors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 15 },
 
+    doneWrap: { alignItems: 'center', marginTop: 52, gap: 22 },
     resultCard: {
       backgroundColor: colors.surface,
       borderRadius: 20,

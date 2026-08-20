@@ -46,6 +46,15 @@ export function SendIcon({ size, color = 'currentColor', strokeWidth = 1.9 }: Ic
   );
 }
 
+/** A check mark — success confirmation. */
+export function CheckIcon({ size, color = 'currentColor', strokeWidth = 2.4 }: IconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M5 13l4.2 4.2L19 7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
 /** Filled paper-plane (the FontAwesome "send" glyph), for the primary Send action. */
 export function PaperPlaneIcon({ size, color = 'currentColor' }: IconProps) {
   return (

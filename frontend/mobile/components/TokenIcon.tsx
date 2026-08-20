@@ -12,8 +12,9 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 // Bundled at build time by Metro.
 const XLM = require('../assets/tokens/xlm.png');
 const USDC = require('../assets/tokens/usdc.png');
+const EURC = require('../assets/tokens/eurc.png');
 
-const LOGOS: Record<string, number> = { XLM, USDC };
+const LOGOS: Record<string, number> = { XLM, USDC, EURC };
 
 export function TokenIcon({ code, size = 34 }: { code: string; size?: number }) {
   const upper = code.toUpperCase();
@@ -29,6 +30,9 @@ export function TokenIcon({ code, size = 34 }: { code: string; size?: number }) 
         ]}
       >
         <Image
+          // Key by code so switching tokens remounts the image — RN Android
+          // otherwise keeps a stale (e.g. tinted) bitmap and the logo vanishes.
+          key={upper}
           source={src}
           style={{
             width: size,

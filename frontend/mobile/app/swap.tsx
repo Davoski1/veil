@@ -9,6 +9,7 @@ import { FlowHeader } from '../components/FlowHeader';
 import { SlideToConfirm } from '../components/SlideToConfirm';
 import { SwapVerticalIcon } from '../components/icons';
 import { TokenIcon } from '../components/TokenIcon';
+import { SuccessAnimation } from '../components/SuccessAnimation';
 import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
@@ -196,11 +197,12 @@ export default function SwapScreen() {
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="swap-screen">
         <View style={styles.body}>
           <FlowHeader title="Swap" onBack={() => { setStep('form'); setTxHash(null); }} />
-          <View style={styles.resultCard}>
-            <Text style={styles.resultTitle}>Swap complete</Text>
-            <Text style={styles.resultSub}>
-              {amountIn} {tokenIn.code} → {amountOutDisplay} {tokenOut.code}
-            </Text>
+          <View style={styles.doneWrap}>
+            <SuccessAnimation
+              title="Swap complete"
+              subtitle={`${amountIn} ${tokenIn.code} → ${amountOutDisplay} ${tokenOut.code}`}
+              FromIcon={SwapVerticalIcon}
+            />
             {txHash ? <Text style={styles.resultHash}>tx {txHash.slice(0, 8)}…{txHash.slice(-6)}</Text> : null}
           </View>
           <View style={styles.spacer} />
@@ -391,6 +393,7 @@ const createStyles = (colors: ThemeColors) =>
       textTransform: 'uppercase',
     },
     legBalance: { color: colors.accent, fontFamily: fontFamily.bodyMedium, fontSize: 11.5 },
+    doneWrap: { alignItems: 'center', marginTop: 52, gap: 22 },
     legRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12 },
     legAmount: {
       flex: 1,
