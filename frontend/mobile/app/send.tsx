@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../hooks/useTheme';
@@ -171,7 +171,14 @@ export default function SendScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="send-screen">
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
+      >
         <FlowHeader title="Send" />
 
         {/* Asset */}
@@ -300,6 +307,7 @@ export default function SendScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Asset picker sheet */}
       <Modal visible={assetSheet} transparent animationType="fade" onRequestClose={() => setAssetSheet(false)}>
@@ -336,7 +344,8 @@ export default function SendScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    body: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28, minHeight: '100%' },
+    flex: { flex: 1 },
+    body: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
     section: {
       color: colors.textFaint,
       fontFamily: fontFamily.bodySemiBold,
@@ -414,7 +423,7 @@ const createStyles = (colors: ThemeColors) =>
       padding: 12,
       marginTop: 14,
     },
-    spacer: { flex: 1, minHeight: 24 },
+    spacer: { height: 28 },
     cta: {
       flexDirection: 'row',
       alignItems: 'center',
