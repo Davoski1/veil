@@ -15,6 +15,8 @@ import { QrScanner } from '../components/QrScanner';
 import type { Contact } from '../hooks/useContacts';
 import { requireSigner } from '../lib/signer';
 import { requirePasskey } from '../lib/passkey';
+import { fetchContractXlm } from '../lib/activity';
+import { sendXlmFromContract, getFeePayerSpendableXlm } from '../lib/contractSpend';
 import { sendPayment } from '../lib/sendPayment';
 import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
@@ -126,6 +128,26 @@ export default function SendScreen() {
     setError(null);
     try {
       setStep('authorizing');
+
+      // Smart-wallet routing: when the fee-payer alone can't cover an XLM send
+      // but the contract's own balance can, transfer FROM the contract — the
+      // passkey signs the Soroban auth entry and __check_auth verifies it
+      // on-chain (the prompt for that signature IS the security gate).
+      const stored = await getWalletAddress().catch(() => null);
+      if (!nonNative && stored?.startsWith('C')) {
+        const [contractXlm, fpSpendable] = await Promise.all([
+          fetchContractXlm(stored),
+          getFeePayerSpendableXlm(),
+        ]);
+        if (amtNum > fpSpendable && amtNum <= contractXlm) {
+          setStep('submitting');
+          const hash = await sendXlmFromContract(stored, recipient.trim(), amount);
+          setHash(hash);
+          setStep('done');
+          return;
+        }
+      }
+
       // Presence gate: when a passkey is registered, spending demands it.
       await requirePasskey();
       const signer = await requireSigner();

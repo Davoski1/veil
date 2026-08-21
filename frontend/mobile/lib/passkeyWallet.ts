@@ -4,6 +4,7 @@ import { Buffer } from 'buffer';
 
 import { nativePrfEvaluator } from './passkey';
 import { fundWithFriendbot } from './testnetWallet';
+import { writeBreadcrumbs } from './walletBreadcrumbs';
 import { setWalletAddress, setSignerSecret, setPasskeyId, setPasskeyCredential } from './walletStore';
 import type { CreatedWallet } from './testnetWallet';
 
@@ -56,6 +57,13 @@ export async function createPasskeyWallet(wallet: Registerable): Promise<Created
   if (!feePayer) feePayer = Keypair.random();
 
   const funded = await fundWithFriendbot(feePayer.publicKey());
+
+  // On-chain breadcrumbs (best-effort): make "sign in with passkey" work on a
+  // fresh device by recording the C-address + passkey public key as data
+  // entries on the (deterministic) fee-payer account. Needs funding first.
+  if (funded) {
+    void writeBreadcrumbs(feePayer.secret(), walletAddress, publicKeyBytes ?? null).catch(() => undefined);
+  }
 
   await Promise.all([
     setWalletAddress(walletAddress),

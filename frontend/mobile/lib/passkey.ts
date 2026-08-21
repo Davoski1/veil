@@ -158,6 +158,16 @@ export async function requirePasskey(): Promise<void> {
  * null when PRF is unsupported / the user declines. Used to derive the fee-payer
  * key deterministically from the passkey.
  */
+function parsePrfOutput(assertion: unknown): Uint8Array | null {
+  const results = (assertion as { clientExtensionResults?: { prf?: { results?: { first?: unknown } } } })
+    ?.clientExtensionResults?.prf?.results?.first;
+  if (!results) return null;
+  if (typeof results === 'string') return base64UrlToUint8Array(results);
+  if (results instanceof ArrayBuffer) return new Uint8Array(results);
+  if (ArrayBuffer.isView(results)) return new Uint8Array(results.buffer as ArrayBuffer);
+  return null;
+}
+
 export function nativePrfEvaluator(credentialId: string): (salt: Uint8Array) => Promise<Uint8Array | null> {
   return async (salt: Uint8Array) => {
     try {
@@ -169,15 +179,37 @@ export function nativePrfEvaluator(credentialId: string): (salt: Uint8Array) => 
         timeout: 60_000,
         extensions: { prf: { eval: { first: uint8ArrayToBase64Url(salt) } } },
       });
-      const results = (assertion as { clientExtensionResults?: { prf?: { results?: { first?: unknown } } } })
-        ?.clientExtensionResults?.prf?.results?.first;
-      if (!results) return null;
-      if (typeof results === 'string') return base64UrlToUint8Array(results);
-      if (results instanceof ArrayBuffer) return new Uint8Array(results);
-      if (ArrayBuffer.isView(results)) return new Uint8Array(results.buffer as ArrayBuffer);
-      return null;
+      return parsePrfOutput(assertion);
     } catch {
       return null;
     }
   };
+}
+
+/**
+ * Discoverable assertion + PRF in ONE user gesture: no allowCredentials, so the
+ * platform sheet lists every passkey for the relying party and the user picks.
+ * Returns the chosen credential id and the PRF output for `salt` — the two
+ * facts "sign in with passkey" needs to re-derive the wallet on a fresh device.
+ */
+export async function discoverWithPrf(
+  salt: Uint8Array,
+): Promise<{ credentialId: string; prf: Uint8Array | null } | null> {
+  try {
+    const assertion = await passkeys().get({
+      challenge: uint8ArrayToBase64Url(Crypto.getRandomBytes(32)),
+      rpId: getRelyingPartyId(),
+      userVerification: 'required',
+      timeout: 60_000,
+      extensions: { prf: { eval: { first: uint8ArrayToBase64Url(salt) } } },
+    });
+    if (!assertion) return null;
+    const credentialId = (assertion as { id?: string; rawId?: string }).id
+      ?? (assertion as { id?: string; rawId?: string }).rawId;
+    if (!credentialId) return null;
+    return { credentialId, prf: parsePrfOutput(assertion) };
+  } catch (error: unknown) {
+    if (isUserRejection(error)) return null;
+    throw error;
+  }
 }

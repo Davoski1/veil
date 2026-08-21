@@ -42,7 +42,7 @@ export default function Welcome() {
 
   const handleRecover = async () => {
     await AsyncStorage.setItem(SEEN_WELCOME_KEY, '1');
-    router.push('/recover');
+    router.push('/login');
   };
 
   // Dev-only: seed a wallet address so the router lets us into the app, to
