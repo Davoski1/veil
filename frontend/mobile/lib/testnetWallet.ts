@@ -29,7 +29,16 @@ export async function fundWithFriendbot(address: string): Promise<boolean> {
   }
 }
 
-export type CreatedWallet = { address: string; funded: boolean };
+export type CreatedWallet = {
+  address: string;
+  funded: boolean;
+  /**
+   * False when the fee-payer had to fall back to a random key (PRF unavailable)
+   * — the wallet then cannot be re-derived from the passkey on another device.
+   * Absent for plain keypair wallets, where the question doesn't apply.
+   */
+  recoverable?: boolean;
+};
 
 /**
  * Create a fresh testnet wallet: generate a keypair, persist it as the active

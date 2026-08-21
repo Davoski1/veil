@@ -136,6 +136,11 @@ export const webAuthnProvider: WebAuthnProvider = {
                 userVerification: 'required',
                 ...(authenticatorAttachment ? { authenticatorAttachment } : {}),
             },
+            // Enroll the PRF (hmac-secret) extension at creation. Without this,
+            // some authenticators never expose PRF on later assertions — and the
+            // PRF output is what deterministically derives the fee-payer key, so
+            // it is the difference between a recoverable and a device-bound wallet.
+            extensions: { prf: {} },
         });
 
         if (!result) throw new Error('Passkey creation failed or was cancelled');

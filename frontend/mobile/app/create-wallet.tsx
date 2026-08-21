@@ -63,6 +63,13 @@ export default function CreateWallet() {
             <Text style={[styles.fund, { color: result.funded ? colors.positive : colors.textMuted }]}>
               {result.funded ? 'Funded with test XLM ✓' : 'Friendbot was busy — you can still receive funds and retry later'}
             </Text>
+            {result.recoverable === false && (
+              <Text style={[styles.fund, { color: colors.danger }]}>
+                Heads up: this device couldn&apos;t bind the recovery secret to your passkey, so this
+                wallet can&apos;t be restored on another phone from the passkey alone. Keep this device
+                safe or set up recovery servers in Settings.
+              </Text>
+            )}
           </View>
           <View style={styles.spacer} />
           <Pressable

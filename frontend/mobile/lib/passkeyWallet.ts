@@ -49,11 +49,18 @@ export async function createPasskeyWallet(wallet: Registerable): Promise<Created
   const keyId = await AsyncStorage.getItem(SDK_KEY_ID);
   let feePayer: Keypair | null = null;
   if (keyId) {
-    const prf = await nativePrfEvaluator(keyId)(FEE_PAYER_PRF_SALT).catch(() => null);
-    if (prf && prf.length >= 32) {
-      feePayer = Keypair.fromRawEd25519Seed(Buffer.from(prf.subarray(0, 32)));
+    // The PRF output is what makes the wallet recoverable from the passkey
+    // alone — retry once before giving up on it.
+    for (let attempt = 0; attempt < 2 && !feePayer; attempt++) {
+      const prf = await nativePrfEvaluator(keyId)(FEE_PAYER_PRF_SALT).catch(() => null);
+      if (prf && prf.length >= 32) {
+        feePayer = Keypair.fromRawEd25519Seed(Buffer.from(prf.subarray(0, 32)));
+      }
     }
   }
+  // Random fallback = the fee-payer CANNOT be re-derived from the passkey on
+  // another device. Never do this silently: the caller surfaces `recoverable`.
+  const recoverable = feePayer !== null;
   if (!feePayer) feePayer = Keypair.random();
 
   const funded = await fundWithFriendbot(feePayer.publicKey());
@@ -75,5 +82,5 @@ export async function createPasskeyWallet(wallet: Registerable): Promise<Created
         : Promise.resolve(),
   ]);
 
-  return { address: walletAddress, funded };
+  return { address: walletAddress, funded, recoverable };
 }
