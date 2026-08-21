@@ -51,13 +51,23 @@ export async function loadHoldings(address: string): Promise<Holding[]> {
     effective = feePayer;
   }
 
-  try {
-    const account = await server.loadAccount(effective);
-    balances = account.balances as typeof balances;
-  } catch (err) {
-    if (!isAccountNotFound(err)) {
+  // The dashboard fires several Horizon/RPC calls at once on mount, and Android
+  // intermittently drops one with a bare network error ("Unknown") — retry once
+  // before concluding anything about the account.
+  balances = [];
+  let loaded = false;
+  for (let attempt = 0; attempt < 2 && !loaded; attempt++) {
+    try {
+      const account = await server.loadAccount(effective);
+      balances = account.balances as typeof balances;
+      loaded = true;
+    } catch (err) {
+      if (isAccountNotFound(err)) break; // definitive: account doesn't exist
       console.warn('[holdings] loadAccount failed:', err instanceof Error ? `${err.name}: ${err.message}` : err);
+      await new Promise((r) => setTimeout(r, 400));
     }
+  }
+  if (!loaded) {
     // Unfunded (or unreachable) classic account: degrade to whatever the
     // contract itself holds rather than reporting "no assets".
     balances = contractExtraXlm > 0 ? [{ asset_type: 'native', balance: '0' }] : [];

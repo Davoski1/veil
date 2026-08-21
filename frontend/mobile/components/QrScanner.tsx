@@ -107,16 +107,18 @@ export function QrScanner({ visible, onScan, onClose }: QrScannerProps) {
             </TouchableOpacity>
           </View>
         ) : (
-          <CameraView
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            barcodeScannerSettings={{
-              barcodeTypes: ['qr'],
-            }}
-            onBarcodeScanned={handleBarcodeScanned}
-          >
-            {/* Viewfinder overlay */}
-            <View style={styles.overlay}>
+          <>
+            <CameraView
+              style={StyleSheet.absoluteFill}
+              facing="back"
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+              onBarcodeScanned={handleBarcodeScanned}
+            />
+            {/* Viewfinder overlay — CameraView doesn't support children, so this
+                sits above it as an absolutely-positioned sibling. */}
+            <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="none">
               <View style={styles.viewfinder}>
                 {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map(
                   (corner) => (
@@ -137,7 +139,7 @@ export function QrScanner({ visible, onScan, onClose }: QrScannerProps) {
                 Point camera at a Stellar address QR code (G... or C...)
               </Text>
             </View>
-          </CameraView>
+          </>
         )}
 
         {/* Overlay UI */}
