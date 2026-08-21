@@ -30,14 +30,26 @@ export const SecureKey = {
 
 export type SecureKey = (typeof SecureKey)[keyof typeof SecureKey];
 
-/** Read a string from the keychain, or `null` when absent or on a read error. */
+/**
+ * Read a string from the keychain, or `null` when absent or on a read error.
+ *
+ * Android's keystore intermittently fails CONCURRENT reads (several screens
+ * resolve wallet state at once on mount), and a transient failure that reads
+ * as "no wallet" mis-routes the whole app (splash → welcome, login → fresh
+ * recovery, assets → empty). Retry briefly before giving up.
+ */
 export async function getSecureItem(key: string): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync(key);
-  } catch (error) {
-    console.warn(`[storage] failed to read "${key}"`, error);
-    return null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      lastError = error;
+      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+    }
   }
+  console.warn(`[storage] failed to read "${key}" after retries`, lastError);
+  return null;
 }
 
 /** Persist a string to the keychain. Errors propagate to the caller. */

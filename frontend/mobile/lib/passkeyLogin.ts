@@ -61,8 +61,9 @@ export async function loginWithPasskey(): Promise<LoginResult> {
   const crumbs = await readBreadcrumbs(feePayer.publicKey());
   if (!crumbs) {
     throw new Error(
-      'No wallet is linked to this passkey on this network. If you created it recently, its on-chain ' +
-        'record may still be pending — try again in a moment.',
+      'No wallet is linked to this passkey on this network. Wallets created before sign-in support ' +
+        'publish their record the next time their home screen opens on the device that holds them — ' +
+        'open the wallet there once, then sign in here.',
     );
   }
 

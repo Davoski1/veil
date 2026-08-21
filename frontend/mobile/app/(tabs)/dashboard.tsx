@@ -22,6 +22,7 @@ import { usePolling } from '../../hooks/usePolling';
 import { fetchDashboardData } from '../../lib/activity';
 import { fetchPrice, usdValue } from '../../lib/fetchPrice';
 import { getNetwork } from '../../lib/network';
+import { ensureBreadcrumbs } from '../../lib/walletBreadcrumbs';
 
 /** Shorten a Stellar address for the header chip: `GDKF…9QX3`. */
 function shortAddress(addr: string): string {
@@ -88,7 +89,12 @@ export default function DashboardTab() {
     getWalletAddress()
       .then((addr) => {
         setWalletAddress(addr);
-        if (addr) void refreshAll(addr);
+        if (addr) {
+          void refreshAll(addr);
+          // Backfill the on-chain sign-in record for wallets created before
+          // breadcrumbs existed (idempotent, once per session, best-effort).
+          void ensureBreadcrumbs();
+        }
       })
       .catch(() => setWalletAddress(null));
   }, [refreshAll]);

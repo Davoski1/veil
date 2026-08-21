@@ -67,6 +67,41 @@ export async function writeBreadcrumbs(
   }
 }
 
+/**
+ * Self-heal: wallets created before breadcrumbs existed have no on-chain
+ * record, so "sign in with passkey" can't find them from a fresh device. Any
+ * device that still HOLDS the wallet has everything needed to write the record
+ * retroactively — run this on dashboard load (idempotent, at most one write,
+ * throttled to one attempt per app session).
+ */
+let healAttempted = false;
+export async function ensureBreadcrumbs(): Promise<void> {
+  if (healAttempted) return;
+  healAttempted = true;
+  try {
+    const [{ getWalletAddress, getSignerSecret, getPasskeyPublicKey }, AsyncStorage] = await Promise.all([
+      import('./walletStore'),
+      import('@react-native-async-storage/async-storage').then((m) => m.default),
+    ]);
+    const [address, secret] = await Promise.all([getWalletAddress(), getSignerSecret()]);
+    if (!address || !secret || !address.startsWith('C')) return;
+
+    const feePayer = Keypair.fromSecret(secret);
+    const existing = await readBreadcrumbs(feePayer.publicKey());
+    if (existing?.walletAddress === address && existing.publicKeyBytes) return; // already complete
+
+    // Public key: prefer the secure store's mirror, fall back to the SDK's copy.
+    const pkHex =
+      (await getPasskeyPublicKey().catch(() => null)) ||
+      (await AsyncStorage.getItem('invisible_wallet_public_key').catch(() => null));
+    const pkBytes = pkHex && /^[0-9a-fA-F]{130}$/.test(pkHex) ? new Uint8Array(Buffer.from(pkHex, 'hex')) : null;
+
+    await writeBreadcrumbs(secret, address, pkBytes);
+  } catch {
+    // best-effort — never disturb the dashboard
+  }
+}
+
 /** Read the breadcrumbs from a fee-payer account. Null when none are present. */
 export async function readBreadcrumbs(feePayerAddress: string): Promise<Breadcrumbs | null> {
   try {
