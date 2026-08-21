@@ -34,7 +34,13 @@ const RPC_URL =
   process.env['EXPO_PUBLIC_SOROBAN_RPC_URL']?.trim() || 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE =
   process.env['EXPO_PUBLIC_NETWORK_PASSPHRASE']?.trim() || 'Test SDF Network ; September 2015';
-const NATIVE_SAC = process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() || '';
+// The native XLM Stellar Asset Contract id is deterministic per network, so
+// derive it; the env var remains as an override only.
+const NATIVE_SAC =
+  process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() ||
+  Asset.native().contractId(
+    process.env['EXPO_PUBLIC_NETWORK_PASSPHRASE']?.trim() || 'Test SDF Network ; September 2015',
+  );
 
 const STROOPS_PER_XLM = 10_000_000;
 
