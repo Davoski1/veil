@@ -112,7 +112,7 @@ export function AssetsList({
       // different, independently-working path) rather than showing nothing.
       if (fallbackXlm) {
         setHoldings([
-          { code: 'XLM', name: 'Lumens', issuer: null, balance: fallbackXlm, usd: fallbackUsd, native: true },
+          { code: 'XLM', name: 'Lumens', issuer: null, balance: fallbackXlm, usd: fallbackUsd },
         ]);
         setLoadError(false);
       } else {
