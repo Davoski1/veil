@@ -26,26 +26,26 @@ function assetOf(type: string | undefined, code: string | undefined): string {
  * store instead (bounded by RPC retention, ~7 days on testnet — enough for a
  * live activity feed; full history is the indexer's job).
  */
-async function loadContractSacActivity(contract: string, limit: number): Promise<TxRecord[]> {
+async function loadContractSacActivity(addresses: string[], limit: number): Promise<TxRecord[]> {
   try {
+    const mine = new Set(addresses);
     const net = getNetwork();
     const server = new SorobanRpc.Server(net.rpcUrl);
     const sac = Asset.native().contractId(net.networkPassphrase);
     const latest = await server.getLatestLedger();
 
     const transferSym = xdr.ScVal.scvSymbol('transfer').toXDR('base64');
-    const cAddr = xdr.ScVal.scvAddress(new Address(contract).toScAddress()).toXDR('base64');
-    const filters = [
-      {
-        type: 'contract' as const,
-        contractIds: [sac],
-        // OR of: transfers FROM the wallet, transfers TO the wallet.
-        topics: [
-          [transferSym, cAddr, '*', '*'],
-          [transferSym, '*', cAddr, '*'],
-        ],
-      },
-    ];
+    // OR of: transfers FROM any of ours, transfers TO any of ours. Covers the
+    // wallet contract AND the fee-payer's Soroban sends (e.g. G→C transfers),
+    // both invisible to Horizon's payments feed.
+    const topics = addresses.flatMap((a) => {
+      const scv = xdr.ScVal.scvAddress(new Address(a).toScAddress()).toXDR('base64');
+      return [
+        [transferSym, scv, '*', '*'],
+        [transferSym, '*', scv, '*'],
+      ];
+    });
+    const filters = [{ type: 'contract' as const, contractIds: [sac], topics }];
 
     // The RPC scans a bounded slice per call and hands back a cursor — a single
     // call over a wide window can legitimately return zero matches with more
@@ -70,7 +70,7 @@ async function loadContractSacActivity(contract: string, limit: number): Promise
         const from = String(scValToNative(topics[1]!));
         const to = String(scValToNative(topics[2]!));
         const stroops = scValToNative(ev.value) as bigint;
-        const sent = from === contract;
+        const sent = mine.has(from);
         out.push({
           id: ev.id,
           type: sent ? 'sent' : 'received',
@@ -96,8 +96,8 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
   let account = address;
   let contractRecords: TxRecord[] = [];
   if (StrKey.isValidContract(address)) {
-    contractRecords = await loadContractSacActivity(address, limit);
     const feePayer = await getFeePayerAddress();
+    contractRecords = await loadContractSacActivity(feePayer ? [address, feePayer] : [address], limit);
     if (!feePayer) return contractRecords;
     account = feePayer;
   }
