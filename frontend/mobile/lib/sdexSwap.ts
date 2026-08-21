@@ -13,19 +13,27 @@ import { Asset, BASE_FEE, Horizon, Keypair, Operation, TransactionBuilder } from
 import { getNetwork } from './network';
 
 /**
- * Well-known testnet issuers for the assets we route classically. USDC uses the
- * SAME issuer the web wallet swaps against — the one with actual testnet DEX
- * liquidity. (Note: this differs from the Lens price-oracle USDC issuer.)
+ * Well-known issuers per network for the assets we route classically.
+ * - Testnet USDC = the issuer the web wallet swaps against (the one with actual
+ *   testnet DEX liquidity; differs from the Lens price-oracle issuer).
+ * - Mainnet USDC = Circle's issuer (verified via Horizon 2026-08-21: 2.35M
+ *   authorized accounts). NGNC = Link.io's naira stablecoin (offramp rail).
  */
-const TESTNET_ISSUERS: Record<string, string> = {
-  USDC: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+const ISSUERS: Record<'testnet' | 'mainnet', Record<string, string>> = {
+  testnet: {
+    USDC: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+  },
+  mainnet: {
+    USDC: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+    NGNC: 'GASBV6W7GGED66MXEVC7YZHTWWYMSVYEY35USF2HJZBLABLYIFQGXZY6',
+  },
 };
 
 /** Map a symbol to a classic Asset, or null when we don't know its issuer. */
 export function classicAsset(code: string): Asset | null {
   const u = code.toUpperCase();
   if (u === 'XLM') return Asset.native();
-  const issuer = TESTNET_ISSUERS[u];
+  const issuer = ISSUERS[getNetwork().name]?.[u];
   return issuer ? new Asset(u, issuer) : null;
 }
 
