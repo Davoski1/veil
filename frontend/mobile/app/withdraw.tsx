@@ -281,7 +281,7 @@ export default function WithdrawScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Cash out</Text>
       <Text style={styles.subtitle}>Withdraw to a bank account or mobile money via a Stellar anchor.</Text>
 

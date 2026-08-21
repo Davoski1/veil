@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '../hooks/useTheme';
 import type { ThemeColors } from '../lib/theme';
+import { fontFamily } from '../theme/typography';
+import { VeilLogo } from '../components/VeilLogo';
 
 /**
- * Lock screen — the native port of the web wallet's `app/lock/page.tsx`.
- *
- * The wallet reaches here after an inactivity timeout or on returning from the
- * background (see `hooks/useInactivityLock.ts`). Unlocking requires a real
- * device biometric via `expo-local-authentication`
- * (`authenticateAsync` prompts Face ID / fingerprint, falling back to the device
- * passcode); on success we return to the dashboard.
+ * Lock screen — brand treatment of the web wallet's lock page: the Drape mark
+ * over near-black, Lora title, gold unlock action. Reached after an inactivity
+ * timeout or a long background stay (hooks/useInactivityLock.ts). Unlocking
+ * prompts the device biometric (passcode fallback) and returns to the
+ * dashboard directly, skipping the splash.
  */
 export default function LockScreen() {
   const { colors } = useTheme();
@@ -37,12 +38,13 @@ export default function LockScreen() {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Unlock Veil',
         cancelLabel: 'Cancel',
-        // Allow the device passcode when biometrics fail, matching OS behaviour.
         disableDeviceFallback: false,
       });
 
       if (result.success) {
-        router.replace('/');
+        // Straight to the dashboard — routing through the splash re-runs the
+        // whole entry sequence and reads as a second loading screen.
+        router.replace('/dashboard');
         return;
       }
       setError('Unlock failed. Please try again.');
@@ -59,90 +61,88 @@ export default function LockScreen() {
   }, [handleUnlock]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <Text style={styles.iconGlyph}>🔒</Text>
-      </View>
-
-      <View style={styles.copy}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="lock-screen">
+      <View style={styles.center}>
+        <VeilLogo size={72} color={colors.accent} />
+        <Text style={styles.wordmark}>VEIL</Text>
         <Text style={styles.title}>Wallet locked</Text>
-        <Text style={styles.subtitle}>Unlock with your biometric to continue.</Text>
+        <Text style={styles.subtitle}>Unlock with your fingerprint or Face ID to continue.</Text>
+        {error && <Text style={styles.error}>{error}</Text>}
       </View>
-
-      {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable
         accessibilityRole="button"
         onPress={handleUnlock}
         disabled={isUnlocking}
-        style={({ pressed }) => [styles.button, (pressed || isUnlocking) && styles.buttonPressed]}
+        style={({ pressed }) => [styles.cta, (pressed || isUnlocking) && styles.ctaPressed]}
       >
         {isUnlocking ? (
           <ActivityIndicator color={colors.onAccent} />
         ) : (
-          <Text style={styles.buttonLabel}>Unlock</Text>
+          <Text style={styles.ctaText}>Unlock</Text>
         )}
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: {
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 28,
+      paddingBottom: 28,
+    },
+    center: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.background,
-      padding: 32,
-      gap: 28,
+      gap: 8,
     },
-    iconCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    iconGlyph: {
-      fontSize: 30,
-    },
-    copy: {
-      alignItems: 'center',
-      gap: 6,
+    wordmark: {
+      fontFamily: fontFamily.accent,
+      fontSize: 22,
+      letterSpacing: 2.2,
+      color: colors.accent,
+      marginTop: 18,
     },
     title: {
       color: colors.textStrong,
-      fontSize: 22,
-      fontWeight: '700',
+      fontFamily: fontFamily.heading,
+      fontSize: 28,
+      marginTop: 22,
     },
     subtitle: {
       color: colors.textSecondary,
-      fontSize: 15,
+      fontFamily: fontFamily.body,
+      fontSize: 14,
+      lineHeight: 21,
       textAlign: 'center',
+      maxWidth: 280,
+      marginTop: 4,
     },
     error: {
       color: colors.danger,
-      fontSize: 14,
+      fontFamily: fontFamily.body,
+      fontSize: 13,
+      lineHeight: 19,
       textAlign: 'center',
+      marginTop: 14,
+      maxWidth: 300,
     },
-    button: {
-      alignSelf: 'stretch',
-      maxWidth: 320,
+    cta: {
       backgroundColor: colors.accent,
-      borderRadius: 999,
-      paddingVertical: 14,
+      borderRadius: 100,
+      paddingVertical: 17,
       alignItems: 'center',
     },
-    buttonPressed: {
-      opacity: 0.75,
+    ctaPressed: {
+      opacity: 0.85,
     },
-    buttonLabel: {
+    ctaText: {
       color: colors.onAccent,
-      fontSize: 16,
-      fontWeight: '700',
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 15,
     },
   });

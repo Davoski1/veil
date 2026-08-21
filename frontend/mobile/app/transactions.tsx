@@ -53,7 +53,7 @@ export default function TransactionsScreen() {
       <View style={styles.header}>
         <FlowHeader title="Transactions" />
       </View>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >

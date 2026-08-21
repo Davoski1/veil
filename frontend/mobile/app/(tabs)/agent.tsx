@@ -358,7 +358,7 @@ export default function AgentScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
+        <ScrollView showsVerticalScrollIndicator={false}
           ref={scrollRef}
           contentContainerStyle={styles.thread}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
@@ -382,7 +382,7 @@ export default function AgentScreen() {
         </ScrollView>
 
         <View style={styles.composer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
+          <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
             {SUGGESTIONS.map((suggestion) => (
               <Pressable
                 key={suggestion}

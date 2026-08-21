@@ -83,7 +83,7 @@ export default function TokenDetailScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="token-screen">
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
         <FlowHeader title={name} />
 
         {loading && !detail ? (

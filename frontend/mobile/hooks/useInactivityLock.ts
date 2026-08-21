@@ -2,9 +2,13 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
 import { createIdleWatcher } from '../lib/appLock';
 import { getWalletAddress } from '../lib/walletStore';
-import { isPasskeySupported } from '../lib/passkey';
+
+/** True in Expo Go, where native passkeys don't exist. */
+const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 /**
  * Locks the wallet after inactivity or when the app is backgrounded, so a lost
@@ -40,20 +44,36 @@ export function useInactivityLock(): void {
       const wallet = await getWalletAddress().catch(() => null);
       if (cancelled || !wallet) return; // no wallet → never lock
 
-      // The lock screen can only be dismissed with a passkey. Where passkeys are
-      // unavailable (Expo Go — no native module), locking would trap the user with
-      // no way back in, so don't arm it. A dev build (real passkeys) locks normally.
-      if (!isPasskeySupported()) return;
+      // The lock screen can only be dismissed with a passkey. In Expo Go there is
+      // no passkey native module, so locking would trap the user — don't arm it.
+      // (Checked via expo-constants, NOT by loading the passkey module, which
+      // would itself log a native-module error just by being required.) A dev
+      // build / standalone locks normally.
+      if (IN_EXPO_GO) return;
 
       const lock = () => router.replace('/lock');
       const watcher = createIdleWatcher({ onLock: lock });
       watcher.start();
 
+      // Locking the instant the app is backgrounded makes every app switch a
+      // biometric round-trip (brutal while testing, and jarring in real use).
+      // Instead: pause the idle watcher while backgrounded and require the
+      // unlock only when the app was away longer than a short grace window.
+      const BACKGROUND_GRACE_MS = 60_000;
+      let backgroundedAt: number | null = null;
+
       const subscription = AppState.addEventListener('change', (state) => {
         if (state === 'background') {
-          // Backgrounded: lock now so returning requires a biometric.
           watcher.stop();
-          lock();
+          backgroundedAt = Date.now();
+        } else if (state === 'active') {
+          const away = backgroundedAt ? Date.now() - backgroundedAt : 0;
+          backgroundedAt = null;
+          if (away > BACKGROUND_GRACE_MS) {
+            lock();
+          } else {
+            watcher.start();
+          }
         }
       });
 

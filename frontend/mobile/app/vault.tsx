@@ -218,7 +218,7 @@ export default function VaultScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>TIME-LOCKED SUB-ACCOUNT</Text>
       <Text style={styles.title}>Vault</Text>
       <Text style={styles.subtitle}>

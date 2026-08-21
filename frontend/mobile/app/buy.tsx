@@ -230,7 +230,7 @@ export default function BuyScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Buy</Text>
       <Text style={styles.subtitle}>Bring fiat into your wallet through a SEP-24 anchor.</Text>
 

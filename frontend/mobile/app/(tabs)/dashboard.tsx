@@ -31,6 +31,10 @@ function shortAddress(addr: string): string {
 const WRAITH_URL =
   process.env.EXPO_PUBLIC_WRAITH_URL?.replace(/\/+$/, '') ?? null;
 
+// Last-known balance/price survive remounts (e.g. returning from the lock
+// screen), so the card paints instantly instead of flashing a loading state.
+const lastKnown: { balance: string; price: number | null } = { balance: '—', price: null };
+
 /**
  * Dashboard tab — primary destination after unlock.
  *
@@ -42,8 +46,8 @@ export default function DashboardTab() {
   const { colors: themeColors } = useTheme();
   const themedStyles = useMemo(() => createThemedStyles(themeColors), [themeColors]);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [balance, setBalance] = useState<string>('—');
-  const [price, setPrice] = useState<number | null>(null);
+  const [balance, setBalance] = useState<string>(() => lastKnown.balance);
+  const [price, setPrice] = useState<number | null>(() => lastKnown.price);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTx, setSelectedTx] = useState<TxRecord | null>(null);
   const detailSheetRef = useRef<BottomSheetModal>(null);
@@ -61,6 +65,8 @@ export default function DashboardTab() {
     async (addr: string) => {
       try {
         const [data, p] = await Promise.all([fetchDashboardData(addr), fetchPrice('XLM', null)]);
+        lastKnown.balance = data.xlmBalance;
+        lastKnown.price = p;
         setBalance(data.xlmBalance);
         setPrice(p);
       } catch {
@@ -123,7 +129,7 @@ export default function DashboardTab() {
 
   return (
     <SafeAreaView style={themedStyles.screen} edges={['top']} testID="dashboard-screen">
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={themedStyles.scrollContent}
         refreshControl={
           <RefreshControl
