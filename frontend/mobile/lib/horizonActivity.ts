@@ -1,4 +1,4 @@
-import { Horizon, StrKey } from '@stellar/stellar-sdk';
+import { Address, Asset, Horizon, StrKey, scValToNative, xdr, rpc as SorobanRpc } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
 import { getFeePayerAddress } from './activity';
@@ -20,13 +20,85 @@ function assetOf(type: string | undefined, code: string | undefined): string {
  * on any network (Wraith, the Soroban indexer, doesn't cover testnet accounts).
  * Maps payments, account creations, and path-payments to the shared TxRecord.
  */
+/**
+ * A smart wallet's own transfers are SAC `transfer` EVENTS (invoke ops), which
+ * Horizon's payments feed never surfaces. Read them from Soroban RPC's event
+ * store instead (bounded by RPC retention, ~7 days on testnet — enough for a
+ * live activity feed; full history is the indexer's job).
+ */
+async function loadContractSacActivity(contract: string, limit: number): Promise<TxRecord[]> {
+  try {
+    const net = getNetwork();
+    const server = new SorobanRpc.Server(net.rpcUrl);
+    const sac = Asset.native().contractId(net.networkPassphrase);
+    const latest = await server.getLatestLedger();
+
+    const transferSym = xdr.ScVal.scvSymbol('transfer').toXDR('base64');
+    const cAddr = xdr.ScVal.scvAddress(new Address(contract).toScAddress()).toXDR('base64');
+    const filters = [
+      {
+        type: 'contract' as const,
+        contractIds: [sac],
+        // OR of: transfers FROM the wallet, transfers TO the wallet.
+        topics: [
+          [transferSym, cAddr, '*', '*'],
+          [transferSym, '*', cAddr, '*'],
+        ],
+      },
+    ];
+
+    // The RPC scans a bounded slice per call and hands back a cursor — a single
+    // call over a wide window can legitimately return zero matches with more
+    // ledgers still unscanned, so ALWAYS follow the cursor (bounded pages).
+    const events = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 8; page++) {
+      const res = await server.getEvents(
+        cursor
+          ? { cursor, filters, limit: 100 }
+          : { startLedger: Math.max(1, latest.sequence - 17_000), filters, limit: 100 },
+      );
+      events.push(...res.events);
+      cursor = (res as { cursor?: string }).cursor;
+      if (!cursor) break;
+    }
+
+    const out: TxRecord[] = [];
+    for (const ev of events) {
+      try {
+        const topics = ev.topic;
+        const from = String(scValToNative(topics[1]!));
+        const to = String(scValToNative(topics[2]!));
+        const stroops = scValToNative(ev.value) as bigint;
+        const sent = from === contract;
+        out.push({
+          id: ev.id,
+          type: sent ? 'sent' : 'received',
+          amount: (Number(stroops) / 10_000_000).toLocaleString('en-US', { maximumFractionDigits: 4 }),
+          asset: 'XLM',
+          counterparty: sent ? to : from,
+          timestamp: ev.ledgerClosedAt ? Math.floor(new Date(ev.ledgerClosedAt).getTime() / 1000) : 0,
+          hash: ev.txHash,
+        });
+      } catch {
+        // skip malformed event
+      }
+    }
+    return out.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
 export async function loadHorizonActivity(address: string, limit = 25): Promise<TxRecord[]> {
-  // Contract wallets have no Horizon history of their own — classic activity
-  // happens on the fee-payer G-account.
+  // Contract wallets: classic activity lives on the fee-payer G-account, and
+  // the contract's OWN transfers come from Soroban events — merge the two.
   let account = address;
+  let contractRecords: TxRecord[] = [];
   if (StrKey.isValidContract(address)) {
+    contractRecords = await loadContractSacActivity(address, limit);
     const feePayer = await getFeePayerAddress();
-    if (!feePayer) return [];
+    if (!feePayer) return contractRecords;
     account = feePayer;
   }
 
@@ -84,5 +156,12 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
       });
     }
   }
-  return out;
+
+  if (contractRecords.length === 0) return out;
+  // Merge classic + contract records, dedup by tx hash (a contract spend also
+  // appears as the fee-payer's wrapping tx would, if Horizon ever surfaces it),
+  // newest first.
+  const seen = new Set(out.map((r) => r.hash).filter(Boolean));
+  const merged = [...out, ...contractRecords.filter((r) => !r.hash || !seen.has(r.hash))];
+  return merged.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 }
