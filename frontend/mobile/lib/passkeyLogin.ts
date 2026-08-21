@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Keypair } from '@stellar/stellar-sdk';
 import { Buffer } from 'buffer';
 
-import { discoverWithPrf } from './passkey';
-import { readBreadcrumbs } from './walletBreadcrumbs';
+import { discoverWithPrf, nativePrfEvaluator } from './passkey';
+import { readBreadcrumbs, writeBreadcrumbs } from './walletBreadcrumbs';
 import { getSignerSecret, getWalletAddress, setPasskeyCredential, setPasskeyId, setSignerSecret, setWalletAddress } from './walletStore';
 
 /** Same PRF salt the fee-payer was derived with at creation (SDK constant). */
@@ -45,6 +45,33 @@ export async function loginWithPasskey(): Promise<LoginResult> {
   ]);
   if (storedAddress && storedSecret) {
     return { address: storedAddress, source: 'local' };
+  }
+
+  // ── Same-device, secure store cleared (e.g. "Reset wallet") ───────────────
+  // The SDK's AsyncStorage copy survives a secure-store reset. One PRF prompt
+  // against the recorded credential re-derives the fee-payer; the address and
+  // public key come straight from that copy — no breadcrumbs required. Write
+  // the breadcrumbs afterwards so a genuinely fresh device works next time.
+  const [sdkAddress, sdkKeyId, sdkPubKey] = await Promise.all([
+    AsyncStorage.getItem(SDK_ADDRESS).catch(() => null),
+    AsyncStorage.getItem(SDK_KEY_ID).catch(() => null),
+    AsyncStorage.getItem(SDK_PUBLIC_KEY).catch(() => null),
+  ]);
+  if (sdkAddress && sdkKeyId) {
+    const prf = await nativePrfEvaluator(sdkKeyId)(FEE_PAYER_PRF_SALT);
+    if (prf && prf.length >= 32) {
+      const feePayer = Keypair.fromRawEd25519Seed(Buffer.from(prf.subarray(0, 32)));
+      await Promise.all([
+        setWalletAddress(sdkAddress),
+        setSignerSecret(feePayer.secret()),
+        sdkPubKey ? setPasskeyCredential(sdkKeyId, sdkPubKey) : setPasskeyId(sdkKeyId),
+      ]);
+      const pkBytes = sdkPubKey && /^[0-9a-fA-F]{130}$/.test(sdkPubKey) ? new Uint8Array(Buffer.from(sdkPubKey, 'hex')) : null;
+      void writeBreadcrumbs(feePayer.secret(), sdkAddress, pkBytes).catch(() => undefined);
+      return { address: sdkAddress, source: 'recovered' };
+    }
+    // PRF unavailable / cancelled — fall through to the discoverable flow,
+    // which reports its own clearer errors.
   }
 
   // ── Fresh-device recovery ──────────────────────────────────────────────────
