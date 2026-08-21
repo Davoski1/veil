@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Horizon } from '@stellar/stellar-sdk';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { TokenIcon } from './TokenIcon';
@@ -9,68 +8,17 @@ import { useCurrency } from '../hooks/useCurrency';
 import { useHiddenAmounts } from '../hooks/useHiddenAmounts';
 import type { ThemeColors } from '../lib/theme';
 import { fontFamily } from '../theme/typography';
-import { getNetwork } from '../lib/network';
-import { fetchPrice, usdValue } from '../lib/fetchPrice';
-
-type Holding = {
-  code: string;
-  name: string;
-  issuer: string | null;
-  balance: string;
-  usd: number | null;
-};
-
-/** Display name for well-known assets; falls back to the code. */
-const ASSET_NAMES: Record<string, string> = {
-  XLM: 'Lumens',
-  USDC: 'USD Coin',
-};
-
-function isAccountNotFound(err: unknown): boolean {
-  const e = err as { name?: string; response?: { status?: number } };
-  return e?.name === 'NotFoundError' || e?.response?.status === 404;
-}
+// The ONE holdings loader — shared with the send/swap screens. This component
+// once had its own private copy that hit Horizon with the raw (contract)
+// address and threw; keep the implementations unified or the dashboard and the
+// flow screens will disagree again.
+import { loadHoldings, type Holding } from '../lib/holdings';
 
 /** Trim a raw balance to at most 4 decimals, grouped. */
 function fmtAmount(raw: string): string {
   const n = Number(raw);
   if (!isFinite(n)) return raw;
   return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
-}
-
-async function loadHoldings(address: string): Promise<Holding[]> {
-  const server = new Horizon.Server(getNetwork().horizonUrl);
-  let balances: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string; balance: string }>;
-  try {
-    const account = await server.loadAccount(address);
-    balances = account.balances as typeof balances;
-  } catch (err) {
-    if (isAccountNotFound(err)) return [];
-    throw err;
-  }
-
-  // Native XLM first, then classic assets. Pool shares are skipped.
-  const rows: Array<{ code: string; issuer: string | null; balance: string }> = [];
-  for (const b of balances) {
-    if (b.asset_type === 'native') rows.unshift({ code: 'XLM', issuer: null, balance: b.balance });
-    else if ((b.asset_type === 'credit_alphanum4' || b.asset_type === 'credit_alphanum12') && b.asset_code) {
-      rows.push({ code: b.asset_code, issuer: b.asset_issuer ?? null, balance: b.balance });
-    }
-  }
-
-  // Price each holding (best-effort, in parallel).
-  return Promise.all(
-    rows.map(async (r): Promise<Holding> => {
-      const price = await fetchPrice(r.code, r.issuer);
-      return {
-        code: r.code,
-        name: ASSET_NAMES[r.code] ?? r.code,
-        issuer: r.issuer,
-        balance: r.balance,
-        usd: usdValue(r.balance, price),
-      };
-    }),
-  );
 }
 
 /**
@@ -112,7 +60,7 @@ export function AssetsList({
       // different, independently-working path) rather than showing nothing.
       if (fallbackXlm) {
         setHoldings([
-          { code: 'XLM', name: 'Lumens', issuer: null, balance: fallbackXlm, usd: fallbackUsd },
+          { code: 'XLM', name: 'Lumens', issuer: null, balance: fallbackXlm, usd: fallbackUsd, native: true },
         ]);
         setLoadError(false);
       } else {
