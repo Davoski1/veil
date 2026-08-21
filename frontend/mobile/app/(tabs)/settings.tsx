@@ -64,22 +64,33 @@ export default function SettingsScreen() {
       Alert.alert('No wallet', 'Create a wallet first.');
       return;
     }
-    // Friendbot only creates classic G-accounts. For a smart (C…) wallet the
-    // spendable side is the fee-payer G-account — fund that instead.
-    let target = address;
+    // Smart (C…) wallet: fund BOTH sides — the fee-payer G-account (classic
+    // spends + fees) and the contract itself (Friendbot supports contract
+    // addresses via SAC transfer; contract funds exercise __check_auth).
     if (address.startsWith('C')) {
       const feePayer = await getFeePayerAddress();
       if (!feePayer) {
         Alert.alert('No fee-payer key', 'This wallet has no fee-payer key on the device.');
         return;
       }
-      target = feePayer;
+      const [fpOk, cOk] = await Promise.all([fundWithFriendbot(feePayer), fundWithFriendbot(address)]);
+      Alert.alert(
+        fpOk || cOk ? 'Funded' : 'Funding failed',
+        fpOk && cOk
+          ? 'Test XLM sent to your fee-payer and your smart wallet.'
+          : fpOk
+            ? 'Fee-payer funded; the smart wallet top-up was rejected (it may be rate-limited).'
+            : cOk
+              ? 'Smart wallet funded; the fee-payer top-up was rejected (it may be rate-limited).'
+              : 'Friendbot rejected both requests. Try again in a moment.',
+      );
+      return;
     }
-    const ok = await fundWithFriendbot(target);
+    const ok = await fundWithFriendbot(address);
     Alert.alert(
       ok ? 'Funded' : 'Funding failed',
       ok
-        ? `Test XLM is on its way to ${target.slice(0, 4)}…${target.slice(-4)}.`
+        ? `Test XLM is on its way to ${address.slice(0, 4)}…${address.slice(-4)}.`
         : 'Friendbot rejected the request. Try again in a moment.',
     );
   };

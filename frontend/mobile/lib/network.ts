@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Networks } from '@stellar/stellar-sdk';
 import type { WalletConfig } from '@veil/sdk';
 
-import { getRelyingPartyId } from './relyingParty';
+import { getRelyingPartyId, getWebAuthnOrigin } from './relyingParty';
 
 export type VeilNetworkName = 'testnet' | 'mainnet';
 
@@ -221,4 +221,8 @@ export const walletConfig: WalletConfig = {
   // Required on React Native: there is no window.location to infer the
   // relying party from, and 'localhost' would fail domain association.
   rpId: getRelyingPartyId(),
+  // Also required on RN: the SDK would default deploy() to `https://${rpId}`,
+  // but native assertions carry the android:apk-key-hash origin — a wallet
+  // deployed with the web origin rejects every native __check_auth (#9).
+  origin: getWebAuthnOrigin(),
 };
