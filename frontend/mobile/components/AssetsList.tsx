@@ -78,7 +78,17 @@ async function loadHoldings(address: string): Promise<Holding[]> {
  * a token badge, name, on-chain balance, and its value in the user's currency.
  * Mirrors the assets list every consumer wallet shows under the balance.
  */
-export function AssetsList({ address }: { address: string | null }) {
+export function AssetsList({
+  address,
+  fallbackXlm = null,
+  fallbackUsd = null,
+}: {
+  address: string | null;
+  /** Dashboard's own XLM figure — shown as the XLM row if holdings can't load. */
+  fallbackXlm?: string | null;
+  /** USD value of that fallback balance. */
+  fallbackUsd?: number | null;
+}) {
   const router = useRouter();
   const { colors } = useTheme();
   const { format } = useCurrency();
@@ -98,10 +108,19 @@ export function AssetsList({ address }: { address: string | null }) {
       setLoadError(false);
     } catch (err) {
       console.warn('[assets] loadHoldings failed:', err instanceof Error ? `${err.name}: ${err.message}` : err);
-      setHoldings([]);
-      setLoadError(true);
+      // Fall back to the dashboard's own balance figure (fetched through a
+      // different, independently-working path) rather than showing nothing.
+      if (fallbackXlm) {
+        setHoldings([
+          { code: 'XLM', name: 'Lumens', issuer: null, balance: fallbackXlm, usd: fallbackUsd, native: true },
+        ]);
+        setLoadError(false);
+      } else {
+        setHoldings([]);
+        setLoadError(true);
+      }
     }
-  }, [address]);
+  }, [address, fallbackXlm, fallbackUsd]);
 
   useEffect(() => {
     void load();

@@ -161,7 +161,11 @@ export default function DashboardTab() {
 
       <PayForGrid />
 
-      <AssetsList address={walletAddress} />
+      <AssetsList
+        address={walletAddress}
+        fallbackXlm={balance === '—' ? null : balance}
+        fallbackUsd={usd}
+      />
 
       {/* Activity feed — 3 most recent, full history on the transactions page */}
       <View style={styles.sectionHeader}>
