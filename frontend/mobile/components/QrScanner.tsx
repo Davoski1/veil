@@ -325,6 +325,16 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   bottomSheet: {
+    // The camera fills the screen absolutely, so this must be pinned to the
+    // bottom explicitly — as a flow child it would land at the TOP of the
+    // container (over the header), which is exactly the bug it had.
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(11,11,15,0.96)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 16,

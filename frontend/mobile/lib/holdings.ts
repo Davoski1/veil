@@ -55,12 +55,13 @@ export async function loadHoldings(address: string): Promise<Holding[]> {
     const account = await server.loadAccount(effective);
     balances = account.balances as typeof balances;
   } catch (err) {
-    if (isAccountNotFound(err)) {
-      balances = contractExtraXlm > 0 ? [{ asset_type: 'native', balance: '0' }] : [];
-      if (balances.length === 0) return [];
-    } else {
-      throw err;
+    if (!isAccountNotFound(err)) {
+      console.warn('[holdings] loadAccount failed:', err instanceof Error ? `${err.name}: ${err.message}` : err);
     }
+    // Unfunded (or unreachable) classic account: degrade to whatever the
+    // contract itself holds rather than reporting "no assets".
+    balances = contractExtraXlm > 0 ? [{ asset_type: 'native', balance: '0' }] : [];
+    if (balances.length === 0) return [];
   }
 
   const rows: Array<{ code: string; issuer: string | null; balance: string; native: boolean }> = [];

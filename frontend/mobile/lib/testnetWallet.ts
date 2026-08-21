@@ -16,8 +16,14 @@ export async function fundWithFriendbot(address: string): Promise<boolean> {
   if (!friendbotUrl) return false; // mainnet has no faucet
   try {
     const res = await fetch(`${friendbotUrl}?addr=${encodeURIComponent(address)}`);
-    // Friendbot answers 400 if the account already exists — treat as funded.
-    return res.ok || res.status === 400;
+    if (res.ok) return true;
+    if (res.status === 400) {
+      // 400 covers BOTH "already funded" (fine) and "invalid request" (e.g. a
+      // C-address, which Friendbot can't create). Only the former is a success.
+      const body = await res.text().catch(() => '');
+      return /already.*(fund|exist)|createAccountAlreadyExist/i.test(body);
+    }
+    return false;
   } catch {
     return false;
   }

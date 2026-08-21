@@ -137,7 +137,14 @@ export default function SendScreen() {
       setHash(result.hash);
       setStep('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const raw = err instanceof Error ? err.message : String(err);
+      const name = err instanceof Error ? err.name : '';
+      // Horizon's 404 for the source account surfaces as a bare "Not found".
+      const friendly =
+        name === 'NotFoundError' || /^not found$/i.test(raw.trim())
+          ? 'Your fee-payer account has no XLM yet. Open Settings → Fund test XLM, then try again.'
+          : raw;
+      setError(friendly);
       setStep('error');
     }
   };

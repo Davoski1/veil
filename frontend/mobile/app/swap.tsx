@@ -203,7 +203,14 @@ export default function SwapScreen() {
       setStep('done');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setExecError(msg === 'USER_REJECTED' ? 'Signing was declined.' : msg);
+      const name = err instanceof Error ? err.name : '';
+      const friendly =
+        name === 'NotFoundError' || /^not found$/i.test(msg.trim())
+          ? 'Your fee-payer account has no XLM yet. Open Settings → Fund test XLM, then try again.'
+          : msg === 'USER_REJECTED'
+            ? 'Signing was declined.'
+            : msg;
+      setExecError(friendly);
       setStep('error');
     }
   }

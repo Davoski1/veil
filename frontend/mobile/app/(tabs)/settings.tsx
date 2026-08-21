@@ -10,6 +10,7 @@ import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
 import { getNetwork } from '../../lib/network';
 import { getWalletAddress, clearWalletStore } from '../../lib/walletStore';
+import { getFeePayerAddress } from '../../lib/activity';
 import { fundWithFriendbot } from '../../lib/testnetWallet';
 
 type Row = {
@@ -63,8 +64,24 @@ export default function SettingsScreen() {
       Alert.alert('No wallet', 'Create a wallet first.');
       return;
     }
-    const ok = await fundWithFriendbot(address);
-    Alert.alert(ok ? 'Funded' : 'Friendbot busy', ok ? 'Test XLM is on its way to your wallet.' : 'Try again in a moment.');
+    // Friendbot only creates classic G-accounts. For a smart (C…) wallet the
+    // spendable side is the fee-payer G-account — fund that instead.
+    let target = address;
+    if (address.startsWith('C')) {
+      const feePayer = await getFeePayerAddress();
+      if (!feePayer) {
+        Alert.alert('No fee-payer key', 'This wallet has no fee-payer key on the device.');
+        return;
+      }
+      target = feePayer;
+    }
+    const ok = await fundWithFriendbot(target);
+    Alert.alert(
+      ok ? 'Funded' : 'Funding failed',
+      ok
+        ? `Test XLM is on its way to ${target.slice(0, 4)}…${target.slice(-4)}.`
+        : 'Friendbot rejected the request. Try again in a moment.',
+    );
   };
   const resetWallet = () => {
     Alert.alert(
