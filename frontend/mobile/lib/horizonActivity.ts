@@ -1,6 +1,7 @@
-import { Horizon } from '@stellar/stellar-sdk';
+import { Horizon, StrKey } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
+import { getFeePayerAddress } from './activity';
 import type { TxRecord } from './activityFeed';
 
 /** Trim a Horizon amount ("2500.0000000") to a clean grouped number. */
@@ -20,10 +21,19 @@ function assetOf(type: string | undefined, code: string | undefined): string {
  * Maps payments, account creations, and path-payments to the shared TxRecord.
  */
 export async function loadHorizonActivity(address: string, limit = 25): Promise<TxRecord[]> {
+  // Contract wallets have no Horizon history of their own — classic activity
+  // happens on the fee-payer G-account.
+  let account = address;
+  if (StrKey.isValidContract(address)) {
+    const feePayer = await getFeePayerAddress();
+    if (!feePayer) return [];
+    account = feePayer;
+  }
+
   const server = new Horizon.Server(getNetwork().horizonUrl);
   let records: Array<Record<string, unknown>>;
   try {
-    const page = await server.payments().forAccount(address).order('desc').limit(limit).call();
+    const page = await server.payments().forAccount(account).order('desc').limit(limit).call();
     records = page.records as unknown as Array<Record<string, unknown>>;
   } catch {
     return [];
@@ -38,7 +48,7 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
     const timestamp = createdAt ? Math.floor(new Date(createdAt).getTime() / 1000) : 0;
 
     if (type === 'payment') {
-      const sent = r['from'] === address;
+      const sent = r['from'] === account;
       out.push({
         id,
         type: sent ? 'sent' : 'received',
@@ -49,7 +59,7 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
         hash,
       });
     } else if (type === 'create_account') {
-      const sent = r['funder'] === address;
+      const sent = r['funder'] === account;
       out.push({
         id,
         type: sent ? 'sent' : 'received',
@@ -60,7 +70,7 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
         hash,
       });
     } else if (type.startsWith('path_payment')) {
-      const sent = r['from'] === address;
+      const sent = r['from'] === account;
       out.push({
         id,
         type: 'swapped',

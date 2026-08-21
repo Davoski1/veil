@@ -1,7 +1,8 @@
-import { Horizon } from '@stellar/stellar-sdk';
+import { Horizon, StrKey } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
 import { fetchPrice, usdValue } from './fetchPrice';
+import { fetchContractXlm, getFeePayerAddress } from './activity';
 
 export type Holding = {
   code: string;
@@ -33,18 +34,41 @@ function isAccountNotFound(err: unknown): boolean {
 export async function loadHoldings(address: string): Promise<Holding[]> {
   const server = new Horizon.Server(getNetwork().horizonUrl);
   let balances: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string; balance: string }>;
+
+  // A smart (contract) wallet has no Horizon account: read its native XLM over
+  // Soroban RPC and combine it with the fee-payer G-account, whose classic
+  // balances (Friendbot XLM, trustlines) are the spendable side.
+  let contractExtraXlm = 0;
+  let effective = address;
+  if (StrKey.isValidContract(address)) {
+    contractExtraXlm = await fetchContractXlm(address);
+    const feePayer = await getFeePayerAddress();
+    if (!feePayer) {
+      return contractExtraXlm > 0
+        ? [{ code: 'XLM', name: ASSET_NAMES['XLM']!, issuer: null, balance: contractExtraXlm.toFixed(7), usd: null, native: true }]
+        : [];
+    }
+    effective = feePayer;
+  }
+
   try {
-    const account = await server.loadAccount(address);
+    const account = await server.loadAccount(effective);
     balances = account.balances as typeof balances;
   } catch (err) {
-    if (isAccountNotFound(err)) return [];
-    throw err;
+    if (isAccountNotFound(err)) {
+      balances = contractExtraXlm > 0 ? [{ asset_type: 'native', balance: '0' }] : [];
+      if (balances.length === 0) return [];
+    } else {
+      throw err;
+    }
   }
 
   const rows: Array<{ code: string; issuer: string | null; balance: string; native: boolean }> = [];
   for (const b of balances) {
-    if (b.asset_type === 'native') rows.unshift({ code: 'XLM', issuer: null, balance: b.balance, native: true });
-    else if ((b.asset_type === 'credit_alphanum4' || b.asset_type === 'credit_alphanum12') && b.asset_code) {
+    if (b.asset_type === 'native') {
+      const total = Number(b.balance) + contractExtraXlm;
+      rows.unshift({ code: 'XLM', issuer: null, balance: total.toFixed(7), native: true });
+    } else if ((b.asset_type === 'credit_alphanum4' || b.asset_type === 'credit_alphanum12') && b.asset_code) {
       rows.push({ code: b.asset_code, issuer: b.asset_issuer ?? null, balance: b.balance, native: false });
     }
   }

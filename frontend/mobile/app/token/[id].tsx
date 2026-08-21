@@ -12,9 +12,12 @@ import { FlowHeader } from '../../components/FlowHeader';
 import { TokenIcon } from '../../components/TokenIcon';
 import { PaperPlaneIcon, ReceiveIcon, SwapIcon, type IconProps } from '../../components/icons';
 import { truncateAddress } from '../../components/ui/AddressChip';
+import { StrKey } from '@stellar/stellar-sdk';
+
 import { fetchPrice } from '../../lib/price';
 import { fetchTokenDetail, parseAssetId, type TokenActivity, type TokenDetail } from '../../lib/token';
 import { getWalletAddress } from '../../lib/walletStore';
+import { fetchContractXlm, getFeePayerAddress } from '../../lib/activity';
 
 const NAMES: Record<string, string> = { XLM: 'Stellar Lumens', USDC: 'USD Coin', EURC: 'Euro Coin' };
 
@@ -41,16 +44,23 @@ export default function TokenDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      const address = await getWalletAddress();
-      if (!address) {
+      const stored = await getWalletAddress();
+      if (!stored) {
         setDetail(null);
         return;
       }
-      const [d, p] = await Promise.all([
-        fetchTokenDetail(address, asset.code, asset.issuer),
+      // Smart wallets: classic history/trustlines live on the fee-payer, and
+      // the contract's own XLM (via SAC) is folded into the XLM balance.
+      const isContract = StrKey.isValidContract(stored);
+      const effective = isContract ? await getFeePayerAddress() : stored;
+      const [d, p, extraXlm] = await Promise.all([
+        effective
+          ? fetchTokenDetail(effective, asset.code, asset.issuer)
+          : Promise.resolve({ code: asset.code, issuer: asset.issuer, balance: '0', activity: [] as TokenActivity[] }),
         fetchPrice(asset.code, asset.issuer),
+        isContract && asset.code === 'XLM' ? fetchContractXlm(stored) : Promise.resolve(0),
       ]);
-      setDetail(d);
+      setDetail(extraXlm > 0 ? { ...d, balance: (Number(d.balance) + extraXlm).toFixed(7) } : d);
       setPrice(p);
     } catch {
       // leave last-known
