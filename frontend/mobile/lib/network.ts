@@ -65,7 +65,11 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     networkPassphrase: Networks.PUBLIC,
     horizonUrl: process.env['EXPO_PUBLIC_MAINNET_HORIZON_URL']?.trim() || 'https://horizon.stellar.org',
     rpcUrl: process.env['EXPO_PUBLIC_MAINNET_RPC_URL']?.trim() || '',
-    factoryContractId: process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_MAINNET']?.trim() || '',
+    factoryContractId:
+      process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_MAINNET']?.trim() ||
+      // Deployed 2026-08-21; wallet WASM hash b485f817… matches
+      // contracts/expected-hashes.json (canonical reproducible build).
+      'CCZ3JLRESNLDADGXWNEH4YQ4NXUUAHRJNCWZHYG6QB4KTDYHOH6OQ7BK',
     friendbotUrl: null,
   },
 };

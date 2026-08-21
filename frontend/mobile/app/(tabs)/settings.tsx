@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -8,7 +8,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { CURRENCIES, CURRENCY_CODES } from '../../lib/currency';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
-import { getNetwork } from '../../lib/network';
+import { getNetwork, getNetworkName, setNetwork, subscribeToNetwork } from '../../lib/network';
 import { getWalletAddress, clearWalletStore } from '../../lib/walletStore';
 import { getFeePayerAddress } from '../../lib/activity';
 import { fundWithFriendbot } from '../../lib/testnetWallet';
@@ -19,6 +19,8 @@ type Row = {
   subtitle: string;
   value?: string;
   onPress: () => void;
+  /** Render a Switch on the right instead of value/chevron. */
+  switch?: { value: boolean; onChange: (v: boolean) => void };
 };
 
 export default function SettingsScreen() {
@@ -52,12 +54,43 @@ export default function SettingsScreen() {
     { key: 'lock', title: 'Security & lock', subtitle: 'Auto-lock after inactivity', onPress: () => router.push('/settings/security') },
   ];
 
+  // Live network name (re-renders when the override changes).
+  const networkName = useSyncExternalStore(subscribeToNetwork, getNetworkName, getNetworkName);
+  const onTestnet = networkName === 'testnet';
+
+  const handleNetworkToggle = (toMainnet: boolean) => {
+    const target = toMainnet ? 'mainnet' : 'testnet';
+    Alert.alert(
+      toMainnet ? 'Switch to Mainnet?' : 'Switch to Testnet?',
+      toMainnet
+        ? 'Mainnet uses REAL funds. Your wallet, balances, and history are separate per network. Fully close and reopen the app after switching so every connection uses the new network.'
+        : 'Back to test funds. Fully close and reopen the app after switching.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          style: toMainnet ? 'destructive' : 'default',
+          onPress: () => {
+            void setNetwork(target).then(() =>
+              Alert.alert('Network switched', `Now on ${target}. Close and reopen the app to finish.`),
+            );
+          },
+        },
+      ],
+    );
+  };
+
   const general: Row[] = [
+    {
+      key: 'network',
+      title: 'Mainnet',
+      subtitle: onTestnet ? 'Off — using Stellar testnet (test funds)' : 'On — REAL funds on Stellar mainnet',
+      onPress: () => handleNetworkToggle(onTestnet),
+      switch: { value: !onTestnet, onChange: (v) => handleNetworkToggle(v) },
+    },
     { key: 'contacts', title: 'Address book', subtitle: 'Saved recipients and labels', onPress: () => router.push('/contacts') },
     { key: 'about', title: 'About', subtitle: 'Version, licenses, and support', onPress: () => {} },
   ];
-
-  const onTestnet = getNetwork().name === 'testnet';
   const fundTestXlm = async () => {
     const address = await getWalletAddress();
     if (!address) {
@@ -131,8 +164,19 @@ export default function SettingsScreen() {
               <Text style={styles.rowTitle}>{row.title}</Text>
               <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
             </View>
-            {row.value ? <Text style={styles.rowValue}>{row.value}</Text> : null}
-            <Text style={styles.chevron}>›</Text>
+            {row.switch ? (
+              <Switch
+                value={row.switch.value}
+                onValueChange={row.switch.onChange}
+                trackColor={{ false: colors.surfaceMd, true: 'rgba(253,218,36,0.45)' }}
+                thumbColor={row.switch.value ? colors.accent : colors.textFaint}
+              />
+            ) : (
+              <>
+                {row.value ? <Text style={styles.rowValue}>{row.value}</Text> : null}
+                <Text style={styles.chevron}>›</Text>
+              </>
+            )}
           </Pressable>
         ))}
       </View>
