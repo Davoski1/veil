@@ -14,6 +14,7 @@ import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQ
 import { getSdexQuote, sdexSwap, sdexSupported } from '../lib/sdexSwap';
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
+import { requirePasskey } from '../lib/passkey';
 import { getWalletAddress, getSignerSecret } from '../lib/walletStore';
 import { loadHoldings, type Holding } from '../lib/holdings';
 
@@ -151,6 +152,8 @@ export default function SwapScreen() {
     setStep('signing');
     try {
       const parsed = parseFloat(amountIn);
+      // Presence gate: when a passkey is registered, spending demands it.
+      await requirePasskey();
       const signerSecret = await getSignerSecret();
       if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
 

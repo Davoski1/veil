@@ -123,12 +123,32 @@ export function registerPasskeySigner(): () => void {
  * Throws when the sheet is dismissed, so a caller can abort rather than sign.
  */
 export async function requirePasskey(): Promise<void> {
-  // Testnet keypair mode: a stored signer secret authorises transactions
-  // directly, so there is no passkey to assert against — skip the gate.
-  if (await getSignerSecret()) return;
-  const challenge = Crypto.getRandomBytes(32);
-  const assertion = await signPayloadWithPasskey(challenge);
-  if (!assertion) throw new Error('Passkey cancelled. Please try again.');
+  const keyId = await getPasskeyId();
+
+  if (!keyId) {
+    // Plain testnet-keypair mode (no passkey registered): the stored signer
+    // secret authorises directly — nothing to assert against.
+    if (await getSignerSecret()) return;
+    throw new Error('No passkey found on this device. Register the wallet first.');
+  }
+
+  // A passkey exists → every sensitive action demands user presence, even
+  // though the classic transaction is signed by the fee-payer keypair. The
+  // assertion is over a fresh random challenge (presence gate, not an
+  // on-chain signature), so it needs only the credential id.
+  try {
+    const assertion = await passkeys().get({
+      challenge: uint8ArrayToBase64Url(Crypto.getRandomBytes(32)),
+      rpId: getRelyingPartyId(),
+      allowCredentials: [{ id: keyId, type: 'public-key' }],
+      userVerification: 'required',
+      timeout: 60_000,
+    });
+    if (!assertion) throw new Error('Passkey cancelled. Please try again.');
+  } catch (error: unknown) {
+    if (isUserRejection(error)) throw new Error('Passkey cancelled. Please try again.');
+    throw error;
+  }
 }
 
 /**

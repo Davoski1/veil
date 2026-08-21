@@ -144,14 +144,29 @@ export async function fetchDashboardData(publicKey: string): Promise<DashboardDa
   }
 }
 
+// Cached after the first successful read: Android's keystore intermittently
+// fails CONCURRENT SecureStore reads, and the dashboard + assets list + feed
+// all resolve the fee-payer at the same moment on mount. The cache makes one
+// successful read serve everyone; cleared implicitly on app restart.
+let cachedFeePayer: string | null = null;
+
 /** The stored fee-payer's classic address, or null when none is stored. */
 export async function getFeePayerAddress(): Promise<string | null> {
-  try {
-    const secret = await getSignerSecret();
-    return secret ? Keypair.fromSecret(secret).publicKey() : null;
-  } catch {
-    return null;
+  if (cachedFeePayer) return cachedFeePayer;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const secret = await getSignerSecret();
+      if (secret) {
+        cachedFeePayer = Keypair.fromSecret(secret).publicKey();
+        return cachedFeePayer;
+      }
+      return null; // a clean "nothing stored" — don't retry
+    } catch {
+      // keystore contention — brief pause, then one retry
+      await new Promise((r) => setTimeout(r, 150));
+    }
   }
+  return null;
 }
 
 /** Native XLM held by a contract address, in XLM (not stroops). 0 when empty. */

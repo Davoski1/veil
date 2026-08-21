@@ -14,6 +14,7 @@ import { ContactPicker } from '../components/ContactPicker';
 import { QrScanner } from '../components/QrScanner';
 import type { Contact } from '../hooks/useContacts';
 import { requireSigner } from '../lib/signer';
+import { requirePasskey } from '../lib/passkey';
 import { sendPayment } from '../lib/sendPayment';
 import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
@@ -125,6 +126,8 @@ export default function SendScreen() {
     setError(null);
     try {
       setStep('authorizing');
+      // Presence gate: when a passkey is registered, spending demands it.
+      await requirePasskey();
       const signer = await requireSigner();
       setStep('submitting');
       const result = await sendPayment(

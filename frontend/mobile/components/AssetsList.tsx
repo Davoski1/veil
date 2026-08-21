@@ -86,6 +86,7 @@ export function AssetsList({ address }: { address: string | null }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [holdings, setHoldings] = useState<Holding[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!address) {
@@ -94,8 +95,11 @@ export function AssetsList({ address }: { address: string | null }) {
     }
     try {
       setHoldings(await loadHoldings(address));
-    } catch {
+      setLoadError(false);
+    } catch (err) {
+      console.warn('[assets] loadHoldings failed:', err instanceof Error ? `${err.name}: ${err.message}` : err);
       setHoldings([]);
+      setLoadError(true);
     }
   }, [address]);
 
@@ -116,7 +120,9 @@ export function AssetsList({ address }: { address: string | null }) {
       {holdings === null ? (
         <Text style={styles.empty}>Loading…</Text>
       ) : holdings.length === 0 ? (
-        <Text style={styles.empty}>No assets yet. Fund this wallet to get started.</Text>
+        <Text style={styles.empty}>
+          {loadError ? "Couldn't load assets — pull to refresh." : 'No assets yet. Fund this wallet to get started.'}
+        </Text>
       ) : (
         holdings.map((h, i) => (
           <Pressable

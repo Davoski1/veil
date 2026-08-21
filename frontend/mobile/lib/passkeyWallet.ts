@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 
 import { nativePrfEvaluator } from './passkey';
 import { fundWithFriendbot } from './testnetWallet';
-import { setWalletAddress, setSignerSecret, setPasskeyId } from './walletStore';
+import { setWalletAddress, setSignerSecret, setPasskeyId, setPasskeyCredential } from './walletStore';
 import type { CreatedWallet } from './testnetWallet';
 
 /**
@@ -17,7 +17,13 @@ const FEE_PAYER_PRF_SALT = new Uint8Array(new TextEncoder().encode('invisible-wa
 const SDK_KEY_ID = 'invisible_wallet_key_id';
 
 /** Minimal shape of the SDK's register(); avoids importing the whole hook type. */
-type Registerable = { register: (username?: string) => Promise<{ walletAddress: string }> };
+type Registerable = {
+  register: (username?: string) => Promise<{ walletAddress: string; publicKeyBytes?: Uint8Array }>;
+};
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Create a passkey smart wallet (dev build only — needs the native passkey
@@ -37,7 +43,7 @@ type Registerable = { register: (username?: string) => Promise<{ walletAddress: 
  * mode — that's a separate milestone.
  */
 export async function createPasskeyWallet(wallet: Registerable): Promise<CreatedWallet> {
-  const { walletAddress } = await wallet.register('Veil wallet');
+  const { walletAddress, publicKeyBytes } = await wallet.register('Veil wallet');
 
   const keyId = await AsyncStorage.getItem(SDK_KEY_ID);
   let feePayer: Keypair | null = null;
@@ -54,7 +60,11 @@ export async function createPasskeyWallet(wallet: Registerable): Promise<Created
   await Promise.all([
     setWalletAddress(walletAddress),
     setSignerSecret(feePayer.secret()),
-    keyId ? setPasskeyId(keyId) : Promise.resolve(),
+    keyId && publicKeyBytes
+      ? setPasskeyCredential(keyId, toHex(publicKeyBytes))
+      : keyId
+        ? setPasskeyId(keyId)
+        : Promise.resolve(),
   ]);
 
   return { address: walletAddress, funded };
