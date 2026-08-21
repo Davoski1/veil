@@ -16,7 +16,9 @@ import type { Contact } from '../hooks/useContacts';
 import { requireSigner } from '../lib/signer';
 import { requirePasskey } from '../lib/passkey';
 import { fetchContractXlm } from '../lib/activity';
-import { sendXlmFromContract, getFeePayerSpendableXlm } from '../lib/contractSpend';
+import { sendXlmFromContract, getFeePayerSpendableXlm, isWalletDeployed } from '../lib/contractSpend';
+import { getSignerSecret } from '../lib/walletStore';
+import { useWallet } from '../components/WalletProvider';
 import { sendPayment } from '../lib/sendPayment';
 import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
@@ -52,6 +54,7 @@ export default function SendScreen() {
   const { colors, isDark } = useTheme();
   const { format } = useCurrency();
   const { mask } = useHiddenAmounts();
+  const { wallet } = useWallet();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Deep links land here prefilled: `to`, `amount`, `asset`, `memo`.
@@ -72,11 +75,25 @@ export default function SendScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Load the account's real holdings for the asset selector.
+  // Smart-wallet source: when the wallet is a C-address holding its own XLM,
+  // the user can choose to spend from the contract (a __check_auth transfer).
+  const [contractAddr, setContractAddr] = useState<string | null>(null);
+  const [contractXlm, setContractXlm] = useState(0);
+  const [fromContract, setFromContract] = useState(false);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       const address = await getWalletAddress().catch(() => null);
       if (!address) return;
+      if (address.startsWith('C')) {
+        void fetchContractXlm(address).then((x) => {
+          if (alive) {
+            setContractAddr(address);
+            setContractXlm(x);
+          }
+        });
+      }
       const hs = await loadHoldings(address).catch(() => [] as Holding[]);
       if (!alive) return;
       setHoldings(hs);
@@ -103,8 +120,16 @@ export default function SendScreen() {
   const amtNum = Number(amount);
   const nonNative = !!selected && !selected.native;
   const balanceNum = selected ? Number(selected.balance) : 0;
+  // The smart-wallet source only applies to native XLM.
+  const contractSource = fromContract && !nonNative && !!contractAddr;
   // Native sends must leave ~1.5 XLM for the base reserve + fee.
-  const spendable = selected ? (selected.native ? Math.max(0, balanceNum - 1.5) : balanceNum) : null;
+  const spendable = contractSource
+    ? contractXlm
+    : selected
+      ? selected.native
+        ? Math.max(0, balanceNum - 1.5)
+        : balanceNum
+      : null;
   const insufficient = spendable !== null && amtNum > 0 && amtNum > spendable;
   const canSubmit = recipientValid && amtNum > 0 && editable && !insufficient;
 
@@ -129,22 +154,35 @@ export default function SendScreen() {
     try {
       setStep('authorizing');
 
-      // Smart-wallet routing: when the fee-payer alone can't cover an XLM send
-      // but the contract's own balance can, transfer FROM the contract — the
-      // passkey signs the Soroban auth entry and __check_auth verifies it
-      // on-chain (the prompt for that signature IS the security gate).
+      // Smart-wallet spend: explicit "Smart wallet" source, or the automatic
+      // fallback when the fee-payer alone can't cover the amount. The transfer
+      // is FROM the contract — the passkey signs the Soroban auth entry and
+      // __check_auth verifies it on-chain (that prompt IS the security gate).
       const stored = await getWalletAddress().catch(() => null);
       if (!nonNative && stored?.startsWith('C')) {
-        const [contractXlm, fpSpendable] = await Promise.all([
+        const [liveContractXlm, fpSpendable] = await Promise.all([
           fetchContractXlm(stored),
           getFeePayerSpendableXlm(),
         ]);
-        if (amtNum > fpSpendable && amtNum <= contractXlm) {
+        const shouldUseContract =
+          (contractSource && amtNum <= liveContractXlm) ||
+          (amtNum > fpSpendable && amtNum <= liveContractXlm);
+        if (shouldUseContract) {
+          // The wallet contract must exist on-chain before __check_auth can run.
+          // Creation computed the address counterfactually — deploy lazily here.
+          if (!(await isWalletDeployed(stored))) {
+            const secret = await getSignerSecret();
+            if (!secret) throw new Error('No fee-payer key on this device to pay for deployment.');
+            await wallet.deploy(secret);
+          }
           setStep('submitting');
           const hash = await sendXlmFromContract(stored, recipient.trim(), amount);
           setHash(hash);
           setStep('done');
           return;
+        }
+        if (contractSource) {
+          throw new Error(`The smart wallet holds ${liveContractXlm.toFixed(2)} XLM — not enough for this amount.`);
         }
       }
 
@@ -235,6 +273,36 @@ export default function SendScreen() {
           <ChevronDownIcon size={18} color={colors.textFaint} />
         </Pressable>
 
+        {/* Source — only for smart wallets holding their own XLM */}
+        {contractAddr && contractXlm > 0 && !nonNative && (
+          <>
+            <Text style={styles.section}>From</Text>
+            <View style={styles.sourceRow}>
+              <Pressable
+                onPress={() => setFromContract(false)}
+                accessibilityRole="button"
+                style={[styles.sourcePill, !fromContract && styles.sourcePillActive]}
+              >
+                <Text style={[styles.sourceText, !fromContract && styles.sourceTextActive]}>Spending</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setFromContract(true)}
+                accessibilityRole="button"
+                style={[styles.sourcePill, fromContract && styles.sourcePillActive]}
+              >
+                <Text style={[styles.sourceText, fromContract && styles.sourceTextActive]}>
+                  Smart wallet · {contractXlm.toLocaleString('en-US', { maximumFractionDigits: 0 })} XLM
+                </Text>
+              </Pressable>
+            </View>
+            {fromContract && (
+              <Text style={styles.note}>
+                Spends the contract&apos;s own balance — your passkey signature is verified on-chain.
+              </Text>
+            )}
+          </>
+        )}
+
         {/* Amount */}
         <Text style={styles.section}>Amount</Text>
         <View style={[styles.card, styles.amountCard]}>
@@ -254,9 +322,12 @@ export default function SendScreen() {
           </View>
           <Text style={styles.amountFiat}>{fiatOfAmount ? `≈ ${fiatOfAmount}` : ' '}</Text>
           <Text style={[styles.balanceLine, insufficient && styles.balanceWarn]}>
-            {insufficient && selected
-              ? `Not enough ${assetCode} — you have ${mask(fmtAmount(selected.balance))}`
-              : `Balance ${selected ? `${mask(fmtAmount(selected.balance))} ${assetCode}` : '—'}`}
+            {(() => {
+              const shown = contractSource ? contractXlm.toFixed(2) : selected?.balance;
+              return insufficient && shown
+                ? `Not enough ${assetCode} — ${contractSource ? 'smart wallet has' : 'you have'} ${mask(fmtAmount(shown))}`
+                : `Balance ${shown ? `${mask(fmtAmount(shown))} ${assetCode}` : '—'}`;
+            })()}
           </Text>
           <View style={styles.chips}>
             {QUICK.map((q) => {
@@ -433,6 +504,18 @@ const createStyles = (colors: ThemeColors) =>
     chipText: { color: colors.textMuted, fontFamily: fontFamily.bodySemiBold, fontSize: 11 },
     chipTextActive: { color: colors.accent },
 
+    sourceRow: { flexDirection: 'row', gap: 8 },
+    sourcePill: {
+      flexShrink: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 100,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    sourcePillActive: { borderColor: 'rgba(253,218,36,0.4)', backgroundColor: 'rgba(253,218,36,0.08)' },
+    sourceText: { color: colors.textMuted, fontFamily: fontFamily.bodyMedium, fontSize: 12.5 },
+    sourceTextActive: { color: colors.accent },
     toInput: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.address, fontSize: 15 },
     toActions: { flexDirection: 'row', gap: 8, flexShrink: 0 },
     roundBtn: {

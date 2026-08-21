@@ -18,6 +18,7 @@ import {
   TransactionBuilder,
   nativeToScVal,
   rpc as SorobanRpc,
+  xdr,
 } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
@@ -25,6 +26,21 @@ import { registerPasskeySigner } from './passkey';
 import { signXdrPayload } from './walletConnect';
 import { pollForResult, toStroops } from './sendPayment';
 import { getFeePayerAddress } from './activity';
+
+/** Whether the wallet CONTRACT is actually deployed on-chain (vs counterfactual). */
+export async function isWalletDeployed(contractAddress: string): Promise<boolean> {
+  try {
+    const server = new SorobanRpc.Server(getNetwork().rpcUrl);
+    await server.getContractData(
+      contractAddress,
+      xdr.ScVal.scvLedgerKeyContractInstance(),
+      SorobanRpc.Durability.Persistent,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The fee-payer's spendable XLM (native balance minus ~1.5 XLM reserve+fees).
