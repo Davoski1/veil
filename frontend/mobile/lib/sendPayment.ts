@@ -146,12 +146,36 @@ export async function sendPayment(
 
   if (isClassicAddress(to)) {
     const server = new Horizon.Server(net().horizonUrl);
+
+    // A payment op can't land on an account that doesn't exist yet — first
+    // funding must be a create_account op (native only, >= the base reserve).
+    let destinationExists = true;
+    try {
+      await server.loadAccount(to);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || (err instanceof Error && err.name === 'NotFoundError')) {
+        destinationExists = false;
+      }
+      // Other errors: assume it exists and let the submit surface the truth.
+    }
+    if (!destinationExists && !sendAsset.isNative()) {
+      throw new Error('The recipient account is brand new — it must receive XLM first before it can hold other assets.');
+    }
+    if (!destinationExists && Number(amount) < 1) {
+      throw new Error('The recipient account is brand new — the first payment must be at least 1 XLM to activate it.');
+    }
+
     const account = await server.loadAccount(signer.publicKey);
     const builder = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: net().networkPassphrase,
     })
-      .addOperation(Operation.payment({ destination: to, asset: sendAsset, amount: amount.trim() }))
+      .addOperation(
+        destinationExists
+          ? Operation.payment({ destination: to, asset: sendAsset, amount: amount.trim() })
+          : Operation.createAccount({ destination: to, startingBalance: amount.trim() }),
+      )
       .setTimeout(30);
     // Classic memos: only attach for text that fits the 28-byte limit.
     if (memoText && new TextEncoder().encode(memoText).length <= 28) {
@@ -159,8 +183,17 @@ export async function sendPayment(
     }
     const tx = builder.build();
     signer.sign(tx);
-    const res = await server.submitTransaction(tx);
-    return { hash: res.hash };
+    try {
+      const res = await server.submitTransaction(tx);
+      return { hash: res.hash };
+    } catch (err) {
+      // Surface Horizon's real result codes instead of a bare axios "400".
+      const extras = (err as { response?: { data?: { extras?: { result_codes?: unknown } } } })?.response?.data?.extras;
+      if (extras?.result_codes) {
+        throw new Error(`Payment rejected: ${JSON.stringify(extras.result_codes)}`);
+      }
+      throw err;
+    }
   }
 
   // Contract (C…) recipient below. Only native XLM is wired over the SAC path.

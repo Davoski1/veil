@@ -244,7 +244,9 @@ export default function SendScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="send-screen">
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Android too: with SDK 54's edge-to-edge, adjustResize is ignored and
+          the keyboard covers focused fields without explicit avoidance. */}
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
