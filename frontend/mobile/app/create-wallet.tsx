@@ -10,6 +10,7 @@ import { fontFamily } from '../theme/typography';
 import { FlowHeader } from '../components/FlowHeader';
 import { createTestnetWallet, importTestnetWallet, type CreatedWallet } from '../lib/testnetWallet';
 import { createPasskeyWallet } from '../lib/passkeyWallet';
+import { getNetwork } from '../lib/network';
 import { useWallet } from '../components/WalletProvider';
 
 // Passkeys need the native module — unavailable in Expo Go.
@@ -61,7 +62,11 @@ export default function CreateWallet() {
             <Text style={styles.label}>Address</Text>
             <Text testID="create-wallet-address" style={styles.addr}>{shortAddr(result.address)}</Text>
             <Text style={[styles.fund, { color: result.funded ? colors.positive : colors.textMuted }]}>
-              {result.funded ? 'Funded with test XLM ✓' : 'Friendbot was busy — you can still receive funds and retry later'}
+              {result.funded
+                ? 'Funded with test XLM ✓'
+                : getNetwork().friendbotUrl
+                  ? 'Friendbot was busy — you can still receive funds and retry later'
+                  : 'Send XLM to your wallet to activate it — mainnet has no faucet'}
             </Text>
             {result.recoverable === false && (
               <Text style={[styles.fund, { color: colors.danger }]}>
@@ -92,7 +97,9 @@ export default function CreateWallet() {
         <Text style={styles.caption}>
           {IN_EXPO_GO
             ? "Spin up a testnet wallet to try Veil end-to-end. It's a real Stellar account, funded with test XLM — no seed phrase to write down."
-            : 'Create a passkey smart wallet (a C-address secured by your Face ID / fingerprint, with a PRF-derived fee-payer), or use a plain testnet keypair. Both fund automatically.'}
+            : getNetwork().friendbotUrl
+              ? 'Create a passkey smart wallet (a C-address secured by your Face ID / fingerprint, with a PRF-derived fee-payer), or use a plain testnet keypair. Both fund automatically.'
+              : 'Create a passkey smart wallet secured by your Face ID / fingerprint. This is MAINNET — fund it afterwards by sending real XLM to your wallet.'}
         </Text>
 
         {importing ? (
@@ -150,7 +157,11 @@ export default function CreateWallet() {
                 <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={IN_EXPO_GO ? styles.ctaText : styles.ctaSecondaryText}>
-                  {IN_EXPO_GO ? 'Create testnet wallet' : 'Use a testnet keypair instead'}
+                  {IN_EXPO_GO
+                    ? 'Create testnet wallet'
+                    : getNetwork().friendbotUrl
+                      ? 'Use a testnet keypair instead'
+                      : 'Use a classic keypair instead'}
                 </Text>
               )}
             </Pressable>
