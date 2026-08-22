@@ -34,7 +34,13 @@ const WRAITH_URL =
 
 // Last-known balance/price survive remounts (e.g. returning from the lock
 // screen), so the card paints instantly instead of flashing a loading state.
-const lastKnown: { balance: string; price: number | null } = { balance: '—', price: null };
+// Scoped to the wallet ADDRESS: after a reset/new wallet the old figures must
+// never paint under the new address.
+const lastKnown: { address: string | null; balance: string; price: number | null } = {
+  address: null,
+  balance: '—',
+  price: null,
+};
 
 /**
  * Dashboard tab — primary destination after unlock.
@@ -90,6 +96,17 @@ export default function DashboardTab() {
       .then((addr) => {
         setWalletAddress(addr);
         if (addr) {
+          // Different wallet than the cached one (reset / fresh create / login):
+          // drop every carried-over figure before fetching, so the new wallet
+          // never paints the old wallet's data.
+          if (lastKnown.address !== addr) {
+            lastKnown.address = addr;
+            lastKnown.balance = '—';
+            lastKnown.price = null;
+            setBalance('—');
+            setPrice(null);
+            hydrateActivityFeed([]);
+          }
           void refreshAll(addr);
           // Backfill the on-chain sign-in record for wallets created before
           // breadcrumbs existed (idempotent, once per session, best-effort).
