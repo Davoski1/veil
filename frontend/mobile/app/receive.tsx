@@ -11,6 +11,7 @@ import type { ThemeColors } from '../lib/theme';
 import { fontFamily } from '../theme/typography';
 import { FlowHeader } from '../components/FlowHeader';
 import { getWalletAddress } from '../lib/walletStore';
+import { getFeePayerAddress } from '../lib/activity';
 import { buildSep7PayUri } from '../lib/sep7';
 import { CopyIcon, DownloadIcon, HexagonIcon, ShareIcon } from '../components/icons';
 
@@ -28,14 +29,26 @@ export default function ReceiveScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [address, setAddress] = useState<string>(FALLBACK);
+  const [feePayer, setFeePayer] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedFp, setCopiedFp] = useState(false);
   const qrRef = useRef<QRRef>(null);
 
   useEffect(() => {
     getWalletAddress()
       .then((a) => a && setAddress(a))
       .catch(() => undefined);
+    getFeePayerAddress()
+      .then((fp) => setFeePayer(fp))
+      .catch(() => undefined);
   }, []);
+
+  async function handleCopyFeePayer() {
+    if (!feePayer) return;
+    await Clipboard.setStringAsync(feePayer);
+    setCopiedFp(true);
+    setTimeout(() => setCopiedFp(false), 1200);
+  }
 
   const payUri = buildSep7PayUri({ destination: address });
   const isContract = address.startsWith('C');
@@ -129,6 +142,24 @@ export default function ReceiveScreen() {
             <CopyIcon size={14} color={colors.textSecondary} />
           </View>
         </Pressable>
+
+        {/* Fee-payer — the classic account that receives bank-style G→G payments
+            and pays fees. Shown so it can be funded directly. */}
+        {feePayer && address.startsWith('C') && (
+          <Pressable onPress={handleCopyFeePayer} style={({ pressed }) => [styles.card, styles.contractRow, pressed && styles.pressed]}>
+            <View style={styles.contractLeft}>
+              <View style={styles.hexBadge}>
+                <CopyIcon size={14} color={colors.lilac} />
+              </View>
+              <View style={{ flexShrink: 1 }}>
+                <Text style={styles.contractTitle}>Spending account</Text>
+                <Text style={styles.contractSub} numberOfLines={1}>
+                  {shorten(feePayer, 6, 6)} · {copiedFp ? 'copied' : 'classic G — tap to copy'}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        )}
 
         <Text style={styles.caption}>Incoming funds start earning automatically.</Text>
       </View>
