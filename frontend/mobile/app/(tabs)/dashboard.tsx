@@ -66,8 +66,8 @@ export default function DashboardTab() {
 
   const onTestnet = getNetwork().name === 'testnet';
 
-  // Refetch balance + price, and (on testnet) rebuild the activity feed from
-  // Horizon — the Wraith indexer doesn't cover testnet accounts.
+  // Refetch balance + price and rebuild the activity feed from Horizon + SAC
+  // events — on EVERY network (Wraith, when configured, only supplements).
   const refreshAll = useCallback(
     async (addr: string) => {
       try {
@@ -79,15 +79,13 @@ export default function DashboardTab() {
       } catch {
         // keep the last-known values
       }
-      if (onTestnet) {
-        try {
-          hydrateActivityFeed(await loadHorizonActivity(addr));
-        } catch {
-          // activity stays as-is
-        }
+      try {
+        hydrateActivityFeed(await loadHorizonActivity(addr));
+      } catch {
+        // activity stays as-is
       }
     },
-    [onTestnet],
+    [],
   );
 
   // Load the wallet address, then its balance / price / activity on mount.

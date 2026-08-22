@@ -19,24 +19,20 @@ import { getNetwork } from '../lib/network';
 export default function TransactionsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const onTestnet = getNetwork().name === 'testnet';
-
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (onTestnet) {
-      const addr = await getWalletAddress().catch(() => null);
-      if (addr) {
-        try {
-          hydrateActivityFeed(await loadHorizonActivity(addr, 100));
-        } catch {
-          // keep whatever is in the store
-        }
+    const addr = await getWalletAddress().catch(() => null);
+    if (addr) {
+      try {
+        hydrateActivityFeed(await loadHorizonActivity(addr, 100));
+      } catch {
+        // keep whatever is in the store
       }
     }
     setLoading(false);
-  }, [onTestnet]);
+  }, []);
 
   useEffect(() => {
     void load();
