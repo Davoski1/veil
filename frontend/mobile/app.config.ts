@@ -20,7 +20,7 @@ import type { ExpoConfig } from 'expo/config';
 const DEEP_LINK_SCHEME = 'veil';
 
 /** Hosts claimed as universal / app links. Mirrors `ASSOCIATED_DOMAINS`. */
-const ASSOCIATED_DOMAINS = ['app.veil.xyz'];
+const ASSOCIATED_DOMAINS = ['app.useveilapp.xyz'];
 
 /** SEP-7 URI scheme, without the trailing colon. Mirrors `SEP7_SCHEME`. */
 const SEP7_SCHEME = 'web+stellar';

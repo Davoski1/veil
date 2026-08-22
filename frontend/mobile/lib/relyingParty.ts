@@ -8,7 +8,11 @@
  * is the relying party.
  */
 export function getRelyingPartyId(): string {
-  return process.env['EXPO_PUBLIC_PASSKEY_RP_ID']?.trim() || 'veil-ezry.vercel.app';
+  // app.useveilapp.xyz is the PERMANENT relying party (owned domain, live since
+  // 2026-08-22, serves assetlinks with the app cert fingerprint). Passkeys are
+  // bound to this domain forever — do not change casually. Credentials created
+  // against the earlier veil-ezry.vercel.app RP are legacy/testnet-only.
+  return process.env['EXPO_PUBLIC_PASSKEY_RP_ID']?.trim() || 'app.useveilapp.xyz';
 }
 
 /**
