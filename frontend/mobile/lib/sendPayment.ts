@@ -28,19 +28,17 @@ import {
   type Transaction,
 } from '@stellar/stellar-sdk';
 
-const HORIZON_URL =
-  process.env['EXPO_PUBLIC_HORIZON_URL']?.trim() || 'https://horizon-testnet.stellar.org';
-const RPC_URL =
-  process.env['EXPO_PUBLIC_SOROBAN_RPC_URL']?.trim() || 'https://soroban-testnet.stellar.org';
-const NETWORK_PASSPHRASE =
-  process.env['EXPO_PUBLIC_NETWORK_PASSPHRASE']?.trim() || 'Test SDF Network ; September 2015';
-// The native XLM Stellar Asset Contract id is deterministic per network, so
-// derive it; the env var remains as an override only.
-const NATIVE_SAC =
-  process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() ||
-  Asset.native().contractId(
-    process.env['EXPO_PUBLIC_NETWORK_PASSPHRASE']?.trim() || 'Test SDF Network ; September 2015',
-  );
+import { getNetwork } from './network';
+
+// All endpoints follow the ACTIVE network — module-level env consts froze
+// these to testnet and sent mainnet payments at testnet Horizon.
+function net() {
+  return getNetwork();
+}
+/** Native XLM SAC id — deterministic per network; env var is an override only. */
+function nativeSac(): string {
+  return process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() || Asset.native().contractId(net().networkPassphrase);
+}
 
 const STROOPS_PER_XLM = 10_000_000;
 
@@ -147,11 +145,11 @@ export async function sendPayment(
       : Asset.native();
 
   if (isClassicAddress(to)) {
-    const server = new Horizon.Server(HORIZON_URL);
+    const server = new Horizon.Server(net().horizonUrl);
     const account = await server.loadAccount(signer.publicKey);
     const builder = new TransactionBuilder(account, {
       fee: BASE_FEE,
-      networkPassphrase: NETWORK_PASSPHRASE,
+      networkPassphrase: net().networkPassphrase,
     })
       .addOperation(Operation.payment({ destination: to, asset: sendAsset, amount: amount.trim() }))
       .setTimeout(30);
@@ -172,16 +170,12 @@ export async function sendPayment(
     );
   }
 
-  if (!NATIVE_SAC) {
-    throw new Error('Native asset contract id is not configured (EXPO_PUBLIC_XLM_CONTRACT_ID).');
-  }
-
-  const server = new SorobanRpc.Server(RPC_URL);
+  const server = new SorobanRpc.Server(net().rpcUrl);
   const account = await server.getAccount(signer.publicKey);
-  const contract = new Contract(NATIVE_SAC);
+  const contract = new Contract(nativeSac());
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
+    networkPassphrase: net().networkPassphrase,
   })
     .addOperation(
       contract.call(

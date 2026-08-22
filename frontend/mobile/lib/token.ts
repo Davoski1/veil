@@ -15,8 +15,11 @@ import { Horizon } from '@stellar/stellar-sdk';
 /** AsyncStorage key holding the active wallet's public key (shared with backupFile). */
 export const WALLET_PUBLIC_KEY_KEY = 'invisible_wallet_public_key';
 
-const HORIZON_URL =
-  process.env['EXPO_PUBLIC_HORIZON_URL']?.trim() || 'https://horizon-testnet.stellar.org';
+// Horizon must follow the ACTIVE network (was frozen to testnet).
+import { getNetwork } from './network';
+function horizonUrl(): string {
+  return getNetwork().horizonUrl;
+}
 
 /** Reads the active wallet's public key, or `null` when no wallet is stored. */
 export async function loadWalletAddress(): Promise<string | null> {
@@ -139,7 +142,7 @@ export async function fetchTokenDetail(
   code: string,
   issuer: string | null,
 ): Promise<TokenDetail> {
-  const server = new Horizon.Server(HORIZON_URL);
+  const server = new Horizon.Server(horizonUrl());
   try {
     const [account, payments] = await Promise.all([
       server.loadAccount(publicKey),

@@ -21,8 +21,11 @@ export const WALLET_PUBLIC_KEY_KEY = 'invisible_wallet_public_key';
 /** How often the dashboard silently re-fetches balance + activity. */
 export const POLL_INTERVAL_MS = 15_000;
 
-const HORIZON_URL =
-  process.env['EXPO_PUBLIC_HORIZON_URL']?.trim() || 'https://horizon-testnet.stellar.org';
+// Horizon must follow the ACTIVE network — a module-level env const froze this
+// to testnet and made the mainnet dashboard show testnet balances.
+function horizonUrl(): string {
+  return getNetwork().horizonUrl;
+}
 
 /** Subset of a Horizon `payment` / `create_account` record we depend on. */
 export interface HorizonPaymentLike {
@@ -122,7 +125,7 @@ export async function fetchDashboardData(publicKey: string): Promise<DashboardDa
   // Smart wallets are contracts: Horizon can't answer for them at all.
   if (StrKey.isValidContract(publicKey)) return fetchContractDashboard(publicKey);
 
-  const server = new Horizon.Server(HORIZON_URL);
+  const server = new Horizon.Server(horizonUrl());
   try {
     const [account, payments] = await Promise.all([
       server.loadAccount(publicKey),
@@ -190,7 +193,7 @@ async function fetchContractDashboard(contract: string): Promise<DashboardData> 
     fetchContractXlm(contract),
     feePayer
       ? (async () => {
-          const server = new Horizon.Server(HORIZON_URL);
+          const server = new Horizon.Server(horizonUrl());
           try {
             const [account, payments] = await Promise.all([
               server.loadAccount(feePayer),
