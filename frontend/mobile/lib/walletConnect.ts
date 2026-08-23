@@ -215,14 +215,31 @@ async function getWalletNonce(
       .setTimeout(30)
       .build();
 
-    const sim = await rpc.simulateTransaction(probeTx);
-    if (SorobanRpc.Api.isSimulationError(sim)) return null;
-
-    const result = (sim as SorobanRpc.Api.SimulateTransactionSuccessResponse).result;
-    if (!result?.retval) return null;
-    return scValToNative(result.retval) as bigint;
-  } catch {
-    return null;
+    // Returning null means "legacy wallet without get_nonce → omit the nonce
+    // from the signature vec". A TRANSIENT failure must never take that branch:
+    // the contract then rejects the 4-element vec as InvalidSignatureFormat
+    // (#2) — which is exactly what happened on the first mainnet spend, right
+    // after the fresh deploy. Retry, and only treat a definitive
+    // missing-function error as legacy.
+    let lastError = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const sim = await rpc.simulateTransaction(probeTx);
+      if (!SorobanRpc.Api.isSimulationError(sim)) {
+        const result = (sim as SorobanRpc.Api.SimulateTransactionSuccessResponse).result;
+        if (!result?.retval) return 0n; // successful call, no value → fresh wallet
+        return scValToNative(result.retval) as bigint;
+      }
+      lastError = sim.error;
+      if (/MissingValue|not found|does not exist|no such|UnexpectedType|Symbol/i.test(lastError)) {
+        return null; // genuinely no get_nonce → legacy signature format
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    throw new Error(`Could not read the wallet nonce (needed to sign): ${lastError.slice(0, 140)}`);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Could not read the wallet nonce')) throw err;
+    // Network-level failure — also not proof of a legacy wallet.
+    throw new Error('Could not reach the network to read the wallet nonce. Check your connection and try again.');
   }
 }
 
