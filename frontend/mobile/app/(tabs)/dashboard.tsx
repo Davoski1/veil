@@ -23,6 +23,7 @@ import { fetchDashboardData } from '../../lib/activity';
 import { fetchPrice, usdValue } from '../../lib/fetchPrice';
 import { getNetwork } from '../../lib/network';
 import { ensureBreadcrumbs } from '../../lib/walletBreadcrumbs';
+import { ensureCorrectWalletAddress } from '../../lib/walletRepair';
 
 /** Shorten a Stellar address for the header chip: `GDKF…9QX3`. */
 function shortAddress(addr: string): string {
@@ -88,9 +89,10 @@ export default function DashboardTab() {
     [],
   );
 
-  // Load the wallet address, then its balance / price / activity on mount.
+  // Load the wallet address (repairing a wrong-network derivation first),
+  // then its balance / price / activity on mount.
   useEffect(() => {
-    getWalletAddress()
+    ensureCorrectWalletAddress()
       .then((addr) => {
         setWalletAddress(addr);
         if (addr) {
