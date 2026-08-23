@@ -16,28 +16,63 @@ function assetOf(type: string | undefined, code: string | undefined): string {
 }
 
 /**
- * Load an account's recent activity straight from Horizon — the reliable source
- * on any network (Wraith, the Soroban indexer, doesn't cover testnet accounts).
- * Maps payments, account creations, and path-payments to the shared TxRecord.
- */
-/**
  * A smart wallet's own transfers are SAC `transfer` EVENTS (invoke ops), which
  * Horizon's payments feed never surfaces. Read them from Soroban RPC's event
- * store instead (bounded by RPC retention, ~7 days on testnet — enough for a
- * live activity feed; full history is the indexer's job).
+ * store instead — but frugally:
+ *
+ * - QuickNode (mainnet) rejects wide getEvents windows outright with -32001
+ *   "request exceeded processing limit threshold" (~3k ledgers max per
+ *   request), so scans go chunk by chunk.
+ * - The dashboard polls every 15s; a full backscan on every poll would hammer
+ *   the RPC into rate-limiting everything sharing the endpoint (balances,
+ *   nonce probes). So the backscan runs ONCE per session, its results are
+ *   cached, and later calls only scan the few ledgers closed since — one or
+ *   two requests per poll at steady state.
  */
+const CHUNK = 2_900; // ≈ 4h of ledgers, under QuickNode's processing cap
+const BACKSCAN_CHUNKS = 3; // ≈ 12h initial lookback
+const MAX_CACHED = 50;
+
+const sacScan: { key: string; lastLedger: number; records: TxRecord[] } = {
+  key: '',
+  lastLedger: 0,
+  records: [],
+};
+
+/** Scan one [start, end] window, following the cursor a few pages. */
+async function scanWindow(
+  server: SorobanRpc.Server,
+  filters: SorobanRpc.Server.GetEventsRequest['filters'],
+  startLedger: number,
+  endLedger: number,
+): Promise<SorobanRpc.Api.EventResponse[]> {
+  const events: SorobanRpc.Api.EventResponse[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    // Follow-up pages: cursor and ledger range are mutually exclusive per the
+    // RPC, so the walk can overrun endLedger into already-covered ledgers —
+    // the id-dedupe downstream absorbs the overlap.
+    const res = await server.getEvents(
+      cursor ? { cursor, filters, limit: 100 } : { startLedger, endLedger, filters, limit: 100 },
+    );
+    events.push(...res.events);
+    cursor = (res as { cursor?: string }).cursor;
+    if (!cursor) break;
+  }
+  return events;
+}
+
 async function loadContractSacActivity(addresses: string[], limit: number): Promise<TxRecord[]> {
+  const net = getNetwork();
+  const key = `${net.name}|${[...addresses].sort().join(',')}`;
+  const cached = sacScan.key === key ? sacScan : null;
   try {
     const mine = new Set(addresses);
-    const net = getNetwork();
     const server = new SorobanRpc.Server(net.rpcUrl);
     const sac = Asset.native().contractId(net.networkPassphrase);
     const latest = await server.getLatestLedger();
 
     const transferSym = xdr.ScVal.scvSymbol('transfer').toXDR('base64');
-    // OR of: transfers FROM any of ours, transfers TO any of ours. Covers the
-    // wallet contract AND the fee-payer's Soroban sends (e.g. G→C transfers),
-    // both invisible to Horizon's payments feed.
     const topics = addresses.flatMap((a) => {
       const scv = xdr.ScVal.scvAddress(new Address(a).toScAddress()).toXDR('base64');
       return [
@@ -47,60 +82,45 @@ async function loadContractSacActivity(addresses: string[], limit: number): Prom
     });
     const filters = [{ type: 'contract' as const, contractIds: [sac], topics }];
 
-    // Two RPC realities shape this scan:
-    // 1. The RPC scans a bounded slice per call and hands back a cursor — a
-    //    single call can legitimately return zero matches with more ledgers
-    //    still unscanned, so ALWAYS follow the cursor (bounded pages).
-    // 2. QuickNode (mainnet) REJECTS wide windows outright with -32001
-    //    "request exceeded processing limit threshold" (~3k ledgers max per
-    //    request), so a 17k-ledger ask never even starts. Scan in chunks it
-    //    accepts — newest chunk first so an early exit keeps the most recent
-    //    activity — and isolate failures per chunk.
-    const CHUNK = 2_900; // ≈ 4h of ledgers, under QuickNode's processing cap
-    const CHUNKS = 6; // ≈ 24h total lookback
     const events: SorobanRpc.Api.EventResponse[] = [];
-    for (let c = 0; c < CHUNKS && events.length < limit * 2; c++) {
-      const endLedger = latest.sequence - c * CHUNK;
-      // The cost estimate varies with ledger contents, so a chunk can trip the
-      // limit even at "safe" width — retry once at half width before conceding
-      // that slice; a failed chunk forfeits only its own 4h of history.
-      for (const width of [CHUNK, Math.floor(CHUNK / 2)]) {
-        const startLedger = Math.max(1, endLedger - width + 1);
+    const incremental = !!cached && cached.lastLedger > 0 && latest.sequence - cached.lastLedger < CHUNK;
+    if (incremental) {
+      if (latest.sequence > cached.lastLedger) {
+        // One small window since the last scan; on failure keep the cache and
+        // DON'T advance, so the next poll retries the same span.
         try {
-          let cursor: string | undefined;
-          for (let page = 0; page < 6; page++) {
-            // Follow-up pages: cursor and ledger range are mutually exclusive,
-            // so the walk can overrun endLedger into ledgers a newer chunk
-            // already covered — the id-dedupe below absorbs the overlap.
-            const res = await server.getEvents(
-              cursor
-                ? { cursor, filters, limit: 100 }
-                : { startLedger, endLedger, filters, limit: 100 },
-            );
-            events.push(...res.events);
-            cursor = (res as { cursor?: string }).cursor;
-            if (!cursor) break;
-          }
-          break; // chunk scanned
+          events.push(...(await scanWindow(server, filters, cached.lastLedger + 1, latest.sequence)));
         } catch {
-          // fall through to the narrower width, or concede the chunk
+          return cached.records.slice(0, limit);
         }
       }
-      if (endLedger - CHUNK + 1 <= 1) break;
+    } else {
+      // Full backscan, newest chunk first so partial coverage keeps the most
+      // recent activity. A failed chunk retries once at half width (the RPC's
+      // cost estimate varies with ledger contents), then concedes its slice.
+      for (let c = 0; c < BACKSCAN_CHUNKS; c++) {
+        const endLedger = latest.sequence - c * CHUNK;
+        for (const width of [CHUNK, Math.floor(CHUNK / 2)]) {
+          try {
+            events.push(...(await scanWindow(server, filters, Math.max(1, endLedger - width + 1), endLedger)));
+            break;
+          } catch {
+            // fall through to the narrower width, or concede the chunk
+          }
+        }
+        if (endLedger - CHUNK + 1 <= 1) break;
+      }
     }
 
-    const out: TxRecord[] = [];
-    const seenIds = new Set<string>();
+    const fresh: TxRecord[] = [];
     for (const ev of events) {
-      if (seenIds.has(ev.id)) continue; // chunk boundaries can overlap
-      seenIds.add(ev.id);
       try {
-        const topics = ev.topic;
-        const from = String(scValToNative(topics[1]!));
-        const to = String(scValToNative(topics[2]!));
+        const topic = ev.topic;
+        const from = String(scValToNative(topic[1]!));
+        const to = String(scValToNative(topic[2]!));
         const stroops = scValToNative(ev.value) as bigint;
         const sent = mine.has(from);
-        out.push({
+        fresh.push({
           id: ev.id,
           type: sent ? 'sent' : 'received',
           amount: (Number(stroops) / 10_000_000).toLocaleString('en-US', { maximumFractionDigits: 4 }),
@@ -113,24 +133,28 @@ async function loadContractSacActivity(addresses: string[], limit: number): Prom
         // skip malformed event
       }
     }
-    return out.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+
+    // Merge with the cache, dedupe by event id, newest first.
+    const seen = new Set<string>();
+    const merged: TxRecord[] = [];
+    for (const r of [...fresh, ...(incremental && cached ? cached.records : [])]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      merged.push(r);
+    }
+    merged.sort((a, b) => b.timestamp - a.timestamp);
+
+    sacScan.key = key;
+    sacScan.lastLedger = latest.sequence;
+    sacScan.records = merged.slice(0, MAX_CACHED);
+    return sacScan.records.slice(0, limit);
   } catch {
-    return [];
+    return cached ? cached.records.slice(0, limit) : [];
   }
 }
 
-export async function loadHorizonActivity(address: string, limit = 25): Promise<TxRecord[]> {
-  // Contract wallets: classic activity lives on the fee-payer G-account, and
-  // the contract's OWN transfers come from Soroban events — merge the two.
-  let account = address;
-  let contractRecords: TxRecord[] = [];
-  if (StrKey.isValidContract(address)) {
-    const feePayer = await getFeePayerAddress();
-    contractRecords = await loadContractSacActivity(feePayer ? [address, feePayer] : [address], limit);
-    if (!feePayer) return contractRecords;
-    account = feePayer;
-  }
-
+/** Map a Horizon payments page for `account` into TxRecords. */
+async function loadClassicActivity(account: string, limit: number): Promise<TxRecord[]> {
   const server = new Horizon.Server(getNetwork().horizonUrl);
   let records: Array<Record<string, unknown>>;
   try {
@@ -185,12 +209,31 @@ export async function loadHorizonActivity(address: string, limit = 25): Promise<
       });
     }
   }
+  return out;
+}
 
-  if (contractRecords.length === 0) return out;
+/**
+ * Load an account's recent activity. Classic wallets read Horizon's payments
+ * feed directly. Contract wallets merge two sources IN PARALLEL — the
+ * fee-payer G-account's classic payments and the contract's SAC transfer
+ * events — so a slow event scan never delays the classic half.
+ */
+export async function loadHorizonActivity(address: string, limit = 25): Promise<TxRecord[]> {
+  if (!StrKey.isValidContract(address)) {
+    return loadClassicActivity(address, limit);
+  }
+
+  const feePayer = await getFeePayerAddress();
+  const [contractRecords, classic] = await Promise.all([
+    loadContractSacActivity(feePayer ? [address, feePayer] : [address], limit),
+    feePayer ? loadClassicActivity(feePayer, limit) : Promise.resolve([]),
+  ]);
+
+  if (contractRecords.length === 0) return classic;
   // Merge classic + contract records, dedup by tx hash (a contract spend also
-  // appears as the fee-payer's wrapping tx would, if Horizon ever surfaces it),
-  // newest first.
-  const seen = new Set(out.map((r) => r.hash).filter(Boolean));
-  const merged = [...out, ...contractRecords.filter((r) => !r.hash || !seen.has(r.hash))];
+  // appears as the fee-payer's wrapping tx would, if Horizon ever surfaces
+  // it), newest first.
+  const seen = new Set(classic.map((r) => r.hash).filter(Boolean));
+  const merged = [...classic, ...contractRecords.filter((r) => !r.hash || !seen.has(r.hash))];
   return merged.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 }

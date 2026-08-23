@@ -1,4 +1,4 @@
-import { BASE_FEE, Keypair, TransactionBuilder, rpc as SorobanRpc } from '@stellar/stellar-sdk';
+import { Transaction, TransactionBuilder, Keypair, rpc as SorobanRpc } from '@stellar/stellar-sdk';
 
 import './polyfills';
 import { inclusionFee } from './fees';
@@ -6,9 +6,14 @@ import { inclusionFee } from './fees';
 /**
  * Sign a Soroban transaction XDR with the fee-payer key and submit it over RPC.
  *
- * Ported from `frontend/wallet/lib/sorobanTx.ts`. The sponsored fee-bump branch
- * is left out: mobile has no fee-bump helper yet, and every caller here pays its
- * own fee.
+ * The incoming XDR (e.g. from Soroswap's build endpoint) is treated as an
+ * OPERATION carrier, not a finished envelope: upstream builders can hand back
+ * a stale sequence number (their view lags right after another transaction
+ * from the same account, e.g. the trustline opened moments earlier → txBadSeq
+ * with zero fee charged) and a 100-stroop inclusion bid that mainnet surge
+ * pricing rejects. So the operations are lifted into a locally-built
+ * transaction: fresh sequence from the SAME RPC that will receive it, our
+ * network-aware inclusion bid, and resources re-simulated from scratch.
  *
  * Resolves with the transaction hash once the network reports success.
  */
@@ -21,25 +26,33 @@ export async function signAndSubmitSorobanXdr(params: {
   const rpc = new SorobanRpc.Server(params.rpcUrl);
   const signer = Keypair.fromSecret(params.signerSecret);
 
-  const built = TransactionBuilder.fromXDR(params.xdr, params.networkPassphrase);
+  const upstream = TransactionBuilder.fromXDR(params.xdr, params.networkPassphrase);
+  if (!(upstream instanceof Transaction)) {
+    throw new Error('Fee-bump envelopes are not supported here.');
+  }
 
-  // The footprint and resource fees have to be assembled before submit, and the
-  // XDR may have been built before the ledger moved on.
+  const source = await rpc.getAccount(upstream.source);
+  const builder = new TransactionBuilder(source, {
+    fee: inclusionFee(),
+    networkPassphrase: params.networkPassphrase,
+  });
+  // Copy the raw XDR operations — this preserves the invocation and its auth
+  // entries (source-account credentials stay valid: same source account).
+  for (const op of upstream.toEnvelope().v1().tx().operations()) {
+    builder.addOperation(op);
+  }
+  builder.addMemo(upstream.memo);
+  builder.setTimeout(120);
+  const built = builder.build();
+
+  // The footprint and resource fees have to be assembled before submit; the
+  // simulation also revalidates the invocation against the current ledger.
   const sim = await rpc.simulateTransaction(built);
   if (SorobanRpc.Api.isSimulationError(sim)) {
     throw new Error(`Simulation failed: ${sim.error}`);
   }
 
-  let assembled = SorobanRpc.assembleTransaction(built, sim).build();
-  // Mainnet surge pricing rejects the default 100-stroop inclusion bid the
-  // upstream builder (e.g. Soroswap) put on the XDR. Raise the ceiling — the
-  // ledger charges the effective rate, never the full bid.
-  const bid = inclusionFee();
-  if (bid !== BASE_FEE) {
-    assembled = TransactionBuilder.cloneFrom(assembled, {
-      fee: (Number(assembled.fee) + Number(bid)).toString(),
-    }).build();
-  }
+  const assembled = SorobanRpc.assembleTransaction(built, sim).build();
   assembled.sign(signer);
 
   const sendResult = await rpc.sendTransaction(assembled);

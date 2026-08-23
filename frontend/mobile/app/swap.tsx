@@ -167,11 +167,13 @@ export default function SwapScreen() {
       await requirePasskey();
       const signerSecret = await getSignerSecret();
       if (!signerSecret) throw new Error('No wallet key on this device. Create a testnet wallet first.');
+      // Passkey ceremony done — everything past here is network work, so stop
+      // showing "Waiting for passkey…".
+      setStep('submitting');
 
       // Testnet → classic DEX path payment (adds the destination trustline
       // when missing). Mainnet → Soroswap.
       if (onTestnet) {
-        setStep('submitting');
         const hash = await sdexSwap({
           signerSecret,
           sourceCode: tokenIn.code,
@@ -207,7 +209,6 @@ export default function SwapScreen() {
       });
       if (!unsignedXdr) throw new Error('Failed to build swap transaction.');
 
-      setStep('submitting');
       const network = getNetwork();
       // Testnet keypair mode: simulate → assemble → sign with the wallet key →
       // submit → poll to completion (source-account auth covers the swap).
