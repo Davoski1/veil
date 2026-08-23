@@ -222,23 +222,27 @@ async function getWalletNonce(
     // after the fresh deploy. Retry, and only treat a definitive
     // missing-function error as legacy.
     let lastError = '';
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const sim = await rpc.simulateTransaction(probeTx);
-      if (!SorobanRpc.Api.isSimulationError(sim)) {
-        const result = (sim as SorobanRpc.Api.SimulateTransactionSuccessResponse).result;
-        if (!result?.retval) return 0n; // successful call, no value → fresh wallet
-        return scValToNative(result.retval) as bigint;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const sim = await rpc.simulateTransaction(probeTx);
+        if (!SorobanRpc.Api.isSimulationError(sim)) {
+          const result = (sim as SorobanRpc.Api.SimulateTransactionSuccessResponse).result;
+          if (!result?.retval) return 0n; // successful call, no value → fresh wallet
+          return scValToNative(result.retval) as bigint;
+        }
+        lastError = sim.error;
+        if (/MissingValue|not found|does not exist|no such|UnexpectedType|Symbol/i.test(lastError)) {
+          return null; // genuinely no get_nonce → legacy signature format
+        }
+      } catch (err) {
+        // Network-level flake (mobile data drops calls mid-burst) — retry too.
+        lastError = err instanceof Error ? err.message : String(err);
       }
-      lastError = sim.error;
-      if (/MissingValue|not found|does not exist|no such|UnexpectedType|Symbol/i.test(lastError)) {
-        return null; // genuinely no get_nonce → legacy signature format
-      }
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 700));
     }
-    throw new Error(`Could not read the wallet nonce (needed to sign): ${lastError.slice(0, 140)}`);
+    throw new Error(`Could not read the wallet nonce (needed to sign) after retries: ${lastError.slice(0, 140)}`);
   } catch (err) {
     if (err instanceof Error && err.message.startsWith('Could not read the wallet nonce')) throw err;
-    // Network-level failure — also not proof of a legacy wallet.
     throw new Error('Could not reach the network to read the wallet nonce. Check your connection and try again.');
   }
 }
