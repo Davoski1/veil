@@ -29,6 +29,7 @@ import {
 } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
+import { inclusionFee } from './fees';
 
 // All endpoints follow the ACTIVE network — module-level env consts froze
 // these to testnet and sent mainnet payments at testnet Horizon.
@@ -168,7 +169,7 @@ export async function sendPayment(
 
     const account = await server.loadAccount(signer.publicKey);
     const builder = new TransactionBuilder(account, {
-      fee: BASE_FEE,
+      fee: inclusionFee(),
       networkPassphrase: net().networkPassphrase,
     })
       .addOperation(
@@ -207,7 +208,7 @@ export async function sendPayment(
   const account = await server.getAccount(signer.publicKey);
   const contract = new Contract(nativeSac());
   const tx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: net().networkPassphrase,
   })
     .addOperation(

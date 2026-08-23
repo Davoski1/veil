@@ -11,6 +11,7 @@
 import { Asset, BASE_FEE, Horizon, Keypair, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
+import { inclusionFee } from './fees';
 
 /**
  * Well-known issuers per network for the assets we route classically.
@@ -110,7 +111,7 @@ export async function sdexSwap(params: {
 
   const account = await server.loadAccount(kp.publicKey());
   const builder = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   });
 

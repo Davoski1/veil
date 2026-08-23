@@ -19,6 +19,7 @@ import { BASE_FEE, Horizon, Keypair, Operation, TransactionBuilder } from '@stel
 import { Buffer } from 'buffer';
 
 import { getNetwork } from './network';
+import { inclusionFee } from './fees';
 
 export const CRUMB_WALLET = 'veil:wallet';
 export const CRUMB_PK1 = 'veil:pk1';
@@ -48,7 +49,7 @@ export async function writeBreadcrumbs(
     const account = await server.loadAccount(kp.publicKey());
 
     const builder = new TransactionBuilder(account, {
-      fee: BASE_FEE,
+      fee: inclusionFee(),
       networkPassphrase: net.networkPassphrase,
     }).addOperation(Operation.manageData({ name: CRUMB_WALLET, value: walletAddress }));
 

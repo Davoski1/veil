@@ -22,6 +22,7 @@ import {
 } from '@stellar/stellar-sdk';
 
 import { getNetwork } from './network';
+import { inclusionFee } from './fees';
 import { registerPasskeySigner } from './passkey';
 import { signXdrPayload } from './walletConnect';
 import { pollForResult, toStroops } from './sendPayment';
@@ -90,7 +91,7 @@ export async function sendXlmFromContract(
 
   const account = await server.getAccount(feePayer);
   const unsigned = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(

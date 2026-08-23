@@ -21,6 +21,7 @@ import { Buffer } from 'buffer';
 import * as Crypto from 'expo-crypto';
 
 import { getNetwork } from './network';
+import { inclusionFee } from './fees';
 import {
   WALLET_CONNECT_EVENTS,
   WALLET_CONNECT_METHODS,
@@ -207,7 +208,7 @@ async function getWalletNonce(
     const dummyKeypair = Keypair.random();
     const dummyAccount = new Account(dummyKeypair.publicKey(), '0');
     const probeTx = new TransactionBuilder(dummyAccount, {
-      fee: BASE_FEE,
+      fee: inclusionFee(),
       networkPassphrase,
     })
       .addOperation(new Contract(contractAddress).call('get_nonce'))
@@ -321,7 +322,7 @@ export async function signXdrPayload(xdrString: string): Promise<string> {
   const invokeOp = tx.operations[0] as Operation.InvokeHostFunction;
   const feePayerAccount = await rpc.getAccount(feePayerKeypair.publicKey());
   const signedTx = new TransactionBuilder(feePayerAccount, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(
