@@ -45,6 +45,94 @@ with undisclosed pricing — revisit at scale), MoonPay (exited Nigeria), Cashra
 — Celo/Optimism/Base only), cNGN (not on Stellar), Baxi (dev portal dead), SquadCo VAS
 (airtime/data only), OPay bills (airtime/betting only — prior research), VTpass (banned by fiat).
 
+## Offramp deep-dive — USDC-on-Stellar → NGN → bank
+
+_Researched 2026-08-23 against `docs.busha.io` (all 131 pages), the official OpenAPI spec (9,359 lines), and **live unauthenticated probes of both `api.busha.co` and `api.sandbox.busha.so`**. Every claim below marked "verified" was reproduced 3× and deterministic._
+
+### The three answers that matter
+
+1. **USDC-on-Stellar offramp works in PRODUCTION** — verified empirically, not inferred.
+2. **Native XLM offramp does NOT work** — deterministic 503, and it would cost 4.5× more anyway.
+3. **You CANNOT demo the USDC-on-Stellar offramp in SANDBOX** — the decisive constraint on a build-before-CAC plan.
+
+### Verified probe results
+
+| Test | Env | Result |
+|---|---|---|
+| `USDC` + `pay_in{address, network:XLM}` → NGN | **PROD** | **201 CREATED** |
+| same | SANDBOX | **503 service_unavailable** |
+| `XLM` native + `pay_in{address, network:XLM}` | PROD | **503** |
+| `USDC` + `network:BANANANET` (control) | PROD | `400 "BANANANET is not supported by USDC"` |
+| `USDC`/`XLM` → NGN via `pay_in: balance` | SANDBOX | **201** |
+
+The bogus-network control is load-bearing: the `network` field **is** server-side validated, so `XLM` returning 201 for USDC means production genuinely accepts Stellar — it isn't ignoring the field. Root cause of the failures is a currency-level `is_ramp_sell_supported` flag: production enables USDC, **sandbox does not**, and `XLM` is disabled in both.
+
+### The flow (no dedicated "offramp" endpoint — it's one quote→transfer primitive)
+
+```
+POST /v1/recipients/resolve-bank-account   → account_name (verify before showing the user)
+POST /v1/recipients  {type: ngn_bank}      → recipient_id
+POST /v1/quotes  {source: USDC, target: NGN,
+                  pay_in:  {type: address, network: XLM},
+                  pay_out: {type: bank_transfer, recipient_id},
+                  header X-BU-PROFILE-ID: <customer_id>}   ← B2B2C attribution
+POST /v1/transfers {quote_id}              → pay_in.address (+ pay_in.memo?)
+   user sends USDC on Stellar (min 2 USDC, before pay_in.expires_at)
+GET  /v1/transfers/{id}  +  webhooks
+```
+`GET /v1/banks?currency=NGN&country=NG` is public and returns 173 banks. **Quotes expire in 30 minutes** — always mint a fresh one immediately before `POST /v1/transfers`.
+
+### ⚠️ The memo question — unresolved, and it's the one that can lose user funds
+
+**Not documented anywhere.** What is known:
+- The **request** schema (`PayInObj`) has no memo field — you cannot supply one.
+- The **response** schema does: `PaymentObj` includes `memo`, `address`, `expires_at`. So the deposit-address response *can* carry one.
+- Stellar is the **only** network with a named memo example in the entire spec (`crypto_stellar_lumens_with_memo`) — but it's an *outbound recipient* example, not a deposit.
+- The XLM `address_regex` is `^G[A-D]{1}[A-Z2-7]{54}$` — **plain G-addresses only, no muxed M-addresses.** Muxed is the only memo-free way to attribute deposits on a shared Stellar account, so its absence points toward memos.
+- Documented attribution elsewhere is by **unique per-transfer address with `expires_at`**, not memo.
+
+**Engineering rule: always read and honour `pay_in.memo` if present; never assume a bare G-address deposit gets credited.**
+
+### Costs — the spread is the real fee, and it is observable
+
+Measured live from `/v1/pairs` on 2026-08-23:
+
+| Pair | Sell rate (ours) | Haircut vs mid | Round-trip |
+|---|---|---|---|
+| **USDCNGN** | 1382.12 | **0.59%** | 1.19% |
+| XLMNGN | 261.39 | **2.66%** | 5.31% |
+
+**Route through USDC, never offramp native XLM** — 4.5× the spread. Plus **₦107.50** flat payout fee (VAT inclusive) and **₦50 stamp duty** above ₦9,999; no crypto-deposit fee exists. Doc examples contradict the fee page, so **treat the quote's `fees[]` array as authoritative**. Minimums: 2 USDC in, ₦499 out (max ₦100m).
+
+Business KYB limits: Sole Prop tier 1 = $100k/day, LLC tier 1 = $1m/day, LLC tier 2 unlimited. **End-customer individual tier limits are NOT published** — a real gap; we cannot model per-user caps from public docs.
+
+### Settlement, webhooks
+
+`/v1/countries` gives NGN bank-transfer `processing_time: "0-15 minutes"`, defined in the spec as an **average, not an SLA**. NIP/NIBSS is **never named** in any Busha document, and there is **no weekend/holiday or cut-off statement** — the docs hedge once about "banking hours", and the retail ToS ("each business day") contradicts the Corporate Agreement ("instantly").
+
+Webhooks: `x-bu-signature` = base64(HMAC-SHA256(raw_body, secret)). Offramp-relevant events include `transfer.funds_received → funds_converted → outgoing_payment_sent → funds_delivered`, plus `transfer.failed`, `funds_not_delivered`, and `funds_refunded`. ⚠️ **The offramp sequence itself is never documented** — that chain is inferred by symmetry with the documented on-ramp.
+
+### Restrictions
+
+- **Source-address whitelisting: does not exist.** Zero hits across all 131 pages and the full spec; the per-transfer generated-address model is structurally incompatible with it.
+- **Travel rule / source-of-funds: thorough negative.** No vendor named (no Chainalysis/Elliptic/TRM/Notabene/Sumsub), no API surface to submit originator data, no compliance/hold status in the documented status set, and **no statement anywhere about deposits from unhosted wallets**. They're a licensed VASP so screening almost certainly happens — but it is undocumented, so plan for the possibility without being able to cite rules.
+- **Payout to a bank account not in the end-customer's name:** the retail ToS bans it outright, but that document **explicitly excludes corporates**, and the Corporate Client Agreement contains no such prohibition. `Recipient.owned_by_customer` is response-only (Busha computes it) and models both states. **Not affirmatively permitted in writing — get this confirmed before building on it.**
+
+### What this means for building before CAC
+
+**Sandbox business accounts are auto-verified — no CAC needed** (`sandbox.dash.busha.io/business/signup`, verified live). Production access requires **KYB = Certificate of Incorporation**, ~72h turnaround. So:
+
+- ✅ Buildable today: the whole quote → transfer → webhook pipeline, demoed either with **USDT on TRX/ETH/BSC** (verified 201 in sandbox) or with **`pay_in: balance`** for USDC→NGN, which exercises conversion + payout and stubs only the Stellar deposit leg.
+- ❌ Not demoable today: the actual USDC-on-Stellar deposit, because sandbox lacks the ramp-sell flag and its "Test Addresses For Off-Ramp Operations" page lists 9 networks with **Stellar absent**.
+- Minor doc bug: the sandbox widget host `sandbox.sell.busha.io` is NXDOMAIN; the working host is `sandbox.sell.busha.co`.
+
+### Questions to put to Busha in writing
+
+1. Does `pay_in` for USDC-on-Stellar return a **`memo`**, is it mandatory, and what happens to a memo-less deposit? (We cannot test this — no Stellar sandbox asset exists.)
+2. Will `POST /v1/transfers` actually issue a Stellar deposit address, given `USDC-XLM` is flagged `is_ramp_sell_supported: false` at **network** level even though the quote succeeds at **currency** level? *(This is the single biggest unverifiable risk in the whole path.)*
+3. Does the Corporate Client Agreement permit NGN payouts to a bank account **not in the end customer's name**?
+4. Can sandbox `USDC` be ramp-sell-enabled? **That one flag is all that stands between us and a complete pre-registration demo.**
+
 ## Bills deep-dive — implementation reference
 
 _Second research pass 2026-08-23: every provider's live API probed unauthenticated, **with a bogus-path 404 control on each host** so that a `401` actually proves a route exists. eBills/Pairgate/Plustive passed the control (route existence verified); **Monnify's gateway 401s before routing**, so its paths come from the official Node SDK source, not from probing._

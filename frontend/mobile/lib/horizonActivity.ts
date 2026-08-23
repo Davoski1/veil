@@ -153,12 +153,84 @@ async function loadContractSacActivity(addresses: string[], limit: number): Prom
   }
 }
 
-/** Map a Horizon payments page for `account` into TxRecords. */
-async function loadClassicActivity(account: string, limit: number): Promise<TxRecord[]> {
+/** One entry of Horizon's `asset_balance_changes` on an invoke_host_function op. */
+type BalanceChange = {
+  asset_type?: string;
+  asset_code?: string;
+  type?: string;
+  from?: string;
+  to?: string;
+  amount?: string;
+};
+
+/**
+ * Turn a Soroban invocation into a feed row using Horizon's
+ * `asset_balance_changes`. This is what makes a swap legible: the op carries
+ * every leg (XLM out, USDC in, plus the router's internal hops), so an
+ * invocation that both spends and receives is a SWAP rather than two unrelated
+ * transfers to contract addresses nobody recognizes. Legs between two
+ * addresses that are both ours, or neither, are the router's business and are
+ * ignored.
+ */
+function invocationToRecord(
+  changes: BalanceChange[],
+  mine: Set<string>,
+  base: { id: string; timestamp: number; hash?: string },
+): TxRecord | null {
+  const sent = changes.filter((c) => c.from && mine.has(c.from) && !(c.to && mine.has(c.to)));
+  const received = changes.filter((c) => c.to && mine.has(c.to) && !(c.from && mine.has(c.from)));
+
+  const assetOfChange = (c: BalanceChange) => assetOf(c.asset_type, c.asset_code);
+
+  if (sent.length > 0 && received.length > 0) {
+    const from = sent[0]!;
+    const to = received[received.length - 1]!;
+    return {
+      ...base,
+      type: 'swapped',
+      amount: fmt(from.amount),
+      asset: assetOfChange(from),
+      counterparty: String(to.from ?? 'unknown'),
+      destAmount: fmt(to.amount),
+      destAsset: assetOfChange(to),
+    };
+  }
+  if (sent.length > 0) {
+    const c = sent[0]!;
+    return { ...base, type: 'sent', amount: fmt(c.amount), asset: assetOfChange(c), counterparty: String(c.to ?? 'unknown') };
+  }
+  if (received.length > 0) {
+    const c = received[0]!;
+    return { ...base, type: 'received', amount: fmt(c.amount), asset: assetOfChange(c), counterparty: String(c.from ?? 'unknown') };
+  }
+  return null; // nothing of ours moved (e.g. a pure read, or a deploy)
+}
+
+/**
+ * Map a Horizon OPERATIONS page into TxRecords.
+ *
+ * Operations rather than payments: Horizon's payments feed omits
+ * `invoke_host_function` entirely, so every Soroban action — smart-wallet
+ * spends, swaps, SAC transfers — was invisible to it. The operations feed
+ * carries those with full `asset_balance_changes`, has no RPC retention
+ * window, and is not subject to the mainnet RPC's rate limits.
+ *
+ * `mine` is every address that counts as us (the fee-payer and, for a smart
+ * wallet, the contract), so direction is judged against both.
+ */
+async function loadClassicActivity(account: string, mine: Set<string>, limit: number): Promise<TxRecord[]> {
   const server = new Horizon.Server(getNetwork().horizonUrl);
   let records: Array<Record<string, unknown>>;
   try {
-    const page = await server.payments().forAccount(account).order('desc').limit(limit).call();
+    // Over-fetch: many operation types (manage_data breadcrumbs, change_trust,
+    // contract deploys) yield no feed row, so asking for exactly `limit` ops
+    // would return far fewer than `limit` rows.
+    const page = await server
+      .operations()
+      .forAccount(account)
+      .order('desc')
+      .limit(Math.min(200, Math.max(limit, limit * 4)))
+      .call();
     records = page.records as unknown as Array<Record<string, unknown>>;
   } catch {
     return [];
@@ -166,6 +238,18 @@ async function loadClassicActivity(account: string, limit: number): Promise<TxRe
 
   const out: TxRecord[] = [];
   for (const r of records) {
+    if (String(r['type'] ?? '') === 'invoke_host_function') {
+      const changes = (r['asset_balance_changes'] as BalanceChange[] | undefined) ?? [];
+      const createdAt = String(r['created_at'] ?? '');
+      const record = invocationToRecord(changes, mine, {
+        id: String(r['id'] ?? ''),
+        timestamp: createdAt ? Math.floor(new Date(createdAt).getTime() / 1000) : 0,
+        hash: r['transaction_hash'] ? String(r['transaction_hash']) : undefined,
+      });
+      if (record) out.push(record);
+      if (out.length >= limit) break;
+      continue;
+    }
     const type = String(r['type'] ?? '');
     const id = String(r['id'] ?? '');
     const hash = r['transaction_hash'] ? String(r['transaction_hash']) : undefined;
@@ -208,6 +292,7 @@ async function loadClassicActivity(account: string, limit: number): Promise<TxRe
         destAsset: assetOf(r['asset_type'] as string, r['asset_code'] as string),
       });
     }
+    if (out.length >= limit) break;
   }
   return out;
 }
@@ -220,19 +305,21 @@ async function loadClassicActivity(account: string, limit: number): Promise<TxRe
  */
 export async function loadHorizonActivity(address: string, limit = 25): Promise<TxRecord[]> {
   if (!StrKey.isValidContract(address)) {
-    return loadClassicActivity(address, limit);
+    return loadClassicActivity(address, new Set([address]), limit);
   }
 
   const feePayer = await getFeePayerAddress();
+  const mine = new Set(feePayer ? [address, feePayer] : [address]);
   const [contractRecords, classic] = await Promise.all([
-    loadContractSacActivity(feePayer ? [address, feePayer] : [address], limit),
-    feePayer ? loadClassicActivity(feePayer, limit) : Promise.resolve([]),
+    loadContractSacActivity([...mine], limit),
+    feePayer ? loadClassicActivity(feePayer, mine, limit) : Promise.resolve([]),
   ]);
 
   if (contractRecords.length === 0) return classic;
-  // Merge classic + contract records, dedup by tx hash (a contract spend also
-  // appears as the fee-payer's wrapping tx would, if Horizon ever surfaces
-  // it), newest first.
+  // Merge classic + contract records, deduped by tx hash. Horizon is the
+  // richer source (a swap arrives as one 'swapped' row rather than a bare
+  // outgoing transfer), so where both describe the same transaction Horizon's
+  // version wins and the event-derived one is dropped.
   const seen = new Set(classic.map((r) => r.hash).filter(Boolean));
   const merged = [...classic, ...contractRecords.filter((r) => !r.hash || !seen.has(r.hash))];
   return merged.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);

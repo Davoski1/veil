@@ -81,7 +81,10 @@ export default function DashboardTab() {
         // keep the last-known values
       }
       try {
-        hydrateActivityFeed(await loadHorizonActivity(addr));
+        // Merge, don't replace: this runs every 15s, and any single source
+        // blinking (rate-limited RPC, slow Horizon page) would otherwise blank
+        // the feed until the next poll refilled it.
+        hydrateActivityFeed(await loadHorizonActivity(addr), { merge: true });
       } catch {
         // activity stays as-is
       }
