@@ -47,24 +47,53 @@ async function loadContractSacActivity(addresses: string[], limit: number): Prom
     });
     const filters = [{ type: 'contract' as const, contractIds: [sac], topics }];
 
-    // The RPC scans a bounded slice per call and hands back a cursor — a single
-    // call over a wide window can legitimately return zero matches with more
-    // ledgers still unscanned, so ALWAYS follow the cursor (bounded pages).
-    const events = [];
-    let cursor: string | undefined;
-    for (let page = 0; page < 8; page++) {
-      const res = await server.getEvents(
-        cursor
-          ? { cursor, filters, limit: 100 }
-          : { startLedger: Math.max(1, latest.sequence - 17_000), filters, limit: 100 },
-      );
-      events.push(...res.events);
-      cursor = (res as { cursor?: string }).cursor;
-      if (!cursor) break;
+    // Two RPC realities shape this scan:
+    // 1. The RPC scans a bounded slice per call and hands back a cursor — a
+    //    single call can legitimately return zero matches with more ledgers
+    //    still unscanned, so ALWAYS follow the cursor (bounded pages).
+    // 2. QuickNode (mainnet) REJECTS wide windows outright with -32001
+    //    "request exceeded processing limit threshold" (~3k ledgers max per
+    //    request), so a 17k-ledger ask never even starts. Scan in chunks it
+    //    accepts — newest chunk first so an early exit keeps the most recent
+    //    activity — and isolate failures per chunk.
+    const CHUNK = 2_900; // ≈ 4h of ledgers, under QuickNode's processing cap
+    const CHUNKS = 6; // ≈ 24h total lookback
+    const events: SorobanRpc.Api.EventResponse[] = [];
+    for (let c = 0; c < CHUNKS && events.length < limit * 2; c++) {
+      const endLedger = latest.sequence - c * CHUNK;
+      // The cost estimate varies with ledger contents, so a chunk can trip the
+      // limit even at "safe" width — retry once at half width before conceding
+      // that slice; a failed chunk forfeits only its own 4h of history.
+      for (const width of [CHUNK, Math.floor(CHUNK / 2)]) {
+        const startLedger = Math.max(1, endLedger - width + 1);
+        try {
+          let cursor: string | undefined;
+          for (let page = 0; page < 6; page++) {
+            // Follow-up pages: cursor and ledger range are mutually exclusive,
+            // so the walk can overrun endLedger into ledgers a newer chunk
+            // already covered — the id-dedupe below absorbs the overlap.
+            const res = await server.getEvents(
+              cursor
+                ? { cursor, filters, limit: 100 }
+                : { startLedger, endLedger, filters, limit: 100 },
+            );
+            events.push(...res.events);
+            cursor = (res as { cursor?: string }).cursor;
+            if (!cursor) break;
+          }
+          break; // chunk scanned
+        } catch {
+          // fall through to the narrower width, or concede the chunk
+        }
+      }
+      if (endLedger - CHUNK + 1 <= 1) break;
     }
 
     const out: TxRecord[] = [];
+    const seenIds = new Set<string>();
     for (const ev of events) {
+      if (seenIds.has(ev.id)) continue; // chunk boundaries can overlap
+      seenIds.add(ev.id);
       try {
         const topics = ev.topic;
         const from = String(scValToNative(topics[1]!));
