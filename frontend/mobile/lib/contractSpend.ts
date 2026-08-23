@@ -43,8 +43,10 @@ export async function isWalletDeployed(contractAddress: string): Promise<boolean
 }
 
 /**
- * The fee-payer's spendable XLM (native balance minus ~1.5 XLM reserve+fees).
- * 0 when the account is missing or unreachable.
+ * The fee-payer's spendable XLM: native balance minus the account's ACTUAL
+ * reserve — (2 + subentries) × 0.5 base reserve (data entries and trustlines
+ * each lock 0.5; the wallet's recovery breadcrumbs alone are 3 entries) minus
+ * selling liabilities, minus a small fee buffer. 0 when missing/unreachable.
  */
 export async function getFeePayerSpendableXlm(): Promise<number> {
   try {
@@ -52,10 +54,15 @@ export async function getFeePayerSpendableXlm(): Promise<number> {
     if (!feePayer) return 0;
     const server = new Horizon.Server(getNetwork().horizonUrl);
     const account = await server.loadAccount(feePayer);
-    const native = (account.balances as Array<{ asset_type: string; balance: string }>).find(
+    const native = (account.balances as Array<{ asset_type: string; balance: string; selling_liabilities?: string }>).find(
       (b) => b.asset_type === 'native',
     );
-    return Math.max(0, Number(native?.balance ?? '0') - 1.5);
+    const balance = Number(native?.balance ?? '0');
+    const subentries = Number((account as unknown as { subentry_count?: number }).subentry_count ?? 0);
+    const reserve = (2 + subentries) * 0.5;
+    const liabilities = Number(native?.selling_liabilities ?? '0');
+    const feeBuffer = 0.05;
+    return Math.max(0, balance - reserve - liabilities - feeBuffer);
   } catch {
     return 0;
   }
