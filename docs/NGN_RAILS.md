@@ -23,11 +23,11 @@ self-custodial smart wallet — is the differentiator, not the risk.
 2. **Programmatic NGN → USDC on Stellar: CONFIRMED.** **Busha Business API**
    (SEC/ARIP-licensed, docs verified live 2026-08-21): NGN bank-transfer deposits (flat
    ₦150) → quote-locked conversion → **USDC-XLM withdrawal** (1 USDC fee). Native XLM too.
-3. **"Licensed partner converts, we do UX + self-custody": CONFIRMED.** Busha Business
-   explicitly markets its "SEC-licensed infrastructure" API for unlicensed fintechs to
-   build wallets/payment flows on. Caveat: the SEC's non-custodial-wallet exemption
-   wording is still the one unresolved legal detail — get a Nigerian counsel read before
-   mainnet launch.
+3. ~~**"Licensed partner converts, we do UX + self-custody": CONFIRMED.**~~
+   **⚠️ DOWNGRADED 2026-08-23 — see "The licensing question" below. Busha marketing this
+   to unlicensed fintechs is not the same as it being lawful for us, and a Nigerian
+   tribunal has already restrained a company running exactly this structure.** Treat the
+   commercial go-ahead from a provider as necessary but nowhere near sufficient.
 
 ## Recommended stack
 
@@ -191,6 +191,56 @@ Sandbox `https://sandbox.monnify.com`, live `https://api.monnify.com`; `Basic ba
 
 Correct host is **`plustiveimpact.com`** (plain `plustive.com` is dead). API `https://api.plustiveimpact.com`, and the path prefix is **`/api/v1`** — marketing writes `/v1` and is wrong; the advertised OpenAPI spec 404s. **All money is integer kobo except airtime `amount`, which is whole naira.** Best idempotency of the four: replay returns the original with `idempotentReplay: true`, differing params give `409 idempotency_conflict`, and lookup accepts your own `clientReference`. Auto-refund is **contractual (in the ToS)**, not just marketing. Blockers: **no self-serve signup at all** (sales-provisioned) and **manual IP allowlisting** since July 2026, which rules out dynamic serverless egress. The "DB-level idempotency on `request_id`" note in earlier research was half-invented — the field is `clientReference` and the DB claim appears only on marketing pages.
 
+## ⚠️ The licensing question — the "we're just the tech layer" posture is not safe
+
+_Legal research 2026-08-23, reading the gazetted ISA 2025 text and the SEC's own rules and circulars directly. This **supersedes** the earlier "CONFIRMED" verdict on claim 3 above. Not legal advice — but the direction of travel is clear enough to plan around._
+
+**The problem: self-custody defeats the *custody* limb of the VASP definition, but not the *arranging* limb.**
+
+- **ISA 2025** (commenced 25 Mar 2025) puts virtual assets squarely in scope: s.357 defines securities to include *"virtual and digital assets"*, and Second Schedule Part I ¶4 makes them an Investment.
+- **Second Schedule Part II ¶2 — "Arranging deals in Investments"** — covers *"making, offering or agreeing to make arrangements with a view to another person buying [or] selling … a particular investment."* Taking a user's "sell my USDC for naira" intent and passing it to a provider is arranging.
+- Unlike the UK regime this language was borrowed from, **ISA 2025 has no exclusions schedule** — there is no "arranging through an authorised person" carve-out.
+- **s.61(1)+(4)** makes doing this unregistered a **criminal offence**: *"a fine of not less than N5,000,000 or imprisonment for a term of not less than five years or both."*
+- The SEC's **Digital Assets Intermediary (DAI)** category exists precisely to catch *"any person other than a DAOP, DAX or DAC seeking to facilitate virtual assets transactions."*
+
+**The precedent — and it is uncomfortably close to us.** In **SEC v. Chaka Technologies**, a Nigerian consumer app gave users access to foreign shares while a licensed foreign broker did the execution and held the assets. Chaka held no client assets and executed nothing — it arranged and it marketed. The Investments and Securities Tribunal **restrained it anyway** for operating unregistered. Chaka's route out was to get licensed; it now appears on the SEC register as a Digital Sub-Broker. That was under the *old* Act — today the arranging limb is express statutory text with criminal liability attached.
+
+**There IS a written exemption, and it is too narrow to lean on.** SEC Digital Asset Rules 2022, Part D, Rule 1.3 exempts a technology provider supplying infrastructure *to a DAX*, communication infrastructure *routing orders*, or a financial portal aggregating links. A branded consumer wallet with its own users, UX and economics is none of those. Worse, **Rule 1.1 above it is drafted very wide** — covering *"reception, transmission and execution of orders on behalf of other persons"* — and **it is unverified whether Rule 1.3 even survived the 30 June 2025 amendments**, because the amended rules are not published on sec.gov.ng. A rule-level exemption also cannot cure a statutory offence in any case.
+
+**Capital, if we went the licensed route** (SEC Circular 26-1, 16 Jan 2026, compliance deadline 30 Jun 2027) — note these **doubled twice** since the ₦500m figures still circulating on legal blogs:
+
+| Category | Minimum capital |
+|---|---|
+| Ancillary VASP (AVASP) | ₦300m |
+| **Digital Assets Intermediary (DAI)** — the cheapest that fits us | **₦500m** |
+| Digital Assets Exchange / Custodian | ₦2bn |
+
+**ARIP does not make this cheaper** — ₦200k assessment + ₦2m processing, and it still requires *"evidence of required shareholder fund"*. It buys speed, not a capital waiver. Note also that **nobody in Nigeria holds a full SEC VASP registration** — the SEC's operator registry has no digital-asset category at all. Busha, Quidax, KuCoin et al. are all running on ARIP Approvals-in-Principle.
+
+**A Business Name (sole proprietorship) cannot work for this**, whatever it costs: CBN restricts crypto-designated bank accounts to entities *incorporated in Nigeria **and** licensed by the SEC*, and the SEC rules require a VASP to be *"structured as a body corporate."*
+
+### ⚡ The development that may rescue this: the July 2026 Executive Order
+
+The **Executive Order on Virtual Assets Coordination (signed 17 July 2026)** splits jurisdiction: **SEC regulates virtual assets that are securities; the CBN regulates payment, settlement and custody activities.** It creates a Virtual Asset Council (CBN Governor chairing, SEC DG as vice) and a Virtual Asset Office hosted at the CBN — **and directs the CBN to launch a dedicated regulatory sandbox.**
+
+**A crypto→NGN cash-out is payment/settlement, not securities issuance.** Under this Order that arguably lands us with the CBN rather than the SEC — and a CBN sandbox would be a vastly cheaper door than ₦500m of DAI capital. The Harmonised Implementation Framework is the thing to watch.
+
+### What this means for us, concretely
+
+| Activity | Verdict |
+|---|---|
+| Testnet wallet, testnet assets, simulated naira | **Safe** — nothing is an investment, no deal arranged, no fiat exists |
+| Mock offramp with clearly-labelled fake quotes | **Safe**, provided the UI is unambiguous and we don't solicit funds |
+| Sandbox integration against a provider's test API | **Safe** — no real orders, no real fiat |
+| **Real user, real crypto, real naira out — even with the partner doing everything** | **Regulated.** s.61 criminal exposure, plus ARIP's ₦10m minimum penalty for unregistered brokers/advisers |
+| **Marketing a live offramp to Nigerians before registering** | **Regulated** — the SEC's 14 May 2026 notice expressly reaches *promotion*. This is what got Chaka restrained |
+
+**The realistic options** are DAI registration (₦500m), ARIP with a licensed partner, a **written Rule 2.0 exemption obtained before launch** (self-custody + a fully licensed executing partner is the strongest possible fact pattern to argue — but apply, don't assume), or becoming a genuinely white-labelled feature *inside* a partner's regulatory perimeter. **What we must not do is self-classify as a technology service provider and launch.**
+
+**Two actions worth more than any further desk research:** email `innovation@sec.gov.ng` / `fintech@sec.gov.ng` asking directly whether a non-custodial wallet referring users to a licensed VASP falls under Rule 1.3 or needs DAI registration — a written answer outranks every analysis here; and watch for the Virtual Asset Council's Harmonised Implementation Framework, which may move this to the CBN entirely.
+
+**Also note: NDPR registration is separate and unavoidable.** A fintech wallet is Ultra-High Level under the NDPC's 2024 Guidance Notice (Schedule 7 to GAID 2025) = **₦250,000**, plus an annual Compliance Audit Return filed through a licensed DPCO before 31 March. Penalties are ₦2m–₦10m or 2% of gross revenue, whichever is greater.
+
 ## Regulatory guardrails (Aug 2026)
 
 - **ISA 2025** makes digital assets securities; fiat↔crypto conversion = licensed VASP
@@ -218,9 +268,19 @@ automatically"; a dev webhook simulates the deposit → credits testnet USDC to 
 wallet; bill tiles run against a sandbox (Pairgate `/test` or Plustive). Proves the entire
 UX; this is the SCF demo.
 
-**Phase 1 — paperwork (parallel):** CAC registration (gates Monnify + Busha Business
-live access); Busha Business signup + KYB; Monnify account + bills activation email;
-eBills tier-2 (BVN). Optional: Flutterwave unregistered account as an early live toehold.
+**Phase 1 — paperwork (parallel):** CAC registration as a **Limited company, not a Business
+Name** (a sole proprietorship is legally incapable of holding VASP status, so it cannot serve
+this use case at any price). CAC incorporation is ~₦17,500 statutory at ₦1m issued share
+capital (₦10,000 per additional ₦1m under the schedule effective 1 Aug 2025, plus 0.75% stamp
+duty and ₦500 name reservation); CAMA 2020 s.18 allows a single person to form and direct a
+small company. Then Busha Business KYB; Monnify account + bills activation email; eBills
+tier-2 (BVN); **NDPC registration at Ultra-High Level (₦250,000)**.
+
+⚠️ **But do not treat CAC as the thing that unlocks a live offramp** — see "The licensing
+question" above. Incorporation is necessary and nowhere near sufficient; the SEC letter and
+the CBN sandbox are the real gates, and the July 2026 Executive Order may move the whole
+question to the CBN. **Send the SEC email before spending money on registration**, because
+the answer changes which entity and which capital base we need.
 
 **Phase 2 — live rails:** `OnrampProvider` + `BillsProvider` adapter interfaces (never
 couple money-in and bill-delivery); Busha adapter (webhook → quote → USDC-XLM payout to

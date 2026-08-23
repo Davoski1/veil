@@ -40,7 +40,9 @@ A reviewer can reproduce the build locally and match mainnet bytecode. The repro
 **Veil is fundable — but not today, and not on the Open Track. It is a ~2–4 week gap-closure sprint away from a credible Integration Track submission.**
 
 - **Award:** SCF Build Award, **Integration Track**. Up to **$150,000 in XLM** per award (paid in XLM, valued at the CF settlement price on payment date; capped), with a lifecycle path to **$300,000 total** in follow-on awards. Realistic ask for a consumer stablecoin wallet at Veil's traction level: **$60k–$110k**, not the cap.
-- **Cadence / next deadline:** Rounds run on a **6-week cycle**. As of recon the live round is **SCF #45 (Panel Review, submission deadline Aug 16 2026)** — that window has effectively closed, so **the target is the next round (~6 weeks out, ~late Sep / early Oct 2026)**. The entry gate is the **rolling Interest Form** at communityfund.stellar.org; submit it **now** — it is reviewed on a rolling ~2-week basis and gates invitation into a round. **Re-verify the exact next round number/date on communityfund.stellar.org before submitting** (recon flags this figure as time-sensitive).
+- **Cadence / next deadline:** Rounds run on a **6-week cycle**. **SCF #46 is open now with a submission deadline of 8 November 2026** (#45 closed 16 Aug 2026) — verified 2026-08-23, superseding this doc's earlier "~late Sep/early Oct" estimate. That is **~11 weeks of runway**, comfortably more than the 2–3 engineer-days of blocking work left. The entry gate is the **rolling Interest Form** at communityfund.stellar.org; submit it **now** — it is reviewed on a rolling ~2-week basis and gates invitation into a round. A referral is described as "an important part of the process" but is **not mandatory**.
+
+- **No company registration is required to apply.** The Official Rules admit *"Teams of Eligible Individuals"* alongside incorporated Organizations — the incorporation requirement is scoped only to the Organization branch. KYC happens **post-selection, pre-disbursement**, with an explicit individual path, and payment is **XLM to a wallet we control**, so no corporate bank account is needed. Nigeria is not on any exclusion list, and the Budget Guidelines list *"entity registration costs"* among things SCF will not fund — hard to square with incorporation being mandatory. Solo builders have won repeatedly (VRF-Soroban $50k at SCF #44, Digicus $150k, both team-size-1). **This decouples the SCF application entirely from the Nigerian CAC/VASP problem** (see `docs/NGN_RAILS.md`), which is the single most useful sequencing fact we have.
 
 **Why Integration, not Open:** The Open Track requires clearing a public **Community Vote via Neural Quorum Governance (NQG)** — a ~10–20% NQG-score threshold and 66% approval, where vote weight scales with Verified Tier, peer-delegated trust, and *historical SCF contributions*. Veil has **no** SCF track record and thin community embedding (~$29 lifetime on Drips). Recon shows ~76% of recent winners came through the referral channel; walking into an NQG vote cold is the weakest possible position. Integration Track is **panel-only** (no community vote) and rewards exactly what Veil is: a product that **composes existing Stellar building blocks** (USDC, Blend yield, Soroswap, MoneyGram rails, SEP-2 federation) with real cross-repo scaffolding. The tradeoff Veil must accept: Integration ties the final **40% tranche to a committed, panel-ratified on-chain metric** (cumulative volume / NAV or equivalent) — so we must commit to a realistic mainnet volume number and hit it.
 
@@ -67,6 +69,10 @@ None of these were architectural — they were packaging and deployment hygiene,
 
 **Deliberately NOT headlined** (recon says these are table stakes): gasless UX (Decaf already gasless) and send-by-name (standard SEP-2 federation, shipped in Scopuly). Market them as polish, never as the pitch.
 
+**A fourth angle worth claiming — the Integration List has no African rail.** The Integration Track requires integrating a building block from SCF's official Integration List. Its on/off-ramp category (Etherfuse, alfredpay, MoneyGram, Bridge, Abroad, BlindPay, Mercuryo, Anchor Platform, Koywe) is **heavily LatAm-weighted with nothing serving Africa or Nigeria** — a gap we are credibly positioned to fill, and a sharper framing of the market story than "Africa-focused" in the abstract.
+
+Better still, **Anchor Platform is itself on that list**, and the mobile app already carries a working SEP-24 implementation (`lib/sep24.ts` — TOML discovery, SEP-10 auth, interactive deposit *and* withdraw, status polling). So a SEP-6/SEP-24 offramp built on Anchor Platform is simultaneously (a) a legitimate testnet crypto→fiat demo needing **no licensed partner and no legal exposure**, and (b) a qualifying Integration Track integration. That is the cheapest path from where the code already is to a fundable, demonstrable offramp — and it sidesteps the Nigerian licensing problem entirely for the purposes of the application.
+
 ---
 
 ## 3. Track, award size, timeline
@@ -78,7 +84,7 @@ None of these were architectural — they were packaging and deployment hygiene,
 | Award ceiling | **$150,000 in XLM** per award; up to **$300,000** lifecycle via follow-on | budget-and-deliverable-guidelines; v7 blog |
 | Realistic ask | **$60k–$110k** (consumer-wallet band: Skopa $37.8k, Bexo $90k, Yolat $110k) | SCF #44 recap; awards page |
 | Cadence | **6-week cycle**; enter via rolling **Interest Form** | communityfund.stellar.org/awards |
-| Next deadline | Next round ~6 weeks after SCF #45 (Aug 16 2026) → **~late Sep/early Oct 2026** — *re-verify live* | awards page (time-sensitive) |
+| Next deadline | **SCF #46 submissions are OPEN — deadline 8 November 2026** (#45 closed 16 Aug 2026). Corrected 2026-08-23; the earlier "~late Sep/early Oct" was an estimate | communityfund.stellar.org/awards |
 | Process | Interest Form (~2wk) → invited Submission Form (~1wk) → Prescreen + Delegate Panel (~1wk) → *(Open only: NQG vote)* → KYC/KYB → disbursement | submission-criteria |
 
 **Tranche structure (v7 performance-based, 10/20/30/40):**
