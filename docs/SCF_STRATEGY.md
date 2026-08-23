@@ -73,6 +73,14 @@ None of these were architectural — they were packaging and deployment hygiene,
 
 Better still, **Anchor Platform is itself on that list**, and the mobile app already carries a working SEP-24 implementation (`lib/sep24.ts` — TOML discovery, SEP-10 auth, interactive deposit *and* withdraw, status polling). So a SEP-6/SEP-24 offramp built on Anchor Platform is simultaneously (a) a legitimate testnet crypto→fiat demo needing **no licensed partner and no legal exposure**, and (b) a qualifying Integration Track integration. That is the cheapest path from where the code already is to a fundable, demonstrable offramp — and it sidesteps the Nigerian licensing problem entirely for the purposes of the application.
 
+**And there is a real Nigerian anchor to demo against.** NGNC by Link.io (`ngnc.online`) is the only live SEP-24 NGN anchor on Stellar; verified 2026-08-23, its SEP-10 and SEP-24 endpoints respond correctly and our client should authenticate unmodified. Its ₦20,000 (~$13) minimum deposit makes a real end-to-end naira demo affordable. Be honest about it in the application, though: ~$70k total float and ~$300 of on-chain exit liquidity mean it is a **demo rail, not a production one** — which is precisely why an African on/off-ramp is a gap worth funding rather than a solved problem.
+
+### 🔑 SEP-45 — a differentiator hiding in plain sight
+
+SDF's reference anchor now ships **SEP-45: contract-account authentication** (`WEB_AUTH_FOR_CONTRACTS_ENDPOINT` + `WEB_AUTH_CONTRACT_ID`, live on testanchor.stellar.org today). It lets a Soroban smart wallet authenticate to an anchor *directly*, instead of requiring a classic ed25519 keypair to sign a SEP-10 challenge.
+
+For Veil this is unusually well-aimed. Our whole architecture is a contract-based passkey wallet, and SEP-10 is an architectural mismatch with it — the withdraw screen currently has to authenticate as the fee-payer G-account because a C-address cannot sign a SEP-10 challenge. **SEP-45 is the primitive our design has been missing**, no shipped consumer wallet uses it yet, and it strengthens exactly the argument the Integration Track rewards: Stellar used to *meaningfully improve core features*, at the protocol's leading edge, in a way that is not portable to another chain. Worth a spike, and worth naming in the application.
+
 ---
 
 ## 3. Track, award size, timeline

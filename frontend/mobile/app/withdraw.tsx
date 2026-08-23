@@ -109,6 +109,11 @@ export default function WithdrawScreen() {
     // SEP-24 withdrawal is settled by a classic payment to the anchor. Both
     // are the fee-payer's job — a C-address can do neither, so authenticating
     // as the contract would fail at the anchor.
+    //
+    // This is a workaround, not the design: SEP-45 (contract-account auth,
+    // live on testanchor.stellar.org) is the right primitive for a passkey
+    // smart wallet and would let the contract authenticate as itself. No NGN
+    // anchor declares it yet. See docs/NGN_RAILS.md.
     const account = await getFeePayerAddress();
     if (!account) {
       setError('Spending account not set up yet.');

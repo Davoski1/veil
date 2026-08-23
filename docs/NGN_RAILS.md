@@ -38,12 +38,49 @@ self-custodial smart wallet — is the differentiator, not the risk.
 | **Bills — build FIRST** | **eBills.africa** — the only rail an individual can sign up for today *and* whose timeouts are recoverable (see §Bills deep-dive) | — |
 | **Bills — once we have an entity** | **Monnify Bills API** (real sandbox; explicit "requery does not re-charge"; 0.5–2% commission; needs activation email + merchant review) | Flutterwave Bills v3 (11 categories, but v3→v4 migration risk; IP whitelisting) |
 | **Bills — fallbacks** | Plustive (best idempotency of the four, but sales-provisioned + static-IP allowlist) | Pairgate (real `/test` mode, but unrecoverable timeouts — see deep-dive; **do not make it primary**) |
-| **Stellar-native option** | **NGNC by Link.io** — live SEP-24 anchor (issuer `GASBV6…GXZY6`), proven in LOBSTR; ₦20k min deposit | Thin on-chain liquidity (NGNC→USDC swap problem); Cowrie/NGNT is half-dead — skip |
+| **Stellar-native option** | **NGNC by Link.io** — the ONLY live SEP-24 NGN anchor; works technically, economically dormant. **Demo rail, not production** — see the anchor survey below | Cowrie/NGNT is SEP-6-only (our client can't speak to it) and a zombie; everything else is dead |
 
 **Ruled out:** Yellow Card retail (dead Jan 2026; B2B API is strong but KYB/partnership-gated
 with undisclosed pricing — revisit at scale), MoonPay (exited Nigeria), Cashramp (no Stellar
 — Celo/Optimism/Base only), cNGN (not on Stellar), Baxi (dev portal dead), SquadCo VAS
 (airtime/data only), OPay bills (airtime/betting only — prior research), VTpass (banned by fiat).
+
+## Stellar anchor survey — verified 2026-08-23
+
+_Every TOML and `/info` below was fetched directly; on-chain figures come from Horizon._
+
+**Verdict: NGN anchoring on Stellar is technically viable and economically not.** Exactly one live SEP-24 NGN anchor exists, and it carries no volume.
+
+### NGNC by Link.io — the only one, and it does work
+
+Issuer `GASBV6W7GGED66MXEVC7YZHTWWYMSVYEY35USF2HJZBLABLYIFQGXZY6`, home domain `ngnc.online`, operated by **LINK.IO LTD (UK-registered)**. TOML declares SEP-10 (`anchor.ngnc.online/auth`) and **SEP-24** (`/sep24`) — and notably **no SEP-6, SEP-12, SEP-31 or SEP-38**. `NGNC` is `live`; the Ghana and Kenya tokens are `pending`.
+
+Live `/info`: deposit **min ₦20,000 / max ₦20,000,000**; withdraw **min ₦10,000 / max ₦5,000,000**; **fee 0**; `account_creation: true` and `claimable_balances: true` — both genuinely useful for an invisible-wallet onboarding flow, since the anchor can fund a brand-new wallet. SEP-10 returns a well-formed challenge, so **our existing client should authenticate with no code changes**.
+
+**But the economics are the problem:** 6,170 trustlines, ~83.2m NGNC issued (**≈$70k**), and exit liquidity that rounds to nothing — the entire NGNC↔USDC AMM pool holds **24.54 USDC**, the order book shows a **4.6× bid/ask spread**, and the deepest pool is against GHSC, the anchor's own unlaunched token. Primary-market throughput over six weeks was **two operations**: a 1,000,000 mint and an immediate 1,000,000 burn — a treasury self-test, not customer flow. The pool's implied rate (₦1,178/$) is far off the ~₦1,500 market, which is itself proof nobody is arbitraging it.
+
+Encouragingly the anchor is *maintained* — endpoints answer, TLS is valid, someone minted five days ago. It is simply not being used.
+
+### Everything else
+
+- **Cowrie Exchange (NGNT)** — the notable near-miss. TOML is live, 8,815 trustlines, and its SEP-6 `/info` is startlingly concrete (withdraw min **₦300**, ₦200 fixed fee, 23 Nigerian banks by name — limits ~200× friendlier than NGNC). But it declares **SEP-6 only, no SEP-24**, so our client cannot talk to it at all, and on-chain it is a zombie: issuer activity is dust, one distribution account has been silent since July 2025, and the NGNT/USDC book shows a ~190,000× spread. Legacy stock from its active 2019–21 era.
+- **Dead:** `flutterwave.com` serves no TOML (404) despite an issuer pointing its home domain there; `kubitx.com` (NGNX) 404; `tonaira.com`, `pingme.ng`, `sendwise.org`, `interstellar.exchange` all fail to resolve.
+- **cNGN is confirmed NOT on Stellar** — Horizon returns zero assets for the code, and cNGN's own docs list EVM chains, Solana, Tron and **Bantu**. Bantu is a *Stellar-codebase fork* with its own passphrase and Horizon (its cNGN address is a G-address), popular in Nigeria and **not interoperable with Stellar mainnet** — though our SDK and SEP tooling would largely port. Separate investigation if it ever matters.
+
+> ⚠️ **Never match an asset on the code `NGN`/`NGNT` alone.** Those codes are heavily squatted: Horizon returns issuers with home domains like `bankofengland.com.co`, `federalreserve.us.com`, fake `circle.com` and `lobstr.co`, one with 2.7 *trillion* NGN issued to 8 accounts. Always pin the issuer and verify its home-domain TOML.
+
+### SDF testnet anchor — and a find that matters more than the NGN answer
+
+`testanchor.stellar.org` is fully live with the complete SEP stack. SEP-24 withdraw works for **SRT, USDC and native XLM** (min 1, max 10, fees disabled) — so a legitimate testnet offramp demo is exercisable today with no partner and no legal exposure.
+
+**🔑 SEP-45 is live on it:**
+```
+WEB_AUTH_FOR_CONTRACTS_ENDPOINT = https://testanchor.stellar.org/sep45/auth
+WEB_AUTH_CONTRACT_ID            = CD3LA6RKF5D2FN2R2L57MWXLBRSEWWENE74YBEFZSSGNJRJGICFGQXMX
+```
+**SEP-45 is contract-account authentication** — a Soroban smart wallet authenticating to an anchor directly, instead of needing a classic G-account keypair to sign a SEP-10 challenge.
+
+This is architecturally significant for Veil specifically. SEP-10 verifies an ed25519 signature over a classic account, which is why `app/withdraw.tsx` has to authenticate as the fee-payer rather than as the user's actual wallet — a workaround, not a design. **SEP-45 is the correct primitive for a contract-based passkey wallet**, and it is testable today on SDF's reference anchor. Neither NGNC nor Cowrie declares it yet, but SDF shipping it in the reference implementation signals where the standard is going. Worth its own spike.
 
 ## Offramp deep-dive — USDC-on-Stellar → NGN → bank
 
