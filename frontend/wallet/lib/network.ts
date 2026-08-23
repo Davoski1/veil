@@ -26,7 +26,9 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     factoryContractId:
       process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID_TESTNET?.trim()
       || process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID?.trim()
-      || '',
+      // Deployed testnet passkey-wallet factory. Committed so a fresh clone
+      // runs without secret config; override per-deployment via env.
+      || 'CAUK4MWO3TTFM6PLURSH2GPK3AB747SZGABKTCVLKCU7W2MGKHKP35GA',
     friendbotUrl: 'https://friendbot.stellar.org',
   },
   mainnet: {
@@ -34,8 +36,14 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     displayName: 'Stellar Mainnet',
     networkPassphrase: Networks.PUBLIC,
     horizonUrl: 'https://horizon.stellar.org',
+    // No public default: mainnet Soroban RPC is a paid/keyed endpoint, so the
+    // URL (which carries the key) must come from the environment.
     rpcUrl: process.env.NEXT_PUBLIC_MAINNET_RPC_URL?.trim() || '',
-    factoryContractId: process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID_MAINNET?.trim() || '',
+    factoryContractId:
+      process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID_MAINNET?.trim()
+      // Deployed 2026-08-21; its own bytecode and the wallet WASM it deploys
+      // (b485f817…) match contracts/expected-hashes.json — verified on-chain.
+      || 'CCZ3JLRESNLDADGXWNEH4YQ4NXUUAHRJNCWZHYG6QB4KTDYHOH6OQ7BK',
     friendbotUrl: null,
   },
 }
