@@ -202,12 +202,15 @@ function getRpcServer(): SorobanRpc.Server {
 async function getWalletNonce(
   rpc: SorobanRpc.Server,
   contractAddress: string,
-  networkPassphrase: string
+  networkPassphrase: string,
+  sourceAccountId?: string,
 ): Promise<bigint | null> {
   try {
-    const dummyKeypair = Keypair.random();
-    const dummyAccount = new Account(dummyKeypair.publicKey(), '0');
-    const probeTx = new TransactionBuilder(dummyAccount, {
+    // Simulate from a REAL account when one is known: some mainnet RPC
+    // providers reject simulations sourced from non-existent accounts, which
+    // made this probe fail deterministically (SDF's testnet RPC tolerates it).
+    const probeSource = new Account(sourceAccountId ?? Keypair.random().publicKey(), '0');
+    const probeTx = new TransactionBuilder(probeSource, {
       fee: inclusionFee(),
       networkPassphrase,
     })
@@ -300,7 +303,7 @@ export async function signXdrPayload(xdrString: string): Promise<string> {
 
       const addressCredentials = credentials.address();
       const contractAddress = Address.fromScAddress(addressCredentials.address()).toString();
-      const currentNonce = await getWalletNonce(rpc, contractAddress, network.networkPassphrase);
+      const currentNonce = await getWalletNonce(rpc, contractAddress, network.networkPassphrase, feePayerKeypair.publicKey());
 
       const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
         new xdr.HashIdPreimageSorobanAuthorization({
