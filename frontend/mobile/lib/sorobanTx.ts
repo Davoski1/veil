@@ -1,6 +1,7 @@
-import { Keypair, TransactionBuilder, rpc as SorobanRpc } from '@stellar/stellar-sdk';
+import { BASE_FEE, Keypair, TransactionBuilder, rpc as SorobanRpc } from '@stellar/stellar-sdk';
 
 import './polyfills';
+import { inclusionFee } from './fees';
 
 /**
  * Sign a Soroban transaction XDR with the fee-payer key and submit it over RPC.
@@ -29,7 +30,16 @@ export async function signAndSubmitSorobanXdr(params: {
     throw new Error(`Simulation failed: ${sim.error}`);
   }
 
-  const assembled = SorobanRpc.assembleTransaction(built, sim).build();
+  let assembled = SorobanRpc.assembleTransaction(built, sim).build();
+  // Mainnet surge pricing rejects the default 100-stroop inclusion bid the
+  // upstream builder (e.g. Soroswap) put on the XDR. Raise the ceiling — the
+  // ledger charges the effective rate, never the full bid.
+  const bid = inclusionFee();
+  if (bid !== BASE_FEE) {
+    assembled = TransactionBuilder.cloneFrom(assembled, {
+      fee: (Number(assembled.fee) + Number(bid)).toString(),
+    }).build();
+  }
   assembled.sign(signer);
 
   const sendResult = await rpc.sendTransaction(assembled);

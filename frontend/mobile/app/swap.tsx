@@ -1,3 +1,4 @@
+import { Keypair } from '@stellar/stellar-sdk';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +11,9 @@ import { SlideToConfirm } from '../components/SlideToConfirm';
 import { SwapVerticalIcon } from '../components/icons';
 import { TokenIcon } from '../components/TokenIcon';
 import { SuccessAnimation } from '../components/SuccessAnimation';
-import { getSoroswapQuote, buildSoroswapSwapXdr, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
+import { getSoroswapQuote, buildSoroswapSwapXdr, ensureSwapOutTrustline, resolveTokenAddress, type SwapQuote } from '../lib/soroswap';
 import { getSdexQuote, sdexSwap, sdexSupported } from '../lib/sdexSwap';
+import { getFeePayerAddress } from '../lib/activity';
 import { getNetwork } from '../lib/network';
 import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
 import { requirePasskey } from '../lib/passkey';
@@ -116,12 +118,21 @@ export default function SwapScreen() {
           return;
         }
 
-        const [tokenInAddr, tokenOutAddr] = await Promise.all([
+        // The swap moves funds on the SPENDING (fee-payer G) account — its
+        // source-account signature authorizes the token transfers. A smart
+        // wallet's C-address can't be the transaction source at all.
+        const [tokenInAddr, tokenOutAddr, feePayer] = await Promise.all([
           resolveTokenAddress(tokenIn.code),
           resolveTokenAddress(tokenOut.code),
+          getFeePayerAddress(),
         ]);
         if (!tokenInAddr || !tokenOutAddr) {
           setQuoteError('Token not found in Soroswap list.');
+          setQuote(null);
+          return;
+        }
+        if (!feePayer) {
+          setQuoteError('No spending account on this device yet.');
           setQuote(null);
           return;
         }
@@ -130,7 +141,7 @@ export default function SwapScreen() {
           tokenOut: tokenOutAddr,
           amountIn: Math.round(parsed * 1e7).toString(),
           slippageBps: SLIPPAGE_BPS,
-          feePayerAddress: walletAddress,
+          feePayerAddress: feePayer,
         });
         setQuote(result);
         if (!result) setQuoteError('No liquidity found for this pair.');
@@ -173,22 +184,26 @@ export default function SwapScreen() {
         return;
       }
 
-      const [tokenInAddr, tokenOutAddr, walletAddress] = await Promise.all([
+      const [tokenInAddr, tokenOutAddr] = await Promise.all([
         resolveTokenAddress(tokenIn.code),
         resolveTokenAddress(tokenOut.code),
-        getWalletAddress(),
       ]);
-      if (!walletAddress) throw new Error('Wallet not configured.');
       if (!tokenInAddr || !tokenOutAddr) {
         const missing = !tokenInAddr ? tokenIn.code : tokenOut.code;
         throw new Error(`${missing} isn't listed on Soroswap for this network — swaps use Soroswap liquidity (mainnet).`);
       }
+      // The router refuses to pay out to an account without the destination
+      // trustline — open it first when missing (locks 0.5 XLM base reserve).
+      await ensureSwapOutTrustline(signerSecret, tokenOut.code);
+
+      // Build against the spending account — the same key that signs below.
+      const feePayer = Keypair.fromSecret(signerSecret).publicKey();
       const unsignedXdr = await buildSoroswapSwapXdr({
         tokenIn: tokenInAddr,
         tokenOut: tokenOutAddr,
         amountIn: Math.round(parsed * 1e7).toString(),
         slippageBps: SLIPPAGE_BPS,
-        feePayerAddress: walletAddress,
+        feePayerAddress: feePayer,
       });
       if (!unsignedXdr) throw new Error('Failed to build swap transaction.');
 
@@ -209,7 +224,9 @@ export default function SwapScreen() {
       const name = err instanceof Error ? err.name : '';
       const friendly =
         name === 'NotFoundError' || /^not found$/i.test(msg.trim())
-          ? 'Your fee-payer account has no XLM yet. Open Settings → Fund test XLM, then try again.'
+          ? onTestnet
+            ? 'Your spending account has no XLM yet. Open Settings → Fund test XLM, then try again.'
+            : 'Your spending account has no XLM yet. Deposit XLM to it first (Receive → Spending account).'
           : msg === 'USER_REJECTED'
             ? 'Signing was declined.'
             : msg;
