@@ -49,7 +49,9 @@ describe('fresh wallet with PRF (secure path)', () => {
     const kp = await ensureFeePayer(withPrf)
 
     expect(kp).not.toBeNull()
-    expect(getFeePayerMode()).toBe('prf')
+    // 'prf-raw' = PRF output used directly, matching the mobile app so the
+    // same passkey yields the same fee-payer on both clients.
+    expect(getFeePayerMode()).toBe('prf-raw')
     // C3: the seed is NOT in localStorage…
     expect(localStorage.getItem(SECRET)).toBeNull()
     // …only in sessionStorage (cleared on lock / tab close).
