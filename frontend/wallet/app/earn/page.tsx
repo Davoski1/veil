@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -195,17 +196,9 @@ export default function EarnPage() {
       </nav>
 
       <main className="wallet-main">
-        <h2
-          style={{
-            fontFamily: 'Lora, Georgia, serif',
-            fontWeight: 600,
-            fontStyle: 'italic',
-            fontSize: '1.75rem',
-            marginBottom: '0.5rem',
-          }}
-        >
-          Earn
-        </h2>
+        <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Yield" title="Earn" />
+        </div>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', marginBottom: '1.75rem' }}>
           Deposit XLM or USDC into Blend Protocol to earn yield on-chain.
         </p>

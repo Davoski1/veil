@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -270,9 +271,9 @@ export default function SendPage() {
       </nav>
 
       <main className="wallet-main">
-        <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', marginBottom: '1.75rem' }}>
-          Send
-        </h2>
+        <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Transfer" title="Send money" />
+        </div>
 
         {step === 'form' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

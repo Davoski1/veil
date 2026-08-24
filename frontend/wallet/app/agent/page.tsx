@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -414,9 +415,9 @@ export default function AgentPage() {
           {/* Step 0: Name */}
           {onboardingStep === 0 && (
             <>
-              <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', textAlign: 'center' }}>
-                What should I call you?
-              </h2>
+              <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Assistant" title="Agent" />
+        </div>
               <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)', textAlign: 'center', lineHeight: 1.6 }}>
                 Your agent will greet you by name and personalize conversations.
               </p>

@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -456,21 +457,14 @@ export default function SwapPage() {
         </div>
       )}
 
-      <main className="wallet-main">
-        <h2
-          style={{
-            fontFamily: 'Lora, Georgia, serif',
-            fontWeight: 600,
-            fontStyle: 'italic',
-            fontSize: '1.75rem',
-            marginBottom: '1.75rem',
-          }}
-        >
-          Swap tokens
-        </h2>
+      <main className="wallet-main wallet-main--wide">
+        <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Exchange" title="Swap" />
+        </div>
 
         {step === 'form' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
+            <div className="vw-swapcol">
             {/* You Pay */}
             <div className="card" style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
@@ -632,6 +626,28 @@ export default function SwapPage() {
               </div>
             </div>
 
+            {errorMsg && (
+              <div
+                className="card"
+                style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)' }}
+              >
+                <p style={{ fontSize: '0.8125rem', color: 'var(--teal)', textAlign: 'center' }}>
+                  {errorMsg}
+                </p>
+              </div>
+            )}
+
+            <button
+              className="btn-gold"
+              onClick={() => setStep('confirm')}
+              disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
+              style={{ marginTop: '1rem' }}
+            >
+              Review swap
+            </button>
+            </div>
+
+            <div className="vw-swapside">
             {/* Quote details */}
             {usingSoroswap && quote && !errorMsg && (
               <div className="card" style={{ padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -656,26 +672,7 @@ export default function SwapPage() {
                 </p>
               </div>
             )}
-
-            {errorMsg && (
-              <div
-                className="card"
-                style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)' }}
-              >
-                <p style={{ fontSize: '0.8125rem', color: 'var(--teal)', textAlign: 'center' }}>
-                  {errorMsg}
-                </p>
-              </div>
-            )}
-
-            <button
-              className="btn-gold"
-              onClick={() => setStep('confirm')}
-              disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
-              style={{ marginTop: '1rem' }}
-            >
-              Review swap
-            </button>
+            </div>
           </div>
         )}
 

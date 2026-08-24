@@ -22,6 +22,7 @@ import { sweepContractBalance } from '@/lib/sweepContractBalance'
 import { derToRawSignature, hexToUint8Array } from '@veil/utils'
 import type { WebAuthnSignature } from '@veil/sdk'
 import { getDueSchedules, updateSchedule, advanceNextRun, type PaymentSchedule } from '@/lib/schedules'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { useActivityFeed, initActivityFeed, hydrateActivityFeed, appendActivityFeed } from '@/lib/activityFeed'
 
 const network = getNetwork()
@@ -130,6 +131,55 @@ function DashboardPageContent() {
   const [wraithOutCursor, setWraithOutCursor] = useState<string | null>(null)
   const [hasMorePages, setHasMorePages]       = useState(false)
   const [isLoadingMore, setIsLoadingMore]     = useState(false)
+
+  // Shoulder-surfing guard. Persisted, but read after mount so the server and
+  // client render the same first paint.
+  const [hideAmounts, setHideAmounts] = useState(false)
+  const hideLoaded = useRef(false)
+  useEffect(() => {
+    try { setHideAmounts(localStorage.getItem('veil_hide_amounts') === '1') } catch { /* blocked storage */ }
+    hideLoaded.current = true
+  }, [])
+  useEffect(() => {
+    if (!hideLoaded.current) return
+    try { localStorage.setItem('veil_hide_amounts', hideAmounts ? '1' : '0') } catch { /* blocked storage */ }
+  }, [hideAmounts])
+
+  // Time-of-day greeting is resolved after mount: the server's clock and the
+  // viewer's are not the same, and a mismatch breaks hydration.
+  const [greeting, setGreeting] = useState('Welcome back')
+  useEffect(() => {
+    const h = new Date().getHours()
+    setGreeting(h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening')
+  }, [])
+
+  const priceOf = useCallback(
+    (a: { code: string; issuer?: string | null }) =>
+      prices[a.issuer ? `${a.code}:${a.issuer}` : a.code] ?? null,
+    [prices],
+  )
+
+  const usd = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+
+  const pricedAssets = assets.filter((a) => priceOf(a) != null)
+  const totalUsd = pricedAssets.reduce(
+    (sum, a) => sum + parseFloat(a.balance) * (priceOf(a) as number),
+    0,
+  )
+  // Only show a total once at least one asset has a price. A partial sum
+  // rendered as "the" balance understates the wallet without saying so.
+  const totalLabel = pricedAssets.length > 0 ? usd(totalUsd) : '—'
+
+  const balanceLine = assets
+    .slice()
+    .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance))
+    .slice(0, 2)
+    .map((a) => `${parseFloat(a.balance).toFixed(2)} ${a.code}`)
+    .join(' · ')
+
+  const recent = transactions.slice(0, 4)
+
   const horizonNextRef = useRef<(() => Promise<any>) | null>(null)
 
   useEffect(() => {
@@ -591,18 +641,38 @@ function DashboardPageContent() {
         </button>
       </header>
 
-      <main className="wallet-main" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+      <main className="wallet-main wallet-main--wide" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
 
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{
-            fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic',
-            fontSize: '1.75rem', color: 'var(--off-white)', marginBottom: '0.25rem',
-          }}>
-            Dashboard
-          </h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)' }}>
-            Your wallet locks automatically after 5 minutes of inactivity.
-          </p>
+
+        {/* ── Header row: greeting, hide-amounts, add money, send ── */}
+        <div className="vw-head">
+          <div>
+            <div className="vw-eyebrow">{greeting}</div>
+            <div className="vw-title">Your wallet</div>
+          </div>
+          <div className="vw-actions">
+            <button className="vw-pill" onClick={() => setHideAmounts(v => !v)}>
+              {hideAmounts ? 'Show amounts' : 'Hide amounts'}
+            </button>
+            <button className="vw-pill" onClick={() => setSep24Modal('deposit')}>Add money</button>
+            <button className="vw-pill vw-pill--gold" onClick={() => router.push('/send')}>
+              <span aria-hidden="true">↗</span> Send
+            </button>
+          </div>
+        </div>
+
+        {/* The sidebar carries the seven primary destinations from the design.
+            These are the rest of the wallet's surfaces — they had no home once
+            the old action grid went, and an unreachable route is a lost
+            feature, so they live here as a secondary row. */}
+        <div className="vw-more">
+          <button className="vw-chip" onClick={() => router.push('/assets')}>Assets</button>
+          <button className="vw-chip" onClick={() => setSep24Modal('withdraw')}>Withdraw</button>
+          <button className="vw-chip" onClick={() => router.push('/buy')}>Buy crypto</button>
+          <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>
+          <button className="vw-chip" onClick={() => router.push('/vault')}>Vault</button>
+          <button className="vw-chip" onClick={() => router.push('/multisig')}>Multisig</button>
+          <button className="vw-chip" onClick={() => setShowConnectDapp(true)}>Connect dApp</button>
         </div>
 
         {/* ── Fee-payer missing banner (after cache clear) ── */}
@@ -676,340 +746,130 @@ function DashboardPageContent() {
           </div>
         )}
 
-        {/* ── Balance Display ── */}
-        <div style={{ marginBottom: '2rem' }}>
-          <p style={{ fontSize: '0.75rem', fontFamily: 'Anton, Impact, sans-serif', color: 'var(--warm-grey)', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-            AVAILABLE BALANCE
-          </p>
-          {loading ? (
-            <div className="skeleton" style={{ width: '220px', height: '3rem', borderRadius: '8px' }} />
-          ) : (
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '2.5rem', color: 'var(--off-white)' }}>
-              {xlmBalance !== null
-                ? `${parseFloat(xlmBalance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 7 })} XLM`
-                : '—'
-              }
-            </div>
-          )}
 
-          {/* Faucet button for unfunded or zero-balance testnet wallets */}
-          {network.friendbotUrl && !loading && (xlmBalance === null || xlmBalance === '0') && (
-            <div style={{ marginTop: '1.25rem' }}>
-              <button
-                className="btn-ghost"
-                onClick={handleFund}
-                disabled={isFunding}
-                style={{ width: 'auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', minHeight: '3rem' }}
-              >
-                {isFunding ? (
-                  <div className="spinner spinner-light" style={{ width: '1.25rem', height: '1.25rem' }} />
-                ) : (
-                  'Fund with testnet XLM'
-                )}
-              </button>
-              {fundingError && (
-                <p style={{ color: 'var(--teal)', fontSize: '0.75rem', marginTop: '0.75rem' }}>
-                  {fundingError}
-                </p>
-              )}
+        {/* ── Balance plate + earning ── */}
+        <div className="vw-row vw-row--first">
+          <div className="vw-silver">
+            <div className="vw-silver__sheen" />
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className="vw-silver__label">Total balance</div>
+              <VeilMark size={28} color="#0F0F0F" />
             </div>
-          )}
-        </div>
-
-        {/* ── Action Row ── */}
-        <div className="action-grid">
-          <ActionButton
-            label="Send"
-            onClick={() => router.push('/send')}
-            icon={<path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-          />
-          <ActionButton
-            label="Receive"
-            onClick={() => router.push('/receive')}
-            icon={<path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-          />
-          <ActionButton
-            label="Swap"
-            onClick={() => router.push('/swap')}
-            icon={<path d="M7 10l5-5 5 5M17 14l-5 5-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-          />
-          <ActionButton
-            label="Agent"
-            onClick={() => {
-              localStorage.setItem('veil_agent_last_visit', Date.now().toString())
-              setAgentBadge(false)
-              router.push('/agent')
-            }}
-            badge={agentBadge}
-            icon={<path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4zm0 10c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>}
-          />
-          <ActionButton
-            label="Connect"
-            onClick={() => setShowConnectDapp(true)}
-            icon={<path d="M8.5 8.5l7 7M13 5l6 6-4 4-6-6m-4 4l2-2m4 4l-2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>}
-          />
-          <ActionButton
-            label="Deposit"
-            onClick={() => setSep24Modal('deposit')}
-            icon={<path d="M12 3v12m0 0l-4-4m4 4l4-4M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-          />
-          <ActionButton
-            label="Withdraw"
-            onClick={() => router.push('/withdraw')}
-            icon={<path d="M12 21V9m0 0l-4 4m4-4l4 4M3 7V5a2 2 0 012-2h14a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-          />
-          <ActionButton
-            label="Vault"
-            onClick={() => router.push('/vault')}
-            icon={<path d="M7 10V7a5 5 0 0110 0v3M5 10h14v10H5V10zm7 4v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>}
-          />
-        </div>
-
-        {/* ── Buy crypto ── */}
-        <div style={{ marginBottom: '2rem' }}>
-          <button
-            onClick={() => router.push('/buy')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.625rem',
-              padding: '0.875rem 1.25rem', borderRadius: '12px', cursor: 'pointer',
-              background: 'rgba(253,218,36,0.06)', border: '1px solid rgba(253,218,36,0.2)',
-              color: 'var(--gold)', fontSize: '0.9375rem', fontWeight: 600,
-              transition: 'background 120ms',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.75"/>
-              <path d="M2 10h20" stroke="currentColor" strokeWidth="1.75"/>
-            </svg>
-            Buy crypto
-          </button>
-          <button
-            onClick={() => router.push('/pools')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.625rem',
-              padding: '0.875rem 1.25rem', borderRadius: '12px', cursor: 'pointer',
-              background: 'rgba(253,218,36,0.04)', border: '1px solid rgba(253,218,36,0.16)',
-              color: 'var(--off-white)', fontSize: '0.9375rem', fontWeight: 500,
-              marginTop: '0.75rem',
-              transition: 'background 120ms',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-            </svg>
-            View pools
-          </button>
-        </div>
-
-        {/* ── Assets section ── */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '0.75rem', fontFamily: 'Anton, Impact, sans-serif', color: 'var(--warm-grey)', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>
-            ASSETS
-          </h2>
-          {loading ? (
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="skeleton" style={{ width: '48px', height: '1.125rem' }} />
-                <div className="skeleton" style={{ width: '80px', height: '1.125rem' }} />
-              </div>
+            <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
+              <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
             </div>
-          ) : assets.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-              <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.4)' }}>
-                No assets found. Fund this address on Stellar Testnet to get started.
-              </p>
-            </div>
-          ) : (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {assets.map((asset, i) => {
-                const tokenHref = asset.issuer
-                  ? `/token/${asset.code}?issuer=${asset.issuer}`
-                  : `/token/${asset.code}`
-                const priceKey = asset.issuer ? `${asset.code}:${asset.issuer}` : asset.code
-                const unitPrice = prices[priceKey] ?? null
-                const usdValue  = unitPrice != null
-                  ? (parseFloat(asset.balance) * unitPrice).toFixed(2)
-                  : null
-                return (
-                  <button
-                    key={`${asset.code}-${asset.issuer ?? 'native'}`}
-                    onClick={() => router.push(tokenHref)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      width: '100%', padding: '0.875rem 1.25rem',
-                      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--off-white)',
-                      borderBottom: i < assets.length - 1 ? '1px solid var(--border-dim)' : 'none',
-                      transition: 'background 100ms', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <TokenIcon code={asset.code} size={36} />
-                      <div>
-                        <p style={{ fontWeight: 500, fontSize: '0.9375rem' }}>{asset.code}</p>
-                        <p style={{ fontSize: '0.6875rem', color: 'rgba(246,247,248,0.35)', marginTop: '0.125rem' }}>
-                          {asset.code === 'XLM' ? 'Stellar Lumens' : asset.code === 'USDC' ? 'USD Coin' : asset.issuer ? `${asset.issuer.slice(0, 6)}…${asset.issuer.slice(-4)}` : 'Token'}
-                        </p>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontFamily: 'Inconsolata, monospace', fontSize: '0.9375rem', fontWeight: 500 }}>
-                        {parseFloat(asset.balance).toFixed(2)}
-                      </p>
-                      <p style={{ fontSize: '0.6875rem', color: 'rgba(246,247,248,0.35)', marginTop: '0.125rem' }}>
-                        {usdValue != null ? `${asset.code} · $${usdValue}` : asset.code}
-                      </p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
+          </div>
 
-        {/* ── Activity section ── */}
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ fontSize: '0.75rem', fontFamily: 'Anton, Impact, sans-serif', color: 'var(--warm-grey)', letterSpacing: '0.08em' }}>
-              ACTIVITY
-            </h2>
-            <button
-              onClick={() => fetchData()}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Refresh
+          <div className="vw-panel vw-grow" style={{ padding: '26px 28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
+              <div className="vw-label">Earning</div>
+              <div className="vw-meta">Blend USDC pool</div>
+            </div>
+            {/* This screen does not read a Blend position, so it says so rather
+                than drawing a yield chart from numbers nobody measured. */}
+            <p style={{ fontSize: '14px', color: 'rgba(246,247,248,0.6)', lineHeight: 1.7, marginTop: '16px' }}>
+              Idle USDC can earn in the Blend pool. Nothing is deposited automatically —
+              you approve every move with your passkey.
+            </p>
+            <div style={{ flex: 1 }} />
+            <button className="vw-pill" style={{ alignSelf: 'flex-start', marginTop: '18px' }} onClick={() => router.push('/earn')}>
+              Open earn
             </button>
           </div>
+        </div>
 
-          {/* Filter pills */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.875rem' }}>
-            {(['all', 'transfers', 'swaps'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setTxFilter(f)}
-                style={{
-                  padding: '0.3rem 0.875rem',
-                  borderRadius: '100px',
-                  border: '1px solid',
-                  fontSize: '0.75rem',
-                  fontFamily: 'Inter, sans-serif',
-                  cursor: 'pointer',
-                  transition: 'all 120ms',
-                  background: txFilter === f ? 'var(--gold)' : 'transparent',
-                  borderColor: txFilter === f ? 'var(--gold)' : 'rgba(246,247,248,0.15)',
-                  color: txFilter === f ? 'var(--near-black)' : 'rgba(246,247,248,0.5)',
-                  fontWeight: txFilter === f ? 600 : 400,
-                }}
-              >
-                {f === 'all' ? 'All' : f === 'transfers' ? 'Transfers' : 'Swaps'}
-              </button>
-            ))}
+        {/* ── Assets + activity + agent ── */}
+        <div className="vw-row" style={{ flex: 1 }}>
+          <div className="vw-panel vw-grow" style={{ padding: '8px 28px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 6px' }}>
+              <div className="vw-label">Assets</div>
+              <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/assets')}>Manage</button>
+            </div>
+            {loading && assets.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '16px 0' }}>Loading…</p>
+            ) : assets.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '16px 0' }}>
+                No assets yet. Fund this address to get started.
+              </p>
+            ) : assets.map((asset) => {
+              const price = priceOf(asset)
+              const value = price != null ? parseFloat(asset.balance) * price : null
+              return (
+                <button
+                  key={asset.code + '-' + (asset.issuer ?? 'native')}
+                  className="vw-listrow"
+                  onClick={() => router.push(asset.issuer ? '/token/' + asset.code + '?issuer=' + asset.issuer : '/token/' + asset.code)}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+                    <TokenIcon code={asset.code} size={38} />
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <span style={{ fontSize: '15px', fontWeight: 600 }}>{asset.code}</span>
+                      <span className="vw-meta">
+                        {hideAmounts ? '••••' : parseFloat(asset.balance).toFixed(4) + ' ' + asset.code}
+                      </span>
+                    </span>
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: 600, flexShrink: 0 }}>
+                    {hideAmounts ? '••••' : (value != null ? usd(value) : '—')}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-          {loading && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {[1, 2, 3].map(i => (
-                <div key={i} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.875rem 1rem',
-                  borderBottom: i < 3 ? '1px solid var(--border-dim)' : 'none',
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                    <div className="skeleton" style={{ width: '48px', height: '0.875rem' }} />
-                    <div className="skeleton" style={{ width: '96px', height: '0.75rem' }} />
-                  </div>
-                  <div className="skeleton" style={{ width: '72px', height: '0.9375rem' }} />
-                </div>
+
+          <div className="vw-side">
+            <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
+                <div className="vw-label">Activity</div>
+                <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/assets')}>See all</button>
+              </div>
+              {recent.length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
+                  {loading ? 'Loading…' : 'Nothing yet.'}
+                </p>
+              ) : recent.map((tx) => (
+                <button key={tx.id} className="vw-listrow" style={{ padding: '14px 0' }} onClick={() => setSelectedTx(tx)}>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>
+                      {tx.type === 'sent' ? 'Sent' : tx.type === 'swapped' ? 'Swapped' : 'Received'}
+                    </span>
+                    <span className="vw-meta">
+                      {tx.counterparty.length > 12
+                        ? tx.counterparty.slice(0, 6) + '…' + tx.counterparty.slice(-6)
+                        : tx.counterparty}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: 600, flexShrink: 0, color: tx.type === 'received' ? 'var(--teal)' : 'var(--off-white)' }}>
+                    {hideAmounts
+                      ? '••••'
+                      : (tx.type === 'sent' ? '-' : tx.type === 'received' ? '+' : '') + tx.amount + ' ' + tx.asset}
+                  </span>
+                </button>
               ))}
             </div>
-          )}
-          {(() => {
-            const filtered = transactions.filter(tx =>
-              txFilter === 'all' ? true :
-              txFilter === 'swaps' ? tx.type === 'swapped' :
-              tx.type !== 'swapped'
-            )
-            if (!loading && filtered.length === 0) return (
-              <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-                <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.4)' }}>
-                  {transactions.length === 0 ? 'No transactions yet.' : `No ${txFilter} found.`}
-                </p>
-              </div>
-            )
-            if (filtered.length === 0) return null
-            return (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                {filtered.map((tx, i) => (
-                  <button
-                    key={tx.id}
-                    onClick={() => setSelectedTx(tx)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      width: '100%', padding: '0.875rem 1rem',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      borderBottom: i < filtered.length - 1 ? '1px solid var(--border-dim)' : 'none',
-                      color: 'var(--off-white)', textAlign: 'left',
-                      transition: 'background 100ms',
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                        {tx.type === 'sent' ? '↑ Sent' : tx.type === 'swapped' ? '⇄ Swap' : '↓ Received'}
-                      </p>
-                      <p style={{ fontSize: '0.75rem', color: 'rgba(246,247,248,0.4)', marginTop: '0.125rem', fontFamily: 'Inconsolata, monospace' }}>
-                        {tx.counterparty.length > 12
-                          ? `${tx.counterparty.slice(0, 6)}…${tx.counterparty.slice(-6)}`
-                          : tx.counterparty}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      {tx.type === 'swapped' ? (
-                        <>
-                          <p style={{ fontFamily: 'Inconsolata, monospace', fontSize: '0.875rem' }}>
-                            -{tx.amount} {tx.asset}
-                          </p>
-                          <p style={{ fontFamily: 'Inconsolata, monospace', fontSize: '0.875rem', color: 'var(--teal)', marginTop: '0.125rem' }}>
-                            +{tx.destAmount} {tx.destAsset}
-                          </p>
-                        </>
-                      ) : (
-                        <p style={{ fontFamily: 'Inconsolata, monospace', fontSize: '0.9375rem' }}>
-                          {tx.amount} {tx.asset}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
 
-          {hasMorePages && !loading && (
-            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+            <div className="vw-agent">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(183,172,232,0.16)', border: '1px solid rgba(183,172,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#B7ACE8', flexShrink: 0 }}>✦</div>
+                <div className="vw-label vw-label--lilac">Agent</div>
+              </div>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontWeight: 600, fontSize: '19px', lineHeight: 1.4 }}>
+                &ldquo;Swap 10 XLM to USDC and send it to Ada.&rdquo;
+              </div>
+              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.55)', lineHeight: 1.6 }}>
+                It builds the transactions. You sign each one with your passkey.
+              </p>
               <button
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                style={{
-                  padding: '0.625rem 1.5rem',
-                  borderRadius: '100px',
-                  border: '1px solid rgba(246,247,248,0.2)',
-                  background: 'transparent',
-                  color: 'rgba(246,247,248,0.6)',
-                  fontSize: '0.8125rem',
-                  cursor: isLoadingMore ? 'default' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  transition: 'all 120ms',
-                }}
+                onClick={() => router.push('/agent')}
+                style={{ border: '1px solid rgba(183,172,232,0.35)', color: '#B7ACE8', background: 'none', borderRadius: '100px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
               >
-                {isLoadingMore
-                  ? <div className="spinner" style={{ width: '14px', height: '14px' }} />
-                  : 'Load more'}
+                Open agent
               </button>
             </div>
-          )}
-        </section>
+          </div>
+        </div>
+
 
       </main>
 
