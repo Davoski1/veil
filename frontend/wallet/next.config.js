@@ -19,9 +19,14 @@ const nextConfig = {
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
+      // globals.css @imports the four brand faces (Lora, Inter, Anton,
+      // Inconsolata) from Google Fonts. Without these two hosts the CSP blocks
+      // the stylesheet outright and every screen silently falls back to system
+      // fonts — the headings stop being Lora italic and the wordmark stops
+      // being Anton, which reads as "the design did not ship".
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https: wss:",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
