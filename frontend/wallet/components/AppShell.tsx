@@ -114,7 +114,7 @@ export function AppShell({
   const initial = (profileName?.trim()?.[0] ?? 'V').toUpperCase()
 
   return (
-    <div className="min-h-screen flex bg-near-black text-off-white">
+    <div className="veil-app-shell min-h-screen flex bg-near-black text-off-white">
       <aside className="hidden lg:flex w-[248px] shrink-0 border-r border-border-dim px-5 pt-7 pb-6 flex-col sticky top-0 h-screen">
         <div className="px-2">
           <Link href="/dashboard" aria-label="Veil home">

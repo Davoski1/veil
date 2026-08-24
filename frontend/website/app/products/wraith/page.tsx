@@ -242,7 +242,7 @@ export default function WraithProductPage() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Products', href: '/products' },
-                { label: 'Docs', href: 'https://veil-2ap8.vercel.app' },
+                { label: 'Docs', href: 'https://docs.useveilapp.xyz' },
                 { label: 'GitHub', href: 'https://github.com/Miracle656/wraith' },
               ].map(({ label, href }) => (
                 <a key={label} href={href}

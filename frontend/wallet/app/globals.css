@@ -374,3 +374,13 @@ body {
   color: var(--text-muted);
   line-height: 1.6;
 }
+
+/* ── Pages inside the shared app shell ───────────────────────────────────
+   Every screen still renders its own .wallet-shell/.wallet-nav/.wallet-main.
+   Inside the shell that header is duplicate chrome — the sidebar already
+   carries the wordmark, navigation and network — so it is hidden here rather
+   than deleted from 24 page files. .wallet-main keeps its centred measure but
+   drops the horizontal padding the shell already provides. */
+.veil-app-shell .wallet-nav { display: none; }
+.veil-app-shell .wallet-shell { min-height: 0; }
+.veil-app-shell .wallet-main { padding-left: 0; padding-right: 0; }

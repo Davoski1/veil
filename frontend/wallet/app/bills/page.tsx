@@ -12,7 +12,6 @@
  * misleading thing in the wallet.
  */
 import { AccentCard, Card, PageHeader, SectionLabel } from '@/components/ui/primitives'
-import { AppShell } from '@/components/AppShell'
 
 type Service = {
   name: string
@@ -40,7 +39,7 @@ const TONE_FG = {
 
 export default function BillsPage() {
   return (
-    <AppShell>
+    <>
       <PageHeader eyebrow="Everyday" title="Bills & airtime" />
 
       <div className="flex gap-5 mt-[26px] items-start max-xl:flex-col">
@@ -95,6 +94,6 @@ export default function BillsPage() {
           </AccentCard>
         </div>
       </div>
-    </AppShell>
+    </>
   )
 }

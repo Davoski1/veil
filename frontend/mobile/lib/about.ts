@@ -108,7 +108,7 @@ export const EXTERNAL_LINKS: readonly ExternalLink[] = [
     key: 'docs',
     label: 'Documentation',
     description: 'Guides, architecture, and the SDK reference',
-    url: 'https://veil-2ap8.vercel.app',
+    url: 'https://docs.useveilapp.xyz',
   },
   {
     key: 'source',
