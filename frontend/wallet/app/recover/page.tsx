@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { VeilMark } from '@/components/ui/VeilMark'
@@ -43,7 +44,7 @@ export default function RecoverPage() {
       const walletContract = new Contract(walletAddress)
 
       const tx = new TransactionBuilder(sourceAcct, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(walletContract.call('get_signers'))
@@ -187,7 +188,7 @@ export default function RecoverPage() {
       const walletContract = new Contract(walletAddress)
 
       const tx = new TransactionBuilder(sourceAcct, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(walletContract.call('get_signers'))

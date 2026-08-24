@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
+import { inclusionFee } from '@/lib/fees'
 import { Suspense, useEffect, useRef, useCallback, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -214,7 +215,7 @@ function DashboardPageContent() {
       const dummyKp     = Keypair.random()
       const dummyAcct   = new Account(dummyKp.publicKey(), '0')
       const balanceTx   = new TransactionBuilder(dummyAcct, {
-        fee: BASE_FEE, networkPassphrase: network.networkPassphrase,
+        fee: inclusionFee(), networkPassphrase: network.networkPassphrase,
       })
         .addOperation(sacContract.call('balance', nativeToScVal(walletAddress, { type: 'address' })))
         .setTimeout(30)

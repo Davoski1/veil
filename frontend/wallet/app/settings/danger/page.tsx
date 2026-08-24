@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -158,7 +159,7 @@ export default function DangerPage() {
       const account = await server.loadAccount(feePayerAddress)
 
       const transaction = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(

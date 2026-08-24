@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -184,7 +185,7 @@ export default function SendPage() {
       if (recipient.startsWith('G') && recipient.length === 56) {
         const account = await horizonServer.loadAccount(feePayerKp.publicKey())
         const tx = new TransactionBuilder(account, {
-          fee: BASE_FEE,
+          fee: inclusionFee(),
           networkPassphrase: network.networkPassphrase,
         })
           .addOperation(Operation.payment({
@@ -204,7 +205,7 @@ export default function SendPage() {
         const amountStroops = BigInt(Math.round(parseFloat(amount) * 10_000_000))
 
         const tx = new TransactionBuilder(feePayerAcct, {
-          fee: BASE_FEE,
+          fee: inclusionFee(),
           networkPassphrase: network.networkPassphrase,
         })
           .addOperation(sacContract.call(
