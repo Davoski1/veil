@@ -178,15 +178,21 @@ _Second research pass 2026-08-23: every provider's live API probed unauthenticat
 
 The table above previously sold eBills on 10% data margins. Live pricing (computed from the undocumented `reseller_price` field on the public variations endpoint) says otherwise:
 
-| Network | plans | median margin | max | SME |
-|---|---|---|---|---|
-| MTN | 39 | **1.00%** | 1.00% | **0.00%** |
-| Airtel | 36 | 1.00% | 2.33% | 2.33% |
-| Glo | 18 | 2.00% | **10.00%** | 10.00% |
-| 9mobile | 10 | 2.00% | 2.00% | — |
-| Smile | 12 | 3.00% | 3.00% | — |
+Re-confirmed first-hand 2026-08-24 against the public `variations/data` endpoint, which returns an undocumented `reseller_price` beside the face `price`. Margin is `1 − reseller_price / price`:
 
-**10% exists only on Glo SME. MTN SME — the volume driver in Nigeria — is 0.00%**, contradicting eBills' own published rate card. Airtime (2.5% MTN / 3% others) does match. **No revenue model may assume 10%**; re-verify on a funded account.
+| Network | plans | median | max | SME plans | SME availability |
+|---|---|---|---|---|---|
+| MTN | 39 | **1.00%** | 1.00% | **0.00%** | **all Unavailable** |
+| Airtel | 36 | 1.00% | 2.33% | 1.37–2.33% | **all Unavailable** |
+| Glo | 18 | 2.00% | **10.00%** | **10.00%** | **Available** |
+| 9mobile | 10 | 2.00% | 2.00% | — | — |
+| Smile | 12 | 3.00% | 3.00% | — | — |
+
+**The advertised "10.00% discount on data" is true of exactly one thing: Glo SME.** Everything else pays 1–3%. And the availability column is the part that finishes the argument — **every MTN and Airtel SME plan is currently marked `Unavailable`**, so the tiers that would carry Nigerian volume cannot be sold at all, at any margin. Glo SME is the only SME inventory actually in stock, and Glo is a distant third by subscriber share.
+
+Airtime does check out at 2.5% (MTN) / 3% (others), matching the rate card. Cable-TV variations expose **no** `reseller_price` at all, so the claimed 1.5% there is not publicly verifiable.
+
+**Conclusion: bills is a retention feature, not a revenue line.** No model may assume 10%. Re-verify on a funded account before that changes.
 
 ### The property that decides everything: can you recover a timed-out vend?
 
@@ -214,7 +220,9 @@ A bill vend that times out may or may not have delivered. If you cannot ask "wha
 - **Idempotency:** `request_id` ≤50 chars, and requery takes it back — so a lost response is always recoverable. Caveat: docs define two conflicting 409s (`duplicate_request_id` = permanent vs `duplicate_order` = 3-minute window), so whether a replay after 3 minutes double-vends is **genuinely ambiguous**. Until support confirms: **on timeout, requery — never blind-retry.**
 - Webhook signature is HMAC-SHA256 keyed on your **account transaction PIN**, which couples webhook verification to a spending credential — treat that PIN as a high-value secret.
 - `429 wallet_busy` exists alongside `429 rate_limit_exceeded`; back off on both. Top-up mechanism is undocumented publicly.
-- **Onboarding: name/email/phone/password, no CAC field.** Tier 1 (email) ₦50k/day → Tier 2 (BVN) ₦500k/day → Tier 3 unlimited. **One gate to resolve on day one:** transactional endpoints need the **"reseller role"**, and whether that costs money or needs approval is behind the login wall.
+- **Onboarding: name/email/phone/password, no CAC field.** Tier 1 (email) ₦50k/day → Tier 2 (BVN) ₦500k/day → Tier 3 (face + ID + address) unlimited. **One gate to resolve on day one:** transactional endpoints need the **"reseller role"** — the docs state it as a requirement but never say how it is granted, and that page is behind the login wall.
+- Operator is **FraNKAPPWeb Technologies, BN 2384195** — a registered *Business Name*, not a limited company, run from Awka, Anambra. That is fine for a bills aggregator (they are not a VASP and need not be a body corporate) but it does size the counterparty: this is a small operation, so treat float held with them accordingly and do not park more than a working balance.
+- Support: `support@ebills.africa`, WhatsApp +234 810 536 5830, Mon–Sat 9–5 WAT. API changelog shows v1.0 May 2022 → v2.0/v2.1 April 2025, so it is maintained but not fast-moving.
 
 ### Monnify — right rail, wrong time
 
