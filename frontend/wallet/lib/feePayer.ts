@@ -2,6 +2,7 @@ import { Keypair } from '@stellar/stellar-sdk'
 import { deriveFeePayerSeedFromPrf, evaluateFeePayerPrf, type PrfEvaluator } from '@veil/prf'
 
 import { deriveFeePayerKeypair } from './deriveFeePayer'
+import { getNetwork } from './network'
 
 /**
  * Single accessor for the fee-payer (sponsor) key — the one place the rest of
@@ -30,7 +31,18 @@ const SECRET = 'veil_signer_secret'
 const PUBKEY = 'veil_signer_public_key'
 const MODE = 'veil_feepayer_mode'
 
-export type FeePayerMode = 'prf' | 'legacy'
+/**
+ * How the fee-payer seed is produced.
+ *
+ *  - **prf-raw**   PRF output used directly as the Ed25519 seed. This is what
+ *                  the MOBILE app does, so it is the interoperable variant and
+ *                  the default for new wallets.
+ *  - **prf-hkdf**  PRF output run through HKDF first. What the web wallet used
+ *                  to do unconditionally — kept so wallets already pinned that
+ *                  way keep their existing G-address.
+ *  - **legacy**    HKDF over the (non-secret) credential ID. Pre-PRF wallets.
+ */
+export type FeePayerMode = 'prf-raw' | 'prf-hkdf' | 'legacy'
 
 // Session-scoped, in-memory cache. For the PRF mode this (plus sessionStorage)
 // is the ONLY place the seed lives — it is re-derived via a passkey assertion
@@ -45,7 +57,9 @@ function hasWindow(): boolean {
 export function getFeePayerMode(): FeePayerMode | null {
   if (!hasWindow()) return null
   const m = localStorage.getItem(MODE)
-  return m === 'prf' || m === 'legacy' ? m : null
+  // 'prf' is what older builds wrote, and it meant the HKDF variant.
+  if (m === 'prf') return 'prf-hkdf'
+  return m === 'prf-raw' || m === 'prf-hkdf' || m === 'legacy' ? m : null
 }
 
 /**
@@ -104,37 +118,76 @@ export async function ensureFeePayer(evaluator?: PrfEvaluator): Promise<Keypair 
     return cached
   }
 
-  // Decide the mode on first establishment. A wallet that already has a
-  // persisted (credential-ID) secret is a pre-existing wallet → keep it legacy
-  // so its funded G-address does not move. A fresh wallet tries PRF.
-  const mode: FeePayerMode | null = pinned ?? (existing ? 'legacy' : null)
+  // A persisted secret with no pinned mode is a wallet from before modes
+  // existed: it is legacy by definition, and its G-address may be funded. Treat
+  // it as pinned so no PRF ceremony runs and the address cannot move.
+  const effectiveMode: FeePayerMode | null = pinned ?? (existing ? 'legacy' : null)
 
-  if (mode !== 'legacy') {
+  const candidates: Array<{ mode: FeePayerMode; kp: Keypair }> = []
+
+  if (effectiveMode !== 'legacy') {
     try {
       const prf = await evaluateFeePayerPrf(credentialId, undefined, evaluator)
-      if (prf && prf.length > 0) {
-        const seed = await deriveFeePayerSeedFromPrf(prf)
-        const kp = Keypair.fromRawEd25519Seed(Buffer.from(seed))
-        cached = kp
-        localStorage.setItem(MODE, 'prf')
-        // C3: the seed lives in sessionStorage only — cleared on lock/tab close.
-        sessionStorage.setItem(SECRET, kp.secret())
-        sessionStorage.setItem(PUBKEY, kp.publicKey())
-        return kp
+      if (prf && prf.length >= 32) {
+        // Mobile uses the PRF output directly; the web used to HKDF it. Same
+        // passkey, same PRF output, different seed — which is why a wallet
+        // created on the phone resolved to a different (unfunded) G-address
+        // here. Both are derived so whichever one actually exists can win.
+        candidates.push({ mode: 'prf-raw', kp: Keypair.fromRawEd25519Seed(Buffer.from(prf.subarray(0, 32))) })
+        const hkdf = await deriveFeePayerSeedFromPrf(prf)
+        candidates.push({ mode: 'prf-hkdf', kp: Keypair.fromRawEd25519Seed(Buffer.from(hkdf)) })
       }
     } catch {
-      // PRF cancelled/unsupported → fall through to the legacy derivation.
+      // PRF cancelled/unsupported → the legacy candidate below still applies.
     }
   }
 
-  // Legacy path — unchanged behaviour, persisted in localStorage.
-  const kp = await deriveFeePayerKeypair(credentialId)
-  cached = kp
-  localStorage.setItem(MODE, 'legacy')
-  localStorage.setItem(SECRET, kp.secret())
-  localStorage.setItem(PUBKEY, kp.publicKey())
-  sessionStorage.setItem(SECRET, kp.secret())
-  return kp
+  candidates.push({ mode: 'legacy', kp: await deriveFeePayerKeypair(credentialId) })
+
+  // If the wallet was pinned, honour that exactly — moving a funded account
+  // because a probe failed would be worse than a failed probe.
+  const chosen = effectiveMode
+    ? candidates.find((c) => c.mode === effectiveMode) ?? candidates[0]!
+    : (await pickFundedCandidate(candidates)) ?? candidates[0]!
+
+  cached = chosen.kp
+  localStorage.setItem(MODE, chosen.mode)
+  sessionStorage.setItem(SECRET, chosen.kp.secret())
+  sessionStorage.setItem(PUBKEY, chosen.kp.publicKey())
+  // Only the legacy variant is recoverable without the passkey, so only it is
+  // persisted; PRF seeds stay session-scoped (ADR 0003, C3).
+  if (chosen.mode === 'legacy') {
+    localStorage.setItem(SECRET, chosen.kp.secret())
+    localStorage.setItem(PUBKEY, chosen.kp.publicKey())
+  }
+  return chosen.kp
+}
+
+/**
+ * Pick the candidate whose account already exists on-chain.
+ *
+ * The variants are all deterministic, so the only question is which one this
+ * wallet was actually created with — and the ledger already knows. Probing beats
+ * guessing: guessing wrong strands the user on an unfunded fee-payer with no
+ * error message and no way to pay the fee that would fix it.
+ *
+ * Returns null when none exist (a genuinely new wallet), leaving the caller to
+ * take the first candidate — prf-raw, which is what mobile produces, so a wallet
+ * created here stays recoverable there.
+ */
+async function pickFundedCandidate(
+  candidates: Array<{ mode: FeePayerMode; kp: Keypair }>,
+): Promise<{ mode: FeePayerMode; kp: Keypair } | null> {
+  const { horizonUrl } = getNetwork()
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(`${horizonUrl}/accounts/${candidate.kp.publicKey()}`)
+      if (res.ok) return candidate
+    } catch {
+      // Network trouble — try the next rather than claiming this one is absent.
+    }
+  }
+  return null
 }
 
 /**
