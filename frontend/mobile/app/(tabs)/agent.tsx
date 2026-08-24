@@ -1,4 +1,4 @@
-import '../lib/polyfills';
+import '../../lib/polyfills';
 
 import { Horizon, Keypair, TransactionBuilder, type Transaction } from '@stellar/stellar-sdk';
 /**
@@ -18,7 +18,7 @@ import { Horizon, Keypair, TransactionBuilder, type Transaction } from '@stellar
  *     model output is never interpreted as markup.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,7 +31,7 @@ import {
   View,
 } from 'react-native';
 
-import { Button, Card, Screen } from '../components/ui';
+import { Button, Card, Screen } from '../../components/ui';
 import {
   describeSubmissionError,
   isProposalForFeePayer,
@@ -43,12 +43,13 @@ import {
   type AgentMessage,
   type ProposalReview,
   type ProposalStatus,
-} from '../lib/agentMessages';
-import { getNetwork } from '../lib/network';
-import { signPayloadWithPasskey } from '../lib/passkey';
-import { getSignerSecret, getWalletAddress } from '../lib/walletStore';
-import { colors } from '../theme/colors';
-import { fontFamily, typography } from '../theme/typography';
+} from '../../lib/agentMessages';
+import { getNetwork } from '../../lib/network';
+import { signPayloadWithPasskey } from '../../lib/passkey';
+import { getPasskeyId, getSignerSecret, getWalletAddress } from '../../lib/walletStore';
+import { useTheme } from '../../hooks/useTheme';
+import type { ThemeColors } from '../../lib/theme';
+import { fontFamily, typography } from '../../theme/typography';
 
 /**
  * Agent chat (`/agent`) — the assistant can read, explain, and *propose*, but it
@@ -76,6 +77,8 @@ const SUGGESTIONS = [
 ];
 
 export default function AgentScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [messages, setMessages] = useState<AgentMessage[]>([
     {
       id: nextMessageId('greeting'),
@@ -304,12 +307,6 @@ export default function AgentScreen() {
       // the agent's proposal and the fee-payer key held on this device, and
       // binding it to the hash means a stale confirmation cannot be reused for a
       // different transaction.
-      const confirmation = await signPayloadWithPasskey(new Uint8Array(tx.hash()));
-      if (!confirmation) {
-        updateProposal(message.id, { state: 'declined' });
-        return;
-      }
-
       const secret = await getSignerSecret();
       if (!secret) {
         updateProposal(message.id, {
@@ -317,6 +314,17 @@ export default function AgentScreen() {
           reason: 'The signing key for this wallet is missing from this device.',
         });
         return;
+      }
+
+      // The passkey confirmation applies only when a passkey is registered
+      // (smart-wallet / dev build). Testnet keypair mode has no passkey, so we
+      // authorise with the stored key directly.
+      if (await getPasskeyId()) {
+        const confirmation = await signPayloadWithPasskey(new Uint8Array(tx.hash()));
+        if (!confirmation) {
+          updateProposal(message.id, { state: 'declined' });
+          return;
+        }
       }
 
       tx.sign(Keypair.fromSecret(secret));
@@ -350,7 +358,7 @@ export default function AgentScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
+        <ScrollView showsVerticalScrollIndicator={false}
           ref={scrollRef}
           contentContainerStyle={styles.thread}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
@@ -367,14 +375,14 @@ export default function AgentScreen() {
 
           {isThinking && (
             <View style={styles.thinking}>
-              <ActivityIndicator color={colors.gold} size="small" />
+              <ActivityIndicator color={colors.accent} size="small" />
               <Text style={styles.thinkingText}>Thinking…</Text>
             </View>
           )}
         </ScrollView>
 
         <View style={styles.composer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
+          <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
             {SUGGESTIONS.map((suggestion) => (
               <Pressable
                 key={suggestion}
@@ -391,7 +399,7 @@ export default function AgentScreen() {
             <TextInput
               style={styles.input}
               placeholder="Ask about balances, rates, or a payment"
-              placeholderTextColor="rgba(246,247,248,0.3)"
+              placeholderTextColor={colors.textFaint}
               value={input}
               onChangeText={setInput}
               onSubmitEditing={handleSend}
@@ -430,6 +438,8 @@ function MessageRow({
   onConfirm: (message: Extract<AgentMessage, { kind: 'proposal' }>) => void;
   onDecline: (id: string, status: ProposalStatus) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   switch (message.kind) {
     case 'user':
       return (
@@ -476,6 +486,8 @@ function MessageRow({
 
 /** Agent prose with `**bold**` and `` `code` `` rendered as text, never as markup. */
 function RichText({ text }: { text: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Text style={styles.bubbleText}>
       {parseInlineMarkup(text).map((segment, index) => (
@@ -512,6 +524,8 @@ function ProposalCard({
   onConfirm: (message: Extract<AgentMessage, { kind: 'proposal' }>) => void;
   onDecline: (id: string, status: ProposalStatus) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { review, status } = message;
 
   return (
@@ -564,7 +578,7 @@ function ProposalCard({
 
       {status.state === 'confirming' && (
         <View style={styles.thinking}>
-          <ActivityIndicator color={colors.gold} size="small" />
+          <ActivityIndicator color={colors.accent} size="small" />
           <Text style={styles.thinkingText}>Waiting for your passkey…</Text>
         </View>
       )}
@@ -585,221 +599,222 @@ function ProposalCard({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerText: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    color: colors.offWhite,
-    fontSize: 24,
-  },
-  status: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  clear: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  clearText: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  thread: {
-    gap: 12,
-    paddingBottom: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-  },
-  rowRight: {
-    justifyContent: 'flex-end',
-  },
-  bubble: {
-    maxWidth: '86%',
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  bubbleUser: {
-    backgroundColor: colors.goldSoft,
-    borderColor: colors.goldBorder,
-    borderBottomRightRadius: 4,
-  },
-  bubbleAgent: {
-    backgroundColor: colors.surfaceMd,
-    borderColor: colors.borderDim,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleError: {
-    backgroundColor: 'rgba(248,113,113,0.08)',
-    borderColor: 'rgba(248,113,113,0.3)',
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: {
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.offWhite,
-  },
-  strong: {
-    fontFamily: fontFamily.bodySemiBold,
-  },
-  code: {
-    fontFamily: fontFamily.address,
-    fontSize: 13,
-    color: colors.warmGrey,
-  },
-  notice: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  errorLabel: {
-    fontFamily: fontFamily.accent,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: '#f87171',
-  },
-  errorText: {
-    fontFamily: fontFamily.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#f87171',
-  },
-  proposal: {
-    padding: 14,
-    gap: 8,
-  },
-  proposalLabel: {
-    fontFamily: fontFamily.accent,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: colors.gold,
-  },
-  proposalOperation: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.offWhite,
-  },
-  proposalDetail: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.textMuted,
-  },
-  proposalClaim: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    lineHeight: 18,
-    fontStyle: 'italic',
-    color: 'rgba(246,247,248,0.4)',
-  },
-  proposalWarning: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#fbbf24',
-  },
-  proposalActions: {
-    gap: 8,
-    marginTop: 4,
-  },
-  proposalDone: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
-    color: colors.teal,
-  },
-  proposalHash: {
-    fontFamily: fontFamily.address,
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  thinking: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  thinkingText: {
-    fontFamily: fontFamily.body,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  composer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderDim,
-    paddingTop: 10,
-    paddingBottom: 8,
-    gap: 10,
-  },
-  chips: {
-    flexGrow: 0,
-  },
-  chip: {
-    marginRight: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: colors.borderDim,
-    backgroundColor: colors.surface,
-  },
-  chipText: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 120,
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: colors.offWhite,
-    backgroundColor: colors.surfaceMd,
-    borderWidth: 1,
-    borderColor: colors.borderDim,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  send: {
-    borderRadius: 14,
-    backgroundColor: colors.goldFill,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-  },
-  sendDisabled: {
-    opacity: 0.4,
-  },
-  sendPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  sendLabel: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 14,
-    color: colors.nearBlack,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      paddingTop: 16,
+      paddingBottom: 12,
+    },
+    headerText: {
+      flex: 1,
+      gap: 2,
+    },
+    title: {
+      color: colors.textStrong,
+      fontSize: 24,
+    },
+    status: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    clear: {
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+    },
+    clearText: {
+      fontFamily: fontFamily.bodyMedium,
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    thread: {
+      gap: 12,
+      paddingBottom: 16,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+    },
+    rowRight: {
+      justifyContent: 'flex-end',
+    },
+    bubble: {
+      maxWidth: '86%',
+      borderRadius: 18,
+      borderWidth: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      gap: 10,
+    },
+    bubbleUser: {
+      backgroundColor: 'rgba(253,218,36,0.08)',
+      borderColor: 'rgba(253,218,36,0.18)',
+      borderBottomRightRadius: 4,
+    },
+    bubbleAgent: {
+      backgroundColor: colors.surfaceMd,
+      borderColor: colors.border,
+      borderBottomLeftRadius: 4,
+    },
+    bubbleError: {
+      backgroundColor: 'rgba(248,113,113,0.08)',
+      borderColor: 'rgba(248,113,113,0.3)',
+      borderBottomLeftRadius: 4,
+    },
+    bubbleText: {
+      fontFamily: fontFamily.body,
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textPrimary,
+    },
+    strong: {
+      fontFamily: fontFamily.bodySemiBold,
+    },
+    code: {
+      fontFamily: fontFamily.address,
+      fontSize: 13,
+      color: colors.label,
+    },
+    notice: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
+    errorLabel: {
+      fontFamily: fontFamily.accent,
+      fontSize: 11,
+      letterSpacing: 1,
+      color: '#f87171',
+    },
+    errorText: {
+      fontFamily: fontFamily.body,
+      fontSize: 13,
+      lineHeight: 19,
+      color: '#f87171',
+    },
+    proposal: {
+      padding: 14,
+      gap: 8,
+    },
+    proposalLabel: {
+      fontFamily: fontFamily.accent,
+      fontSize: 11,
+      letterSpacing: 1,
+      color: colors.accent,
+    },
+    proposalOperation: {
+      fontFamily: fontFamily.bodyMedium,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textPrimary,
+    },
+    proposalDetail: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.textMuted,
+    },
+    proposalClaim: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      lineHeight: 18,
+      fontStyle: 'italic',
+      color: colors.textFaint,
+    },
+    proposalWarning: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      lineHeight: 18,
+      color: '#fbbf24',
+    },
+    proposalActions: {
+      gap: 8,
+      marginTop: 4,
+    },
+    proposalDone: {
+      fontFamily: fontFamily.bodyMedium,
+      fontSize: 13,
+      color: colors.positive,
+    },
+    proposalHash: {
+      fontFamily: fontFamily.address,
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    thinking: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    thinkingText: {
+      fontFamily: fontFamily.body,
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    composer: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+      paddingBottom: 8,
+      gap: 10,
+    },
+    chips: {
+      flexGrow: 0,
+    },
+    chip: {
+      marginRight: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 100,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    chipText: {
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 10,
+    },
+    input: {
+      flex: 1,
+      maxHeight: 120,
+      fontFamily: fontFamily.body,
+      fontSize: 14,
+      color: colors.textPrimary,
+      backgroundColor: colors.surfaceMd,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    send: {
+      borderRadius: 14,
+      backgroundColor: colors.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 18,
+    },
+    sendDisabled: {
+      opacity: 0.4,
+    },
+    sendPressed: {
+      transform: [{ scale: 0.98 }],
+    },
+    sendLabel: {
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 14,
+      color: colors.onAccent,
+    },
+  });

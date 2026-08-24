@@ -8,7 +8,7 @@ import {
   Contract, rpc as SorobanRpc, nativeToScVal, Horizon,
 } from '@stellar/stellar-sdk'
 const Server = Horizon.Server
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ContactPicker } from '@/components/ContactPicker'
 import { QrScanner } from '@/components/QrScanner'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
@@ -265,7 +265,7 @@ export default function SendPage() {
           </svg>
           Back
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <div style={{ width: 40 }} />
       </nav>
 

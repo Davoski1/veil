@@ -260,7 +260,7 @@ export default function RecoverScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={[typography.heading, styles.title]}>Recover wallet</Text>
         <Text style={styles.subtitle}>
           Bind a new passkey to your wallet with help from your recovery servers.

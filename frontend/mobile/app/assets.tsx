@@ -38,7 +38,7 @@ export default function AssetsScreen() {
   }, [load]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Assets</Text>
         <ThemeToggle />

@@ -51,4 +51,21 @@ config.resolver.alias = {
   '@': path.resolve(projectRoot, 'app'),
 };
 
+// `@stellar/stellar-sdk`'s Horizon `call_builder` imports the Node-only
+// `eventsource` package for `.stream()`, which drags in `url`/`http`/`https` —
+// absent in Hermes and fatal to the native bundle. The app talks to Horizon
+// request/response only (never `.stream()`), so resolve `eventsource` to an
+// inert shim (shims/eventsource.js) and keep the Node deps out of the bundle.
+const upstreamResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'eventsource') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(projectRoot, 'shims/eventsource.js'),
+    };
+  }
+  const resolve = upstreamResolveRequest ?? context.resolveRequest;
+  return resolve(context, moduleName, platform);
+};
+
 module.exports = config;

@@ -713,7 +713,10 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
             const originBytes = new TextEncoder().encode(resolvedOrigin);
 
             const txBuilder = new TransactionBuilder(sourceAccount, {
-                fee: BASE_FEE,
+                // Mainnet surge-prices Soroban inclusion; the minimum bid gets the
+                // deploy stuck until it expires. Overbidding is safe — the ledger
+                // charges the effective rate, not the bid.
+                fee: networkPassphrase === Networks.PUBLIC ? '1000000' : BASE_FEE,
                 networkPassphrase,
             });
 

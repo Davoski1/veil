@@ -1,49 +1,69 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { ScreenScaffold } from '@/components/ScreenScaffold';
-import { truncateAddress } from '../../components/ui/AddressChip';
 import { useTheme } from '../../hooks/useTheme';
+import { useCurrency } from '../../hooks/useCurrency';
+import { useHiddenAmounts } from '../../hooks/useHiddenAmounts';
 import type { ThemeColors } from '../../lib/theme';
+import { fontFamily } from '../../theme/typography';
+import { FlowHeader } from '../../components/FlowHeader';
+import { TokenIcon } from '../../components/TokenIcon';
+import { PaperPlaneIcon, ReceiveIcon, SwapIcon, type IconProps } from '../../components/icons';
+import { truncateAddress } from '../../components/ui/AddressChip';
+import { StrKey } from '@stellar/stellar-sdk';
+
 import { fetchPrice } from '../../lib/price';
-import {
-  fetchTokenDetail,
-  loadWalletAddress,
-  parseAssetId,
-  type TokenActivity,
-  type TokenDetail,
-} from '../../lib/token';
+import { fetchTokenDetail, parseAssetId, type TokenActivity, type TokenDetail } from '../../lib/token';
+import { getWalletAddress } from '../../lib/walletStore';
+import { fetchContractXlm, getFeePayerAddress } from '../../lib/activity';
+
+const NAMES: Record<string, string> = { XLM: 'Stellar Lumens', USDC: 'USD Coin', EURC: 'Euro Coin' };
+
+function fmtAmount(raw: string): string {
+  const n = Number(raw);
+  if (!isFinite(n)) return raw;
+  return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+}
 
 export default function TokenDetailScreen() {
-  const { colors: themeColors } = useTheme();
-  const styles = useMemo(() => createStyles(themeColors), [themeColors]);
+  const router = useRouter();
+  const { colors } = useTheme();
+  const { format } = useCurrency();
+  const { mask } = useHiddenAmounts();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { id } = useLocalSearchParams<{ id: string }>();
   const asset = useMemo(() => parseAssetId(id ?? 'XLM'), [id]);
+  const name = NAMES[asset.code.toUpperCase()] ?? asset.code;
 
   const [detail, setDetail] = useState<TokenDetail | null>(null);
   const [price, setPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
-      const address = await loadWalletAddress();
-      if (!address) {
+      const stored = await getWalletAddress();
+      if (!stored) {
         setDetail(null);
         return;
       }
-      const [d, p] = await Promise.all([
-        fetchTokenDetail(address, asset.code, asset.issuer),
+      // Smart wallets: classic history/trustlines live on the fee-payer, and
+      // the contract's own XLM (via SAC) is folded into the XLM balance.
+      const isContract = StrKey.isValidContract(stored);
+      const effective = isContract ? await getFeePayerAddress() : stored;
+      const [d, p, extraXlm] = await Promise.all([
+        effective
+          ? fetchTokenDetail(effective, asset.code, asset.issuer)
+          : Promise.resolve({ code: asset.code, issuer: asset.issuer, balance: '0', activity: [] as TokenActivity[] }),
         fetchPrice(asset.code, asset.issuer),
+        isContract && asset.code === 'XLM' ? fetchContractXlm(stored) : Promise.resolve(0),
       ]);
-      setDetail(d);
+      setDetail(extraXlm > 0 ? { ...d, balance: (Number(d.balance) + extraXlm).toFixed(7) } : d);
       setPrice(p);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch {
+      // leave last-known
     } finally {
       setLoading(false);
     }
@@ -53,69 +73,83 @@ export default function TokenDetailScreen() {
     void load();
   }, [load]);
 
-  const value =
-    detail && price !== null ? (parseFloat(detail.balance) * price).toFixed(2) : null;
+  const usd = detail && price !== null ? parseFloat(detail.balance) * price : null;
+
+  const actions: Array<{ key: string; label: string; Icon: (p: IconProps) => React.JSX.Element; onPress: () => void }> = [
+    { key: 'send', label: 'Send', Icon: PaperPlaneIcon, onPress: () => router.push(`/send?asset=${asset.code}`) },
+    { key: 'receive', label: 'Receive', Icon: ReceiveIcon, onPress: () => router.push('/receive') },
+    { key: 'swap', label: 'Swap', Icon: SwapIcon, onPress: () => router.push('/swap') },
+  ];
 
   return (
-    <ScreenScaffold
-      eyebrow="Token"
-      title={asset.code}
-      description={
-        asset.issuer
-          ? `Issuer: ${truncateAddress(asset.issuer, 8, 8)}`
-          : 'Native asset'
-      }
-      backHref="/dashboard"
-      backLabel="Dashboard"
-    >
-      {loading ? (
-        <ActivityIndicator color={themeColors.accent} style={styles.spinner} />
-      ) : !detail ? (
-        <Text style={styles.muted}>No wallet found on this device yet.</Text>
-      ) : (
-        <>
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Balance</Text>
-            <Text style={styles.balanceValue}>
-              {detail.balance} {asset.code}
-            </Text>
-            <Text style={styles.price}>
-              {price !== null
-                ? `≈ $${value} · $${price.toFixed(price < 1 ? 6 : 2)}/${asset.code}`
-                : 'Price unavailable'}
-            </Text>
-          </View>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']} testID="token-screen">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
+        <FlowHeader title={name} />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+        {loading && !detail ? (
+          <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            {/* Hero */}
+            <View style={styles.hero}>
+              <TokenIcon code={asset.code} size={60} />
+              <Text style={styles.balance} numberOfLines={1} adjustsFontSizeToFit>
+                {mask(fmtAmount(detail?.balance ?? '0'))} {asset.code}
+              </Text>
+              <Text style={styles.fiat}>
+                {usd !== null ? `≈ ${mask(format(usd))}` : 'No price yet'}
+                {price !== null ? `  ·  ${format(price)}/${asset.code}` : ''}
+              </Text>
+            </View>
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Transfers</Text>
-          </View>
-          {detail.activity.length > 0 ? (
-            <View style={styles.list}>
-              {detail.activity.map((record) => (
-                <TransferRow key={record.id} record={record} styles={styles} />
+            {/* Actions */}
+            <View style={styles.actions}>
+              {actions.map((a) => (
+                <Pressable
+                  key={a.key}
+                  onPress={a.onPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={a.label}
+                  style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+                >
+                  <a.Icon size={20} color={colors.accent} />
+                  <Text style={styles.actionLabel}>{a.label}</Text>
+                </Pressable>
               ))}
             </View>
-          ) : (
-            <Text style={styles.muted}>No transfers for this asset yet.</Text>
-          )}
-        </>
-      )}
-    </ScreenScaffold>
+
+            {/* Activity */}
+            <Text style={styles.section}>Activity</Text>
+            {detail && detail.activity.length > 0 ? (
+              <View style={styles.card}>
+                {detail.activity.map((r, i) => (
+                  <TransferRow key={r.id} record={r} styles={styles} last={i === detail.activity.length - 1} />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.empty}>No {asset.code} transfers yet.</Text>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 function TransferRow({
   record,
   styles,
+  last,
 }: {
   record: TokenActivity;
   styles: ReturnType<typeof createStyles>;
+  last: boolean;
 }) {
   const received = record.direction === 'received';
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, !last && styles.rowBorder]}>
       <View style={styles.rowLeft}>
         <Text style={styles.rowType}>{received ? 'Received' : 'Sent'}</Text>
         <Text style={styles.rowParty} numberOfLines={1}>
@@ -124,7 +158,7 @@ function TransferRow({
       </View>
       <Text style={[styles.rowAmount, received ? styles.amountIn : styles.amountOut]}>
         {received ? '+' : '−'}
-        {record.amount}
+        {fmtAmount(record.amount)}
       </Text>
     </View>
   );
@@ -132,91 +166,50 @@ function TransferRow({
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    spinner: {
-      marginTop: 24,
-    },
-    balanceCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 20,
-      gap: 6,
-      marginTop: 8,
-    },
-    balanceLabel: {
-      color: colors.textMuted,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 1.6,
-      textTransform: 'uppercase',
-    },
-    balanceValue: {
-      color: colors.textStrong,
-      fontSize: 26,
-      fontWeight: '700',
-    },
-    price: {
-      color: colors.textSecondary,
-      fontSize: 13,
-    },
-    sectionHeader: {
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    sectionTitle: {
-      color: colors.textStrong,
-      fontSize: 17,
-      fontWeight: '600',
-    },
-    list: {
-      gap: 8,
-    },
-    row: {
-      flexDirection: 'row',
+    screen: { flex: 1, backgroundColor: colors.background },
+    body: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+
+    hero: { alignItems: 'center', gap: 12, marginTop: 24 },
+    balance: { color: colors.textStrong, fontFamily: fontFamily.heading, fontSize: 40, marginTop: 6 },
+    fiat: { color: colors.textMuted, fontFamily: fontFamily.address, fontSize: 13 },
+
+    actions: { flexDirection: 'row', gap: 10, marginTop: 26 },
+    action: {
+      flex: 1,
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
+      gap: 7,
       backgroundColor: colors.surface,
-      borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 14,
+      borderRadius: 16,
+      paddingVertical: 16,
     },
-    rowLeft: {
-      flexShrink: 1,
-      gap: 2,
+    actionLabel: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
+
+    section: {
+      color: colors.textFaint,
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 11,
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
+      marginTop: 30,
+      marginBottom: 10,
     },
-    rowType: {
-      color: colors.textStrong,
-      fontSize: 15,
-      fontWeight: '600',
+    card: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      overflow: 'hidden',
     },
-    rowParty: {
-      color: colors.textMuted,
-      fontSize: 12,
-      fontFamily: 'monospace',
-    },
-    rowAmount: {
-      fontSize: 14,
-      fontWeight: '600',
-      textAlign: 'right',
-    },
-    amountIn: {
-      color: colors.accentText,
-    },
-    amountOut: {
-      color: colors.textPrimary,
-    },
-    muted: {
-      color: colors.textMuted,
-      fontSize: 14,
-    },
-    error: {
-      color: colors.danger,
-      fontSize: 13,
-      backgroundColor: colors.dangerSurface,
-      borderRadius: 8,
-      padding: 10,
-    },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16 },
+    rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    rowLeft: { flexShrink: 1, gap: 2 },
+    rowType: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, fontSize: 15 },
+    rowParty: { color: colors.textFaint, fontFamily: fontFamily.address, fontSize: 12 },
+    rowAmount: { fontFamily: fontFamily.address, fontSize: 14, textAlign: 'right' },
+    amountIn: { color: colors.positive },
+    amountOut: { color: colors.textPrimary },
+    empty: { color: colors.textMuted, fontFamily: fontFamily.body, fontSize: 14, padding: 16 },
+    pressed: { opacity: 0.6 },
   });

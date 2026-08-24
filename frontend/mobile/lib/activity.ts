@@ -10,7 +10,10 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Horizon } from '@stellar/stellar-sdk';
+import { Asset, Horizon, Keypair, StrKey, rpc as SorobanRpc } from '@stellar/stellar-sdk';
+
+import { getNetwork } from './network';
+import { getSignerSecret } from './walletStore';
 
 /** AsyncStorage key holding the active wallet's public key (shared with backupFile). */
 export const WALLET_PUBLIC_KEY_KEY = 'invisible_wallet_public_key';
@@ -18,8 +21,11 @@ export const WALLET_PUBLIC_KEY_KEY = 'invisible_wallet_public_key';
 /** How often the dashboard silently re-fetches balance + activity. */
 export const POLL_INTERVAL_MS = 15_000;
 
-const HORIZON_URL =
-  process.env['EXPO_PUBLIC_HORIZON_URL']?.trim() || 'https://horizon-testnet.stellar.org';
+// Horizon must follow the ACTIVE network — a module-level env const froze this
+// to testnet and made the mainnet dashboard show testnet balances.
+function horizonUrl(): string {
+  return getNetwork().horizonUrl;
+}
 
 /** Subset of a Horizon `payment` / `create_account` record we depend on. */
 export interface HorizonPaymentLike {
@@ -116,7 +122,10 @@ function isAccountNotFound(err: unknown): boolean {
  * an error; any other failure propagates so the screen can surface it.
  */
 export async function fetchDashboardData(publicKey: string): Promise<DashboardData> {
-  const server = new Horizon.Server(HORIZON_URL);
+  // Smart wallets are contracts: Horizon can't answer for them at all.
+  if (StrKey.isValidContract(publicKey)) return fetchContractDashboard(publicKey);
+
+  const server = new Horizon.Server(horizonUrl());
   try {
     const [account, payments] = await Promise.all([
       server.loadAccount(publicKey),
@@ -136,4 +145,77 @@ export async function fetchDashboardData(publicKey: string): Promise<DashboardDa
     if (isAccountNotFound(err)) return { xlmBalance: '0', activity: [] };
     throw err;
   }
+}
+
+/**
+ * The stored fee-payer's classic address, or null when none is stored.
+ *
+ * No caching here: an earlier module-level cache survived "Reset wallet" and
+ * served the PREVIOUS wallet's fee-payer to every consumer (dashboard showed
+ * the old balance/history under the new address). Concurrent-keystore-read
+ * flakiness is handled at the storage layer now (getSecureItem retries), so
+ * reading fresh each call is both safe and correct.
+ */
+export async function getFeePayerAddress(): Promise<string | null> {
+  try {
+    const secret = await getSignerSecret();
+    return secret ? Keypair.fromSecret(secret).publicKey() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Native XLM held by a contract address, in XLM (not stroops). 0 when empty. */
+export async function fetchContractXlm(contract: string): Promise<number> {
+  try {
+    const net = getNetwork();
+    const server = new SorobanRpc.Server(net.rpcUrl);
+    const entry = await server.getSACBalance(contract, Asset.native(), net.networkPassphrase);
+    const stroops = entry.balanceEntry?.amount;
+    if (!stroops) return 0;
+    const n = Number(stroops) / 10_000_000;
+    return isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Dashboard data for a smart (contract) wallet — mirrors the web dashboard:
+ * the balance is contract XLM (SAC over Soroban RPC) **plus** the fee-payer
+ * G-account's XLM (that's where Friendbot funds land and where classic sends
+ * originate), and the activity is the fee-payer's Horizon payment history.
+ */
+async function fetchContractDashboard(contract: string): Promise<DashboardData> {
+  const feePayer = await getFeePayerAddress();
+
+  const [contractXlm, feePayerData] = await Promise.all([
+    fetchContractXlm(contract),
+    feePayer
+      ? (async () => {
+          const server = new Horizon.Server(horizonUrl());
+          try {
+            const [account, payments] = await Promise.all([
+              server.loadAccount(feePayer),
+              server.payments().forAccount(feePayer).limit(20).order('desc').call(),
+            ]);
+            const native = (account.balances as Array<{ asset_type: string; balance: string }>).find(
+              (b) => b.asset_type === 'native',
+            );
+            return {
+              xlm: Number(native?.balance ?? '0'),
+              activity: mapPayments(payments.records as unknown as HorizonPaymentLike[], feePayer),
+            };
+          } catch (err) {
+            if (isAccountNotFound(err)) return { xlm: 0, activity: [] as ActivityRecord[] };
+            throw err;
+          }
+        })()
+      : Promise.resolve({ xlm: 0, activity: [] as ActivityRecord[] }),
+  ]);
+
+  return {
+    xlmBalance: (contractXlm + feePayerData.xlm).toFixed(7),
+    activity: feePayerData.activity,
+  };
 }

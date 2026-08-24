@@ -1,8 +1,11 @@
-import { ScreenScaffold, colors } from '@/components/ScreenScaffold';
+import { ScreenScaffold } from '@/components/ScreenScaffold';
 import { Keypair } from '@stellar/stellar-sdk';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { useTheme } from '../../hooks/useTheme';
+import type { ThemeColors } from '../../lib/theme';
 
 import {
   buildBlendSupplyXdr,
@@ -11,11 +14,11 @@ import {
   loadBlendPositions,
   type BlendPool,
   type BlendPosition,
-} from '../lib/blend';
-import { getNetwork } from '../lib/network';
-import { requirePasskey } from '../lib/passkey';
-import { signAndSubmitSorobanXdr } from '../lib/sorobanTx';
-import { getSignerSecret, getWalletAddress } from '../lib/walletStore';
+} from '../../lib/blend';
+import { getNetwork } from '../../lib/network';
+import { requirePasskey } from '../../lib/passkey';
+import { signAndSubmitSorobanXdr } from '../../lib/sorobanTx';
+import { getSignerSecret, getWalletAddress } from '../../lib/walletStore';
 
 /**
  * Earn — supply idle assets to Blend lending pools and redeem them.
@@ -59,6 +62,8 @@ function describeFailure(error: unknown): string {
 
 export default function EarnRoute() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [step, setStep] = useState<EarnStep>('pools');
   const [accountAddress, setAccountAddress] = useState<string | null>(null);
@@ -243,7 +248,7 @@ export default function EarnRoute() {
 
           {loadingPools ? (
             <View style={styles.centered}>
-              <ActivityIndicator color={colors.gold} />
+              <ActivityIndicator color={colors.accent} />
             </View>
           ) : pools.length === 0 ? (
             <View style={styles.card}>
@@ -294,7 +299,7 @@ export default function EarnRoute() {
                 value={depositAmount}
                 onChangeText={setDepositAmount}
                 placeholder="0.00"
-                placeholderTextColor="rgba(246,247,248,0.3)"
+                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 accessibilityLabel="Deposit amount"
               />
@@ -365,7 +370,7 @@ export default function EarnRoute() {
 
       {step === 'depositing' || step === 'withdrawing' ? (
         <View style={[styles.card, styles.centeredCard]}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.accent} />
           <Text style={styles.cardTitle}>Waiting for passkey…</Text>
           <Text style={styles.cardMeta}>Approve with Face ID or fingerprint to continue.</Text>
         </View>
@@ -410,6 +415,8 @@ export default function EarnRoute() {
 }
 
 function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -418,65 +425,66 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 10, marginTop: 12 },
-  sectionLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  card: {
-    padding: 18,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    gap: 8,
-  },
-  cardSelected: { borderColor: colors.gold },
-  centeredCard: { alignItems: 'center', marginTop: 12 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  cardTitle: { color: colors.offWhite, fontSize: 17, fontWeight: '600' },
-  cardMeta: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  apy: { color: colors.gold, fontSize: 13, fontWeight: '700' },
-  accent: { color: colors.teal },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
-  rowLabel: { color: colors.muted, fontSize: 13 },
-  rowValue: { color: colors.offWhite, fontSize: 14, textAlign: 'right' },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  amountInput: {
-    flex: 1,
-    color: colors.offWhite,
-    fontSize: 26,
-    paddingVertical: 6,
-  },
-  primaryButton: {
-    marginTop: 6,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 100,
-    backgroundColor: colors.gold,
-  },
-  primaryButtonText: { color: colors.bg, fontSize: 15, fontWeight: '700' },
-  ghostButton: {
-    marginTop: 6,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 100,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-  },
-  ghostButtonText: { color: colors.offWhite, fontSize: 14, fontWeight: '600' },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.7 },
-  centered: { paddingVertical: 24, alignItems: 'center' },
-  successMark: { color: colors.teal, fontSize: 34, fontWeight: '700' },
-  errorMark: { color: colors.danger, fontSize: 34, fontWeight: '700' },
-  hash: {
-    color: colors.muted,
-    fontSize: 11,
-    textAlign: 'center',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    section: { gap: 10, marginTop: 12 },
+    sectionLabel: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
+    },
+    card: {
+      padding: 18,
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      gap: 8,
+    },
+    cardSelected: { borderColor: colors.accent },
+    centeredCard: { alignItems: 'center', marginTop: 12 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+    cardTitle: { color: colors.textStrong, fontSize: 17, fontWeight: '600' },
+    cardMeta: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+    apy: { color: colors.accent, fontSize: 13, fontWeight: '700' },
+    accent: { color: colors.positive },
+    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
+    rowLabel: { color: colors.textMuted, fontSize: 13 },
+    rowValue: { color: colors.textPrimary, fontSize: 14, textAlign: 'right' },
+    amountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    amountInput: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontSize: 26,
+      paddingVertical: 6,
+    },
+    primaryButton: {
+      marginTop: 6,
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderRadius: 100,
+      backgroundColor: colors.accent,
+    },
+    primaryButtonText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+    ghostButton: {
+      marginTop: 6,
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderRadius: 100,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    ghostButtonText: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
+    disabled: { opacity: 0.4 },
+    pressed: { opacity: 0.7 },
+    centered: { paddingVertical: 24, alignItems: 'center' },
+    successMark: { color: colors.positive, fontSize: 34, fontWeight: '700' },
+    errorMark: { color: colors.danger, fontSize: 34, fontWeight: '700' },
+    hash: {
+      color: colors.textMuted,
+      fontSize: 11,
+      textAlign: 'center',
+    },
+  });

@@ -4,8 +4,10 @@ import {
   SupportedProtocols,
   TradeType,
 } from '@soroswap/sdk';
+import { Asset, Horizon, Keypair, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 
-import { getNetworkName } from './network';
+import { inclusionFee } from './fees';
+import { getNetwork, getNetworkName } from './network';
 
 const SOROSWAP_API_KEY = process.env['EXPO_PUBLIC_SOROSWAP_API_KEY']?.trim() || '';
 
@@ -123,20 +125,67 @@ export async function buildSoroswapSwapXdr(params: SwapParams): Promise<string |
   }
 }
 
-/** Fetch the Soroswap token list and return the contract address for a symbol. */
+/**
+ * Resolve a symbol to its Soroban contract address for the active network.
+ * Native XLM is derived locally (it is never in any token list); other symbols
+ * come from Soroswap's curated list, whose shape is `{ assets: [{ code,
+ * issuer, contract, … }] }` with the network implied by the list itself
+ * (mainnet). Testnet token routing goes through the classic DEX instead.
+ */
 export async function resolveTokenAddress(symbol: string): Promise<string | null> {
+  const code = symbol.toUpperCase();
+  if (code === 'XLM') return Asset.native().contractId(getNetwork().networkPassphrase);
+  if (isTestnet()) return null;
+  return (await fetchListAsset(code))?.contract ?? null;
+}
+
+type ListAsset = { code?: string; issuer?: string; contract?: string };
+
+async function fetchListAsset(code: string): Promise<ListAsset | null> {
   try {
     const res = await fetch(
       'https://raw.githubusercontent.com/soroswap/token-list/main/tokenList.json'
     );
     const list = await res.json();
-    const tokens: Array<{ symbol: string; contract: string; network: string }> = list.tokens ?? [];
-    const network = isTestnet() ? 'TESTNET' : 'MAINNET';
-    const found = tokens.find(
-      (t) => t.symbol.toUpperCase() === symbol.toUpperCase() && t.network === network
-    );
-    return found?.contract ?? null;
+    const assets: ListAsset[] = list.assets ?? [];
+    return assets.find((t) => (t.code ?? '').toUpperCase() === code) ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Make sure the spending account trusts the asset a swap will pay out. The
+ * Soroswap router refuses to build a swap whose receiver lacks the destination
+ * trustline ("Missing trustline in G… for asset: X"), and SAC payouts to a
+ * G-account need one regardless. No-op for XLM and already-trusted assets.
+ * The (code, issuer) pair comes from the same curated list the swap's contract
+ * address does, so the trustline always matches what the router delivers.
+ * Note: a new trustline locks a further 0.5 XLM of base reserve.
+ */
+export async function ensureSwapOutTrustline(signerSecret: string, code: string): Promise<void> {
+  const u = code.toUpperCase();
+  if (u === 'XLM' || isTestnet()) return;
+  const entry = await fetchListAsset(u);
+  if (!entry?.issuer) return; // unknown asset — let the router's own error surface
+  const asset = new Asset(u, entry.issuer);
+
+  const network = getNetwork();
+  const server = new Horizon.Server(network.horizonUrl);
+  const kp = Keypair.fromSecret(signerSecret);
+  const account = await server.loadAccount(kp.publicKey());
+  const trusted = (account.balances as unknown as Array<Record<string, unknown>>).some(
+    (b) => b['asset_code'] === asset.getCode() && b['asset_issuer'] === asset.getIssuer(),
+  );
+  if (trusted) return;
+
+  const tx = new TransactionBuilder(account, {
+    fee: inclusionFee(),
+    networkPassphrase: network.networkPassphrase,
+  })
+    .addOperation(Operation.changeTrust({ asset }))
+    .setTimeout(60)
+    .build();
+  tx.sign(kp);
+  await server.submitTransaction(tx);
 }

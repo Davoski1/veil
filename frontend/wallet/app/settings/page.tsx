@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet, type SignerInfo } from '@veil/sdk'
 import { walletConfig } from '@/lib/network'
@@ -354,7 +354,7 @@ export default function SettingsPage() {
           </svg>
           {section === 'overview' ? 'Dashboard' : 'Settings'}
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 

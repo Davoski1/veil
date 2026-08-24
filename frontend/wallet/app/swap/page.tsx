@@ -13,7 +13,7 @@ import {
   Transaction,
 } from '@stellar/stellar-sdk'
 const Server = Horizon.Server
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork } from '@/lib/network'
 import { beginTx, endTx } from '@/lib/txState'
@@ -401,7 +401,7 @@ export default function SwapPage() {
           </svg>
           Dashboard
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         {/* Slippage settings icon */}
         <button
           onClick={() => setShowSlippage((v) => !v)}

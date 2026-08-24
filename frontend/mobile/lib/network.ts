@@ -23,6 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Networks } from '@stellar/stellar-sdk';
 import type { WalletConfig } from '@veil/sdk';
 
+import { getRelyingPartyId, getWebAuthnOrigin } from './relyingParty';
+
 export type VeilNetworkName = 'testnet' | 'mainnet';
 
 export type VeilNetwork = {
@@ -53,7 +55,8 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     factoryContractId:
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_TESTNET']?.trim() ||
       process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID']?.trim() ||
-      '',
+      // Deployed testnet passkey-wallet factory (see reference_veil_testnet).
+      'CAUK4MWO3TTFM6PLURSH2GPK3AB747SZGABKTCVLKCU7W2MGKHKP35GA',
     friendbotUrl: 'https://friendbot.stellar.org',
   },
   mainnet: {
@@ -62,7 +65,11 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     networkPassphrase: Networks.PUBLIC,
     horizonUrl: process.env['EXPO_PUBLIC_MAINNET_HORIZON_URL']?.trim() || 'https://horizon.stellar.org',
     rpcUrl: process.env['EXPO_PUBLIC_MAINNET_RPC_URL']?.trim() || '',
-    factoryContractId: process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_MAINNET']?.trim() || '',
+    factoryContractId:
+      process.env['EXPO_PUBLIC_FACTORY_CONTRACT_ID_MAINNET']?.trim() ||
+      // Deployed 2026-08-21; wallet WASM hash b485f817… matches
+      // contracts/expected-hashes.json (canonical reproducible build).
+      'CCZ3JLRESNLDADGXWNEH4YQ4NXUUAHRJNCWZHYG6QB4KTDYHOH6OQ7BK',
     friendbotUrl: null,
   },
 };
@@ -215,4 +222,11 @@ export const walletConfig: WalletConfig = {
   factoryAddress: getNetwork().factoryContractId,
   rpcUrl: getNetwork().rpcUrl,
   networkPassphrase: getNetwork().networkPassphrase,
+  // Required on React Native: there is no window.location to infer the
+  // relying party from, and 'localhost' would fail domain association.
+  rpId: getRelyingPartyId(),
+  // Also required on RN: the SDK would default deploy() to `https://${rpId}`,
+  // but native assertions carry the android:apk-key-hash origin — a wallet
+  // deployed with the web origin rejects every native __check_auth (#9).
+  origin: getWebAuthnOrigin(),
 };

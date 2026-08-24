@@ -5,7 +5,7 @@ import { Keypair } from '@stellar/stellar-sdk'
 import { useRouter } from 'next/navigation'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { requirePasskey } from '@/lib/passkeyAuth'
 import { beginTx, endTx } from '@/lib/txState'
@@ -254,7 +254,7 @@ export default function VaultPage() {
           </svg>
           Dashboard
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 

@@ -19,6 +19,7 @@ import {
   BASE_FEE,
   Contract,
   Horizon,
+  Memo,
   Operation,
   StrKey,
   TransactionBuilder,
@@ -27,13 +28,18 @@ import {
   type Transaction,
 } from '@stellar/stellar-sdk';
 
-const HORIZON_URL =
-  process.env['EXPO_PUBLIC_HORIZON_URL']?.trim() || 'https://horizon-testnet.stellar.org';
-const RPC_URL =
-  process.env['EXPO_PUBLIC_SOROBAN_RPC_URL']?.trim() || 'https://soroban-testnet.stellar.org';
-const NETWORK_PASSPHRASE =
-  process.env['EXPO_PUBLIC_NETWORK_PASSPHRASE']?.trim() || 'Test SDF Network ; September 2015';
-const NATIVE_SAC = process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() || '';
+import { getNetwork } from './network';
+import { inclusionFee } from './fees';
+
+// All endpoints follow the ACTIVE network — module-level env consts froze
+// these to testnet and sent mainnet payments at testnet Horizon.
+function net() {
+  return getNetwork();
+}
+/** Native XLM SAC id — deterministic per network; env var is an override only. */
+function nativeSac(): string {
+  return process.env['EXPO_PUBLIC_XLM_CONTRACT_ID']?.trim() || Asset.native().contractId(net().networkPassphrase);
+}
 
 const STROOPS_PER_XLM = 10_000_000;
 
@@ -123,38 +129,87 @@ export async function sendPayment(
   recipient: string,
   amount: string,
   signer: WalletSigner,
+  memo?: string,
+  asset?: { code: string; issuer: string | null },
 ): Promise<SendResult> {
   const errors = validateSend(recipient, amount);
   if (errors.recipient) throw new Error(errors.recipient);
   if (errors.amount) throw new Error(errors.amount);
 
   const to = recipient.trim();
+  const memoText = memo?.trim();
+
+  // Native XLM unless a classic (issued) asset is supplied.
+  const sendAsset =
+    asset && asset.code.toUpperCase() !== 'XLM' && asset.issuer
+      ? new Asset(asset.code, asset.issuer)
+      : Asset.native();
 
   if (isClassicAddress(to)) {
-    const server = new Horizon.Server(HORIZON_URL);
+    const server = new Horizon.Server(net().horizonUrl);
+
+    // A payment op can't land on an account that doesn't exist yet — first
+    // funding must be a create_account op (native only, >= the base reserve).
+    let destinationExists = true;
+    try {
+      await server.loadAccount(to);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || (err instanceof Error && err.name === 'NotFoundError')) {
+        destinationExists = false;
+      }
+      // Other errors: assume it exists and let the submit surface the truth.
+    }
+    if (!destinationExists && !sendAsset.isNative()) {
+      throw new Error('The recipient account is brand new — it must receive XLM first before it can hold other assets.');
+    }
+    if (!destinationExists && Number(amount) < 1) {
+      throw new Error('The recipient account is brand new — the first payment must be at least 1 XLM to activate it.');
+    }
+
     const account = await server.loadAccount(signer.publicKey);
-    const tx = new TransactionBuilder(account, {
-      fee: BASE_FEE,
-      networkPassphrase: NETWORK_PASSPHRASE,
+    const builder = new TransactionBuilder(account, {
+      fee: inclusionFee(),
+      networkPassphrase: net().networkPassphrase,
     })
-      .addOperation(Operation.payment({ destination: to, asset: Asset.native(), amount: amount.trim() }))
-      .setTimeout(30)
-      .build();
+      .addOperation(
+        destinationExists
+          ? Operation.payment({ destination: to, asset: sendAsset, amount: amount.trim() })
+          : Operation.createAccount({ destination: to, startingBalance: amount.trim() }),
+      )
+      .setTimeout(30);
+    // Classic memos: only attach for text that fits the 28-byte limit.
+    if (memoText && new TextEncoder().encode(memoText).length <= 28) {
+      builder.addMemo(Memo.text(memoText));
+    }
+    const tx = builder.build();
     signer.sign(tx);
-    const res = await server.submitTransaction(tx);
-    return { hash: res.hash };
+    try {
+      const res = await server.submitTransaction(tx);
+      return { hash: res.hash };
+    } catch (err) {
+      // Surface Horizon's real result codes instead of a bare axios "400".
+      const extras = (err as { response?: { data?: { extras?: { result_codes?: unknown } } } })?.response?.data?.extras;
+      if (extras?.result_codes) {
+        throw new Error(`Payment rejected: ${JSON.stringify(extras.result_codes)}`);
+      }
+      throw err;
+    }
   }
 
-  if (!NATIVE_SAC) {
-    throw new Error('Native asset contract id is not configured (EXPO_PUBLIC_XLM_CONTRACT_ID).');
+  // Contract (C…) recipient below. Only native XLM is wired over the SAC path.
+  if (!sendAsset.isNative()) {
+    throw new Error(
+      `Sending ${sendAsset.getCode()} to a smart-contract wallet isn't supported yet — use a classic (G…) address.`,
+    );
   }
 
-  const server = new SorobanRpc.Server(RPC_URL);
+  const server = new SorobanRpc.Server(net().rpcUrl);
   const account = await server.getAccount(signer.publicKey);
-  const contract = new Contract(NATIVE_SAC);
+  const contract = new Contract(nativeSac());
   const tx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
+    fee: inclusionFee(),
+    networkPassphrase: net().networkPassphrase,
   })
     .addOperation(
       contract.call(

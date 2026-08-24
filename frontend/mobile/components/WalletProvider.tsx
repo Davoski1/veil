@@ -4,6 +4,8 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { Keypair } from "@stellar/stellar-sdk";
@@ -11,7 +13,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { useInvisibleWallet, type StorageAdapter } from "@veil/sdk";
 
-import { walletConfig } from "../lib/network";
+import { getNetwork, getNetworkName, subscribeToNetwork } from "../lib/network";
+import { getRelyingPartyId, getWebAuthnOrigin } from "../lib/relyingParty";
 import { getWalletAddress, getSignerSecret } from "../lib/walletStore";
 
 // ── Persisted session keys (expo-secure-store) ───────────────────────────────
@@ -50,7 +53,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // signer keypair in React state only.)
   const storage: StorageAdapter = AsyncStorage;
 
-  const wallet = useInvisibleWallet({ ...walletConfig, storage });
+  // LIVE per-network SDK config. The old module-level walletConfig const was
+  // evaluated before the stored network override hydrated, so on mainnet the
+  // SDK silently kept TESTNET factory/rpc/passphrase — wallet addresses were
+  // derived with the wrong network and deploys hit the wrong Horizon.
+  const networkName = useSyncExternalStore(subscribeToNetwork, getNetworkName, getNetworkName);
+  const liveConfig = useMemo(() => {
+    const net = getNetwork();
+    return {
+      factoryAddress: net.factoryContractId,
+      rpcUrl: net.rpcUrl,
+      networkPassphrase: net.networkPassphrase,
+      rpId: getRelyingPartyId(),
+      origin: getWebAuthnOrigin(),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [networkName]);
+  const wallet = useInvisibleWallet({ ...liveConfig, storage });
 
   // Hydrate the session from expo-secure-store on first mount.
   useEffect(() => {

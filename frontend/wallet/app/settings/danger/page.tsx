@@ -12,7 +12,7 @@ import {
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork, walletConfig } from '@/lib/network'
 import { resetFeePayer } from '@/lib/feePayer'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet } from '@veil/sdk'
 
@@ -239,7 +239,7 @@ export default function DangerPage() {
           </svg>
           Settings
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 

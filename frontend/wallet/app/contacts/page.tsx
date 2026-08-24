@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContacts } from '@/components/useContacts'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 
 export default function ContactsPage() {
   const router = useRouter()
@@ -39,7 +39,7 @@ export default function ContactsPage() {
           </svg>
           Back
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <div style={{ width: 40 }} />
       </nav>
 

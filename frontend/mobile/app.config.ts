@@ -20,7 +20,7 @@ import type { ExpoConfig } from 'expo/config';
 const DEEP_LINK_SCHEME = 'veil';
 
 /** Hosts claimed as universal / app links. Mirrors `ASSOCIATED_DOMAINS`. */
-const ASSOCIATED_DOMAINS = ['app.veil.xyz'];
+const ASSOCIATED_DOMAINS = ['app.useveilapp.xyz'];
 
 /** SEP-7 URI scheme, without the trailing colon. Mirrors `SEP7_SCHEME`. */
 const SEP7_SCHEME = 'web+stellar';
@@ -83,7 +83,12 @@ const config: ExpoConfig = {
     ],
   },
   web: {
-    output: 'static',
+    // 'single' (SPA) not 'static': the wallet renders client-side (localStorage,
+    // WebAuthn, secure storage) and has ~30 routes. Static output pre-renders
+    // every route on the server, which OOMs Node (4 GB heap) pulling the full
+    // stellar-sdk/WalletConnect graph per route. A client-rendered SPA is the
+    // correct model here and avoids the server-render pass entirely.
+    output: 'single',
     favicon: './assets/images/favicon.png',
   },
   plugins: [
@@ -110,6 +115,11 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
+  },
+  extra: {
+    eas: {
+      projectId: '829ef278-f408-43ee-baf7-e0022a6e6736',
+    },
   },
 };
 

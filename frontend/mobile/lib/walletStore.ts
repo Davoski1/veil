@@ -1,4 +1,5 @@
 import { SecureKey, getSecureItem, setSecureItem, deleteSecureItem } from './storage';
+import { getNetworkName, hydrateNetwork } from './network';
 
 /**
  * Thin, typed accessors for the wallet identifiers the app keeps on the device.
@@ -7,33 +8,45 @@ import { SecureKey, getSecureItem, setSecureItem, deleteSecureItem } from './sto
  * mobile they all route through the secure store (`lib/storage.ts`, backed by the
  * OS keychain), so wallet metadata survives relaunch and the fee-payer secret is
  * never written to plain application storage.
+ *
+ * PER-NETWORK NAMESPACING: mainnet and testnet each get their own wallet.
+ * Testnet keeps the historical unsuffixed keys (back-compat with existing
+ * installs); mainnet keys carry a `_mainnet` suffix. Without this, switching
+ * networks showed the other network's wallet, and a "Reset wallet" on testnet
+ * would have destroyed a REAL-funds mainnet wallet.
  */
-
-/** Deployed wallet contract address (`C...`), or null when not yet created. */
-export function getWalletAddress(): Promise<string | null> {
-  return getSecureItem(SecureKey.walletAddress);
+async function key(base: SecureKey): Promise<string> {
+  // The network override is read from storage at startup; awaiting hydration
+  // prevents a cold-start race from reading the wrong network's keys.
+  await hydrateNetwork();
+  return getNetworkName() === 'mainnet' ? `${base}_mainnet` : base;
 }
 
-export function setWalletAddress(address: string): Promise<void> {
-  return setSecureItem(SecureKey.walletAddress, address);
+/** Deployed wallet contract address (`C...`), or null when not yet created. */
+export async function getWalletAddress(): Promise<string | null> {
+  return getSecureItem(await key(SecureKey.walletAddress));
+}
+
+export async function setWalletAddress(address: string): Promise<void> {
+  return setSecureItem(await key(SecureKey.walletAddress), address);
 }
 
 /** Base64url credential id of the registered passkey. */
-export function getPasskeyId(): Promise<string | null> {
-  return getSecureItem(SecureKey.passkeyId);
+export async function getPasskeyId(): Promise<string | null> {
+  return getSecureItem(await key(SecureKey.passkeyId));
 }
 
-export function setPasskeyId(keyId: string): Promise<void> {
-  return setSecureItem(SecureKey.passkeyId, keyId);
+export async function setPasskeyId(keyId: string): Promise<void> {
+  return setSecureItem(await key(SecureKey.passkeyId), keyId);
 }
 
 /** Hex-encoded secp256r1 public key of the registered passkey. */
-export function getPasskeyPublicKey(): Promise<string | null> {
-  return getSecureItem(SecureKey.passkeyPublicKey);
+export async function getPasskeyPublicKey(): Promise<string | null> {
+  return getSecureItem(await key(SecureKey.passkeyPublicKey));
 }
 
-export function setPasskeyPublicKey(publicKey: string): Promise<void> {
-  return setSecureItem(SecureKey.passkeyPublicKey, publicKey);
+export async function setPasskeyPublicKey(publicKey: string): Promise<void> {
+  return setSecureItem(await key(SecureKey.passkeyPublicKey), publicKey);
 }
 
 /**
@@ -43,27 +56,24 @@ export function setPasskeyPublicKey(publicKey: string): Promise<void> {
  * produces assertions the wallet contract cannot verify.
  */
 export async function setPasskeyCredential(keyId: string, publicKeyHex: string): Promise<void> {
-  await Promise.all([
-    setSecureItem(SecureKey.passkeyId, keyId),
-    setSecureItem(SecureKey.passkeyPublicKey, publicKeyHex),
-  ]);
+  await Promise.all([setPasskeyId(keyId), setPasskeyPublicKey(publicKeyHex)]);
 }
 
 /** Stellar secret seed of the account that pays fees for wallet transactions. */
-export function getSignerSecret(): Promise<string | null> {
-  return getSecureItem(SecureKey.signerSecret);
+export async function getSignerSecret(): Promise<string | null> {
+  return getSecureItem(await key(SecureKey.signerSecret));
 }
 
-export function setSignerSecret(secret: string): Promise<void> {
-  return setSecureItem(SecureKey.signerSecret, secret);
+export async function setSignerSecret(secret: string): Promise<void> {
+  return setSecureItem(await key(SecureKey.signerSecret), secret);
 }
 
-/** Wipe every stored wallet identifier — used when clearing the wallet. */
+/** Wipe the ACTIVE NETWORK's stored wallet identifiers only. */
 export async function clearWalletStore(): Promise<void> {
   await Promise.all([
-    deleteSecureItem(SecureKey.walletAddress),
-    deleteSecureItem(SecureKey.passkeyId),
-    deleteSecureItem(SecureKey.passkeyPublicKey),
-    deleteSecureItem(SecureKey.signerSecret),
+    key(SecureKey.walletAddress).then(deleteSecureItem),
+    key(SecureKey.passkeyId).then(deleteSecureItem),
+    key(SecureKey.passkeyPublicKey).then(deleteSecureItem),
+    key(SecureKey.signerSecret).then(deleteSecureItem),
   ]);
 }

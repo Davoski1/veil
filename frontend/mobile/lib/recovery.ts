@@ -11,11 +11,32 @@ import {
 } from '@stellar/stellar-sdk';
 import { Buffer } from 'buffer';
 import * as Crypto from 'expo-crypto';
-import * as Passkeys from 'react-native-passkeys';
-
+// react-native-passkeys is a native module absent in Expo Go; load it lazily so
+// this module can be imported there without crashing (see lib/passkey.ts). A
+// ceremony throws a clear error only when actually invoked.
+import type * as PasskeysModule from 'react-native-passkeys';
 import { getNetwork, type VeilNetwork } from './network';
 import { setPasskeyCredential, setWalletAddress } from './walletStore';
 import { base64UrlToUint8Array, uint8ArrayToBase64Url } from './webauthn';
+
+let cachedPasskeys: typeof PasskeysModule | null | undefined;
+function passkeys(): typeof PasskeysModule {
+  if (cachedPasskeys === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      cachedPasskeys = require('react-native-passkeys') as typeof PasskeysModule;
+    } catch {
+      cachedPasskeys = null;
+    }
+  }
+  if (!cachedPasskeys) {
+    throw new Error(
+      'Native passkeys are unavailable in this build. Expo Go cannot load the ' +
+        'react-native-passkeys native module — use a development build.',
+    );
+  }
+  return cachedPasskeys;
+}
 
 /**
  * SEP-30 server-assisted recovery.
@@ -361,11 +382,11 @@ function getRelyingPartyId(): string | undefined {
  * actually completed.
  */
 export async function createRecoverySigner(walletAddress: string): Promise<NewSigner | null> {
-  if (!Passkeys.isSupported()) {
+  if (!passkeys().isSupported()) {
     throw new Error('Passkeys are not supported on this device.');
   }
 
-  const created = await Passkeys.create({
+  const created = await passkeys().create({
     challenge: uint8ArrayToBase64Url(Crypto.getRandomBytes(32)),
     rp: { id: getRelyingPartyId(), name: 'Veil' },
     user: {

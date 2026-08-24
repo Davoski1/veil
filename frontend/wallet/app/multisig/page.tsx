@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Wizard from "./components/Wizard";
 import PendingQueue from "./components/PendingQueue";
-import { VeilLogo } from "@/components/VeilLogo";
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function MultisigPage() {
@@ -53,7 +53,7 @@ export default function MultisigPage() {
           </svg>
           Dashboard
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 

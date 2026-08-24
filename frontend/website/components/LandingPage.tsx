@@ -84,7 +84,7 @@ function Navbar({ t, locale }: { t: Messages; locale: Locale }) {
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-2.5">
           <LocaleSwitcher locale={locale} />
-          <a href="https://veil-2ap8.vercel.app" className="font-inter text-sm text-warm-grey hover:text-off-white transition-colors px-3 py-1.5">
+          <a href="https://docs.useveilapp.xyz" className="font-inter text-sm text-warm-grey hover:text-off-white transition-colors px-3 py-1.5">
             {t.nav.docs}
           </a>
           <a href="#early-access" className="btn-gold !py-2 !px-5 !text-sm">
@@ -205,7 +205,7 @@ function Hero({ t }: { t: Messages }) {
           className="flex flex-col sm:flex-row gap-3 justify-center items-center"
         >
           <a href="#early-access" className="btn-gold">{t.hero.cta1}</a>
-          <a href="https://veil-2ap8.vercel.app" className="btn-ghost">{t.hero.cta2}</a>
+          <a href="https://docs.useveilapp.xyz" className="btn-ghost">{t.hero.cta2}</a>
         </motion.div>
 
         {/* Built-on-Stellar badge */}
@@ -345,7 +345,7 @@ function DevQuickstart({ t }: { t: Messages }) {
           {/* Gold doc link */}
           <motion.a
             variants={fadeUp}
-            href="https://veil-2ap8.vercel.app"
+            href="https://docs.useveilapp.xyz"
             className="inline-flex items-center gap-2 mt-8 font-inter font-semibold text-near-black text-sm hover:text-navy transition-colors"
           >
             <span className="hl-dark">{t.devQuickstart.viewDocs}</span>
@@ -526,7 +526,7 @@ function EarlyAccess({ t }: { t: Messages }) {
 ════════════════════════════════════════════════════════════════════════ */
 function Footer({ t, locale }: { t: Messages; locale: Locale }) {
   const links = [
-    { label: t.footer.docs,    href: 'https://veil-2ap8.vercel.app' },
+    { label: t.footer.docs,    href: 'https://docs.useveilapp.xyz' },
     { label: t.footer.github,  href: 'https://github.com/Miracle656/veil' },
     { label: t.footer.twitter, href: '#' },
     { label: t.footer.stellar, href: 'https://stellar.org' },

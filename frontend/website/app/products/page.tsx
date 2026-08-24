@@ -22,7 +22,7 @@ const PRODUCTS = [
     desc: 'A seedless, biometric-native smart wallet on Stellar Soroban. No seed phrases, no private keys — just your fingerprint or face.',
     highlights: ['WebAuthn / FIDO2 passkeys', 'On-chain P-256 verification', 'AI-powered assistant', 'Instant Stellar finality'],
     cta: 'Try the Wallet',
-    ctaHref: 'https://veil-ezry.vercel.app',
+    ctaHref: 'https://app.useveilapp.xyz',
     external: true,
   },
   {
@@ -91,7 +91,7 @@ function Navbar() {
           ))}
         </div>
         <div className="hidden md:flex items-center gap-2.5">
-          <a href="https://veil-2ap8.vercel.app" className="font-inter text-sm text-warm-grey hover:text-off-white transition-colors px-3 py-1.5">
+          <a href="https://docs.useveilapp.xyz" className="font-inter text-sm text-warm-grey hover:text-off-white transition-colors px-3 py-1.5">
             Docs
           </a>
           <a href="/#early-access" className="btn-gold !py-2 !px-5 !text-sm">
@@ -231,7 +231,7 @@ export default function ProductsPage() {
             <nav className="flex flex-wrap justify-center gap-6">
               {[
                 { label: 'Home', href: '/' },
-                { label: 'Docs', href: 'https://veil-2ap8.vercel.app' },
+                { label: 'Docs', href: 'https://docs.useveilapp.xyz' },
                 { label: 'GitHub', href: 'https://github.com/Miracle656/veil' },
                 { label: 'Stellar.org', href: 'https://stellar.org' },
               ].map(({ label, href }) => (
