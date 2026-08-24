@@ -13,6 +13,45 @@ export type VeilNetwork = {
   friendbotUrl: string | null
 }
 
+/** localStorage key holding the user's chosen network. Mirrors `veil_theme`. */
+export const NETWORK_STORAGE_KEY = 'veil_network'
+
+/**
+ * Build-time default. This used to be the *only* source of the active network,
+ * which meant a deployed site was frozen to whichever value it was built with —
+ * the live wallet could not reach mainnet without a rebuild. It is now just the
+ * fallback for the first visit (and for SSR, where localStorage does not exist).
+ */
+function envDefaultNetwork(): VeilNetworkName {
+  return process.env.NEXT_PUBLIC_NETWORK === 'mainnet' ? 'mainnet' : 'testnet'
+}
+
+function readStoredNetwork(): VeilNetworkName | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = window.localStorage.getItem(NETWORK_STORAGE_KEY)
+    return stored === 'mainnet' || stored === 'testnet' ? stored : null
+  } catch {
+    // Private mode / blocked storage — fall back to the build-time default.
+    return null
+  }
+}
+
+/**
+ * Mainnet Soroban RPC is a paid, keyed endpoint. Putting that URL in a
+ * `NEXT_PUBLIC_` variable would bake the provider key into the client bundle,
+ * where anyone loading the site can read it and burn the quota. So the default
+ * is a same-origin proxy (`app/api/rpc/mainnet`) that keeps the key server-side.
+ * An explicit `NEXT_PUBLIC_MAINNET_RPC_URL` still wins for local development
+ * against an unkeyed or self-hosted RPC.
+ */
+function resolveMainnetRpcUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_MAINNET_RPC_URL?.trim()
+  if (explicit) return explicit
+  if (typeof window !== 'undefined') return `${window.location.origin}/api/rpc/mainnet`
+  return ''
+}
+
 export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
   testnet: {
     name: 'testnet',
@@ -36,9 +75,7 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
     displayName: 'Stellar Mainnet',
     networkPassphrase: Networks.PUBLIC,
     horizonUrl: 'https://horizon.stellar.org',
-    // No public default: mainnet Soroban RPC is a paid/keyed endpoint, so the
-    // URL (which carries the key) must come from the environment.
-    rpcUrl: process.env.NEXT_PUBLIC_MAINNET_RPC_URL?.trim() || '',
+    rpcUrl: resolveMainnetRpcUrl(),
     factoryContractId:
       process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID_MAINNET?.trim()
       // Deployed 2026-08-21; its own bytecode and the wallet WASM it deploys
@@ -48,10 +85,47 @@ export const NETWORKS: Record<VeilNetworkName, VeilNetwork> = {
   },
 }
 
+/**
+ * Resolved once per page load, deliberately. `setActiveNetwork` reloads the
+ * page, so every module that captured a value derived from this — including the
+ * `walletConfig` const below, and the SDK client built from it — is rebuilt
+ * from scratch on the new network. Swapping the network in place instead would
+ * leave stale RPC clients, cached balances and in-flight requests pointing at
+ * the old chain, which is exactly how a testnet balance ends up displayed over
+ * a mainnet account.
+ */
+const activeNetworkName: VeilNetworkName = readStoredNetwork() ?? envDefaultNetwork()
+
 export function getNetwork(): VeilNetwork {
-  return process.env.NEXT_PUBLIC_NETWORK === 'mainnet'
-    ? NETWORKS.mainnet
-    : NETWORKS.testnet
+  return NETWORKS[activeNetworkName]
+}
+
+export function getNetworkName(): VeilNetworkName {
+  return activeNetworkName
+}
+
+/** True when this build/deploy can actually talk to the given network. */
+export function isNetworkAvailable(name: VeilNetworkName): boolean {
+  if (name === 'testnet') return true
+  return NETWORKS.mainnet.rpcUrl.length > 0
+}
+
+/**
+ * Switch networks and reload. Returns false when the switch was refused
+ * (unknown name, or the target network has no reachable RPC).
+ */
+export function setActiveNetwork(name: VeilNetworkName): boolean {
+  if (typeof window === 'undefined') return false
+  if (name !== 'testnet' && name !== 'mainnet') return false
+  if (!isNetworkAvailable(name)) return false
+  if (name === activeNetworkName) return true
+  try {
+    window.localStorage.setItem(NETWORK_STORAGE_KEY, name)
+  } catch {
+    return false
+  }
+  window.location.reload()
+  return true
 }
 
 export const walletConfig: WalletConfig = {
@@ -71,4 +145,13 @@ export function buildFriendbotUrl(address: string): string | null {
   const url = new URL(friendbotUrl)
   url.searchParams.set('addr', address)
   return url.toString()
+}
+
+/**
+ * True when mainnet traffic goes through the same-origin proxy rather than an
+ * explicit public URL. The proxy only works if the *server* has MAINNET_RPC_URL
+ * set, which the browser cannot know without asking — see `NetworkSwitcher`.
+ */
+export function mainnetUsesProxy(): boolean {
+  return !process.env.NEXT_PUBLIC_MAINNET_RPC_URL?.trim()
 }

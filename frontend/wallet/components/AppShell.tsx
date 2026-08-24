@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { getNetwork } from '@/lib/network'
+import { NetworkSwitcher } from './NetworkSwitcher'
 import { VeilWordmark } from './ui/VeilMark'
 
 type NavItem = {
@@ -86,7 +86,6 @@ export function AppShell({
   const pathname = usePathname() ?? ''
   const [profileName, setProfileName] = useState<string | null>(null)
   const [address, setAddress] = useState<string | null>(null)
-  const network = getNetwork()
 
   // Read on the client only: these live in localStorage, and touching them
   // during render would break hydration.
@@ -153,15 +152,7 @@ export function AppShell({
               ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-[7px]">
-            <span
-              className="w-[6px] h-[6px] rounded-full shrink-0"
-              style={{ background: network.name === 'mainnet' ? '#FDDA24' : '#00A7B5' }}
-            />
-            <span className="font-mono text-[11px] text-[rgba(246,247,248,0.45)] whitespace-nowrap">
-              {network.displayName}
-            </span>
-          </div>
+          <NetworkSwitcher />
         </div>
       </aside>
 
