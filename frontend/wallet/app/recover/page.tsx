@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { derToRawSignature, bufferToHex, hexToUint8Array } from '@veil/utils'
 import { ensureFeePayer, resetFeePayer } from '@/lib/feePayer'
 import { getNetwork } from '@/lib/network'
@@ -254,7 +254,7 @@ export default function RecoverPage() {
       <div style={{ maxWidth: 400, width: '100%' }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
-          <VeilLogo size={48} />
+          <VeilMark size={48} />
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem' }}>
               Recover wallet

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork } from '@/lib/network'
 import { beginTx, endTx } from '@/lib/txState'
@@ -190,7 +190,7 @@ export default function EarnPage() {
           </svg>
           Dashboard
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <div style={{ width: 40 }} />
       </nav>
 

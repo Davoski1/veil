@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Horizon, Keypair } from '@stellar/stellar-sdk'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { OnboardingTutorial } from '@/components/OnboardingTutorial'
 import { useInvisibleWallet } from '@veil/sdk'
 import { ensureFeePayer } from '@/lib/feePayer'
@@ -138,7 +138,7 @@ export default function OnboardingPage() {
         {/* Logo + wordmark */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '3rem' }}>
           <div style={{ position: 'relative' }} className="biometric-pulse">
-            <VeilLogo size={64} />
+            <VeilMark size={64} />
           </div>
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ fontFamily: 'Anton, Impact, sans-serif', fontSize: '2.5rem', letterSpacing: '0.08em', color: 'var(--gold)' }}>
