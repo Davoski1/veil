@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -362,9 +363,9 @@ export default function SettingsPage() {
         {/* Overview */}
         {section === 'overview' && (
           <>
-            <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', marginBottom: '0.375rem' }}>
-              Security
-            </h2>
+            <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Preferences" title="Settings" />
+        </div>
             <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.4)', marginBottom: '2rem' }}>
               Manage signers, recovery, and wallet settings
             </p>

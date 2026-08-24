@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -369,7 +370,7 @@ export default function PoolsPage() {
       const signerPubKey = signerKeypair.publicKey()
       const account = await server.loadAccount(signerPubKey)
       const txBuilder = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
 

@@ -1,5 +1,7 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -183,7 +185,7 @@ export default function SendPage() {
       if (recipient.startsWith('G') && recipient.length === 56) {
         const account = await horizonServer.loadAccount(feePayerKp.publicKey())
         const tx = new TransactionBuilder(account, {
-          fee: BASE_FEE,
+          fee: inclusionFee(),
           networkPassphrase: network.networkPassphrase,
         })
           .addOperation(Operation.payment({
@@ -203,7 +205,7 @@ export default function SendPage() {
         const amountStroops = BigInt(Math.round(parseFloat(amount) * 10_000_000))
 
         const tx = new TransactionBuilder(feePayerAcct, {
-          fee: BASE_FEE,
+          fee: inclusionFee(),
           networkPassphrase: network.networkPassphrase,
         })
           .addOperation(sacContract.call(
@@ -270,9 +272,9 @@ export default function SendPage() {
       </nav>
 
       <main className="wallet-main">
-        <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', marginBottom: '1.75rem' }}>
-          Send
-        </h2>
+        <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Transfer" title="Send money" />
+        </div>
 
         {step === 'form' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

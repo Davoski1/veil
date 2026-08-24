@@ -1,3 +1,4 @@
+import { inclusionFee } from './fees'
 import {
   Account,
   Address,
@@ -172,7 +173,7 @@ async function submitOperation(
   const server = new SorobanRpc.Server(network.rpcUrl)
   const account = await server.getAccount(signer.publicKey())
   const transaction = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(operation)
@@ -207,7 +208,7 @@ async function simulateCall(
   const server = new SorobanRpc.Server(network.rpcUrl)
   const account = new Account(Keypair.random().publicKey(), '0')
   const transaction = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(contract.call(method, ...args))
@@ -256,7 +257,7 @@ export async function deployAndInitializeVault(params: {
   const salt = crypto.getRandomValues(new Uint8Array(32))
 
   const deployTransaction = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(Operation.createCustomContract({

@@ -124,6 +124,26 @@ export function setActiveNetwork(name: VeilNetworkName): boolean {
   } catch {
     return false
   }
+
+  // The wallet's contract address is derived from the factory that deployed
+  // it, and each network has its own factory — so the same passkey resolves
+  // to a DIFFERENT C-address per network. The session address must therefore
+  // be dropped on a switch; keeping it would leave the wallet displaying the
+  // old network's address while querying the new chain, which reads as an
+  // empty account and invites a send to an address that does not exist here.
+  //
+  // Removing it sends the dashboard to /lock, where wallet.login() re-derives
+  // the address against the new factory. It is removed rather than compared
+  // because /lock treats a stored address that differs from the derived one
+  // as tampering ("Account mismatch"), which is the wrong verdict when the
+  // user simply changed networks. The fee-payer key is left alone: a Stellar
+  // keypair is the same G-address on every network.
+  try {
+    window.sessionStorage.removeItem('invisible_wallet_address')
+  } catch {
+    // Session storage unavailable; the reload below still applies the switch.
+  }
+
   window.location.reload()
   return true
 }
@@ -154,4 +174,20 @@ export function buildFriendbotUrl(address: string): string | null {
  */
 export function mainnetUsesProxy(): boolean {
   return !process.env.NEXT_PUBLIC_MAINNET_RPC_URL?.trim()
+}
+
+/**
+ * Canonical USDC issuer for the active network.
+ *
+ * These are different assets: mainnet USDC is Circle's, testnet USDC is the
+ * SDF test anchor's. Hardcoding either one made the wallet wrong on the other
+ * network — the swap screen defaulted its destination to the testnet issuer
+ * (so on mainnet it pointed at an asset that is not USDC there), while the
+ * price lookup asked for the mainnet issuer (so on testnet the pair did not
+ * exist and every price came back null).
+ */
+export function getUsdcIssuer(): string {
+  return getNetwork().name === 'mainnet'
+    ? 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
+    : 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
 }

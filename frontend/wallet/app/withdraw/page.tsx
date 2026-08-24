@@ -14,6 +14,7 @@
  *   6. Continue polling until status === 'completed' (or terminal).
  */
 
+import { inclusionFee } from '@/lib/fees'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -310,7 +311,7 @@ export default function WithdrawPage() {
       const account = await horizonServer.loadAccount(feePayerKp.publicKey())
 
       const tx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(Operation.payment({

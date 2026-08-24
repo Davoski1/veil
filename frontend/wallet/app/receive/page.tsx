@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -231,14 +232,9 @@ export default function ReceivePage() {
 
       <main className="wallet-main" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
 
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h1 style={{
-            fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic',
-            fontSize: '1.75rem', color: 'var(--off-white)', marginBottom: '0.375rem',
-          }}>
-            Receive
-          </h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <PageHeader eyebrow="Deposit" title="Receive" />
+          <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)', marginTop: '0.5rem' }}>
             Share the right address for where the sender is sending from.
           </p>
         </div>
