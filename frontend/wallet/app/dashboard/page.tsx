@@ -24,6 +24,7 @@ import { derToRawSignature, hexToUint8Array } from '@veil/utils'
 import type { WebAuthnSignature } from '@veil/sdk'
 import { getDueSchedules, updateSchedule, advanceNextRun, type PaymentSchedule } from '@/lib/schedules'
 import { VeilMark } from '@/components/ui/VeilMark'
+import { formatFiat, hydrateCurrency, useCurrency } from '@/lib/currency'
 import { useActivityFeed, initActivityFeed, hydrateActivityFeed, appendActivityFeed } from '@/lib/activityFeed'
 
 const network = getNetwork()
@@ -160,8 +161,11 @@ function DashboardPageContent() {
     [prices],
   )
 
-  const usd = (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+  // Balances are priced in USD upstream; this renders them in whichever
+  // currency the user picked (naira by default for the launch market).
+  const { code: currencyCode, rate: fxRate } = useCurrency()
+  useEffect(() => { hydrateCurrency() }, [])
+  const usd = (n: number) => formatFiat(n, currencyCode, fxRate)
 
   const pricedAssets = assets.filter((a) => priceOf(a) != null)
   const totalUsd = pricedAssets.reduce(

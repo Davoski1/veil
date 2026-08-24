@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { CurrencyPicker } from './CurrencyPicker'
 import { NetworkSwitcher } from './NetworkSwitcher'
 import { VeilWordmark } from './ui/VeilMark'
 
@@ -153,6 +154,7 @@ export function AppShell({
             </div>
           </div>
           <NetworkSwitcher />
+          <CurrencyPicker />
         </div>
       </aside>
 
