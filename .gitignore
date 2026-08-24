@@ -28,3 +28,6 @@ frontend/mobile/android/
 .DS_Store
 build_error.txt
 TODO.md
+
+# Throwaway SEP-10/SEP-45 probe scripts
+frontend/wallet/__sep*probe*.mjs
