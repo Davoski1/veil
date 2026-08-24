@@ -1,5 +1,6 @@
 'use client'
 
+import { useActivityFeed } from '@/lib/activityFeed'
 import { inclusionFee } from '@/lib/fees'
 import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef } from 'react'
@@ -27,6 +28,8 @@ interface WalletAsset {
   code: string
   issuer: string | null
   contractId: string | null
+  /** Decimal string from Horizon. '0' when the account could not be loaded. */
+  balance: string
 }
 
 export default function SendPage() {
@@ -39,6 +42,14 @@ export default function SendPage() {
   const [txHash, setTxHash]           = useState<string | null>(null)
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
   const [showPicker, setShowPicker]   = useState(false)
+
+  // Who this wallet has actually paid, newest first. Derived from the activity
+  // feed rather than the contact book: a contact you have never paid is not a
+  // "recent recipient", and this needs no extra storage.
+  const transactions = useActivityFeed()
+  const recentRecipients = Array.from(
+    new Set(transactions.filter((t) => t.type === 'sent').map((t) => t.counterparty)),
+  ).slice(0, 3)
   const [showScanner, setShowScanner] = useState(false)
   const [hasCamera, setHasCamera]     = useState(false)
   const [imgError, setImgError]       = useState<string | null>(null)
@@ -61,7 +72,7 @@ export default function SendPage() {
       ? Keypair.fromSecret(sessionStorage.getItem('veil_signer_secret')!).publicKey()
       : localStorage.getItem('veil_signer_public_key') || null
     if (!signerPublicKey || !signerPublicKey.startsWith('G')) {
-      const xlm: WalletAsset = { code: 'XLM', issuer: null, contractId: getNativeAssetContractId() }
+      const xlm: WalletAsset = { code: 'XLM', issuer: null, contractId: getNativeAssetContractId(), balance: '0' }
       setAssets([xlm])
       setSelectedAsset(xlm)
       return
@@ -70,16 +81,21 @@ export default function SendPage() {
     server.loadAccount(signerPublicKey).then(account => {
       const list: WalletAsset[] = account.balances.map(b => {
         if (b.asset_type === 'native') {
-          return { code: 'XLM', issuer: null, contractId: getNativeAssetContractId() }
+          return { code: 'XLM', issuer: null, contractId: getNativeAssetContractId(), balance: b.balance }
         }
-        const issued = b as { asset_code: string; asset_issuer: string }
+        const issued = b as { asset_code: string; asset_issuer: string; balance: string }
         const asset  = new Asset(issued.asset_code, issued.asset_issuer)
-        return { code: issued.asset_code, issuer: issued.asset_issuer, contractId: asset.contractId(network.networkPassphrase) }
+        return {
+          code: issued.asset_code,
+          issuer: issued.asset_issuer,
+          contractId: asset.contractId(network.networkPassphrase),
+          balance: issued.balance,
+        }
       })
       setAssets(list)
       if (list.length > 0) setSelectedAsset(list[0])
     }).catch(() => {
-      const xlm: WalletAsset = { code: 'XLM', issuer: null, contractId: getNativeAssetContractId() }
+      const xlm: WalletAsset = { code: 'XLM', issuer: null, contractId: getNativeAssetContractId(), balance: '0' }
       setAssets([xlm])
       setSelectedAsset(xlm)
     })
@@ -271,13 +287,14 @@ export default function SendPage() {
         <div style={{ width: 40 }} />
       </nav>
 
-      <main className="wallet-main">
+      <main className="wallet-main wallet-main--wide">
         <div style={{ marginBottom: '1.75rem' }}>
           <PageHeader eyebrow="Transfer" title="Send money" />
         </div>
 
         {step === 'form' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
+            <div className="vw-sendcol">
 
             {assets.length > 1 && (
               <div>
@@ -391,17 +408,48 @@ export default function SendPage() {
               <label htmlFor="send-amount" style={{ fontSize: '0.75rem', color: 'rgba(246,247,248,0.4)', display: 'block', marginBottom: '0.5rem', fontFamily: 'Anton, Impact, sans-serif', letterSpacing: '0.06em' }}>
                 AMOUNT{selectedAsset ? ` (${selectedAsset.code})` : ''}
               </label>
-              <input
-                id="send-amount"
-                className="input-field"
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                min="0"
-                step="0.0000001"
-                style={{ fontFamily: 'Inconsolata, monospace', fontSize: '1.25rem' }}
-              />
+              <div className="vw-amountcard">
+                <input
+                  id="send-amount"
+                  className="vw-amountinput"
+                  type="number"
+                  placeholder="0"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  min="0"
+                  step="0.0000001"
+                  aria-label={`Amount in ${selectedAsset?.code ?? 'asset'}`}
+                />
+                <div className="vw-amountsub">
+                  {selectedAsset ? `${selectedAsset.code} · ${parseFloat(selectedAsset.balance).toFixed(4)} available` : ' '}
+                </div>
+                <div className="vw-amountfoot">
+                  <span className="vw-amountbal">
+                    {selectedAsset ? `Balance ${parseFloat(selectedAsset.balance).toFixed(2)} ${selectedAsset.code}` : ''}
+                  </span>
+                  {/* Percentage chips rather than the design's fixed naira amounts:
+                      the balances here are crypto, so a "₦5,000" chip would be
+                      meaningless. 100% is deliberately omitted for XLM — the base
+                      reserve means the whole balance is never actually sendable. */}
+                  <span className="vw-chips">
+                    {[0.25, 0.5, 0.75].map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        className="vw-amountchip"
+                        onClick={() => {
+                          if (!selectedAsset) return
+                          const bal = parseFloat(selectedAsset.balance)
+                          if (!Number.isFinite(bal)) return
+                          setAmount((Math.floor(bal * f * 1e7) / 1e7).toString())
+                        }}
+                      >
+                        {f * 100}%
+                      </button>
+                    ))}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -427,6 +475,57 @@ export default function SendPage() {
               >
                 Review
               </button>
+            </div>
+            </div>
+
+            <div className="vw-swapside">
+              <div className="vw-panel" style={{ padding: '24px 26px' }}>
+                <div className="vw-label">Summary</div>
+                <div className="vw-sumrow">
+                  <span>They receive</span>
+                  <strong>{amount ? `${amount} ${selectedAsset?.code ?? ''}` : '—'}</strong>
+                </div>
+                <div className="vw-sumrow">
+                  <span>Debited</span>
+                  <strong className="font-mono">{amount ? `${amount} ${selectedAsset?.code ?? ''}` : '—'}</strong>
+                </div>
+                <div className="vw-sumrow">
+                  <span>Network fee</span>
+                  {/* Truthful: the fee leaves the G… fee-payer, not the amount
+                      being sent, so the recipient gets the full amount. */}
+                  <strong style={{ color: 'var(--teal)' }}>Paid by fee-payer</strong>
+                </div>
+                <div className="vw-sumrow vw-sumrow--last">
+                  <span>Remaining</span>
+                  <strong className="font-mono">
+                    {selectedAsset && amount && Number.isFinite(parseFloat(amount))
+                      ? `${Math.max(0, parseFloat(selectedAsset.balance) - parseFloat(amount)).toFixed(4)} ${selectedAsset.code}`
+                      : '—'}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
+                <div className="vw-label" style={{ padding: '18px 0 4px' }}>Recent recipients</div>
+                {recentRecipients.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '12px 0' }}>
+                    Nobody yet. People you send to will appear here.
+                  </p>
+                ) : recentRecipients.map((addr) => (
+                  <button
+                    key={addr}
+                    type="button"
+                    className="vw-listrow"
+                    style={{ padding: '13px 0' }}
+                    onClick={() => setRecipient(addr)}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0 }}>
+                      <span className="vw-avatar">{addr.slice(0, 1)}</span>
+                      <span className="vw-meta">{addr.slice(0, 6)}…{addr.slice(-6)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

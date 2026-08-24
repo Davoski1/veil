@@ -823,7 +823,7 @@ function DashboardPageContent() {
             <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
                 <div className="vw-label">Activity</div>
-                <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/assets')}>See all</button>
+                <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/activity')}>See all</button>
               </div>
               {recent.length === 0 ? (
                 <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
