@@ -435,6 +435,59 @@ body {
 .vw-grow { flex: 1; min-width: 0; }
 .vw-side { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px; }
 
+/* ── Three-column dashboard layout (≥1024px) ─────────────────────────────
+   Center = balance + earning + activity + agent
+   Right rail = assets list with live fiat values, sticky on scroll
+   Left = sidebar nav from AppShell */
+.vw-center-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vw-balance-row {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  margin-top: 26px;
+}
+
+.vw-rail {
+  width: 380px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 3.5rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Balance plate fills the center column instead of the fixed 452px */
+.vw-balance-row .vw-silver {
+  width: 100%;
+  flex: 1;
+}
+
+@media (max-width: 1023px) {
+  .vw-rail {
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .vw-balance-row {
+    flex-direction: column;
+  }
+  .vw-balance-row .vw-silver {
+    width: 100%;
+  }
+}
+
 /* The metallic plate. The sheen is a separate overlay so it sits above the
    gradient but below the text. */
 .vw-silver { width: 452px; flex-shrink: 0; border-radius: 26px; padding: 28px 30px; position: relative; overflow: hidden; color: #0F0F0F; box-sizing: border-box;
