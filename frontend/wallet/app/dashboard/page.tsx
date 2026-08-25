@@ -18,7 +18,8 @@ import { TxDetailSheet, type TxRecord } from '@/components/TxDetailSheet'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { ensureFeePayer } from '@/lib/feePayer'
 import { fetchPrices } from '@/lib/fetchPrice'
-import { buildFriendbotUrl, getNativeAssetContractId, getNetwork } from '@/lib/network'
+import { change24h, historyKey, isComparableTotal, readHistory, recordSnapshot, writeHistory } from '@/lib/balanceHistory'
+import { buildFriendbotUrl, getNativeAssetContractId, getNetwork, getNetworkName } from '@/lib/network'
 import { sweepContractBalance } from '@/lib/sweepContractBalance'
 import { derToRawSignature, hexToUint8Array } from '@veil/utils'
 import type { WebAuthnSignature } from '@veil/sdk'
@@ -175,6 +176,25 @@ function DashboardPageContent() {
   // Only show a total once at least one asset has a price. A partial sum
   // rendered as "the" balance understates the wallet without saying so.
   const totalLabel = pricedAssets.length > 0 ? usd(totalUsd) : '—'
+
+  // 24h change on the total. Recorded locally rather than fetched: Lens serves
+  // a spot price and nothing historical, so this is the change in what the
+  // wallet is worth. Null — and so hidden — until a snapshot is a day old.
+  const [dayChange, setDayChange] = useState<number | null>(null)
+  useEffect(() => {
+    // A partial total is not comparable with a full one, and recording it would
+    // report a price-feed outage as a loss. Drop the chip entirely until every
+    // asset is priced rather than showing a number nobody can act on.
+    if (!walletAddress || !isComparableTotal(assets.length, pricedAssets.length)) {
+      setDayChange(null)
+      return
+    }
+    const key = historyKey(getNetworkName(), walletAddress)
+    const now = Date.now()
+    const history = recordSnapshot(readHistory(key), totalUsd, now)
+    writeHistory(key, history)
+    setDayChange(change24h(history, totalUsd, now))
+  }, [walletAddress, totalUsd, assets.length, pricedAssets.length])
 
   const balanceLine = assets
     .slice()
@@ -760,7 +780,14 @@ function DashboardPageContent() {
               <div className="vw-silver__label">Total balance</div>
               <VeilMark size={28} color="#0F0F0F" />
             </div>
-            <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
+            <div className="vw-silver__amountrow">
+              <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
+              {!hideAmounts && dayChange !== null && (
+                <span className={'vw-silver__delta ' + (dayChange >= 0 ? 'vw-silver__delta--up' : 'vw-silver__delta--down')}>
+                  {dayChange >= 0 ? '▲' : '▼'} {Math.abs(dayChange).toFixed(2)}% · 24h
+                </span>
+              )}
+            </div>
             <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
               <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
             </div>

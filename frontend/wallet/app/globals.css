@@ -412,7 +412,19 @@ body {
   box-shadow: 0 22px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
 .vw-silver__sheen { position: absolute; inset: 0; background: linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.5) 46%,transparent 55%); pointer-events: none; }
 .vw-silver__label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: rgba(15,15,15,0.55); }
-.vw-silver__amount { font-family: 'Lora', Georgia, serif; font-style: italic; font-weight: 600; font-size: 52px; line-height: 1.1; margin-top: 20px; }
+/* Inter tabular numerals, not the Lora italic the rest of the plate uses: this
+   is a figure read against yesterday's, and italic serif digits neither align
+   in a column nor hold their width as the total changes. Lora italic stays on
+   the page and section titles. */
+.vw-silver__amountrow { position: relative; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+.vw-silver__amount { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 52px; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* The plate is a light metallic gradient carrying near-black text, so the
+   change chip takes the darker end of the teal/red pair to stay legible on it
+   rather than the values used against the dark surfaces elsewhere. */
+.vw-silver__delta { font-family: 'Inter', system-ui, sans-serif; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; border-radius: 100px; padding: 4px 10px; white-space: nowrap; }
+.vw-silver__delta--up { color: #00646E; background: rgba(0,100,110,0.14); }
+.vw-silver__delta--down { color: #9E332B; background: rgba(158,51,43,0.13); }
 .vw-silver__sub { font-family: 'Inconsolata', monospace; font-size: 13px; color: rgba(15,15,15,0.6); }
 
 .vw-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
