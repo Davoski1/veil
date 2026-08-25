@@ -3,6 +3,7 @@ import { deriveFeePayerSeedFromPrf, evaluateFeePayerPrf, type PrfEvaluator } fro
 
 import { deriveFeePayerKeypair } from './deriveFeePayer'
 import { getNetwork } from './network'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 /**
  * Single accessor for the fee-payer (sponsor) key — the one place the rest of
@@ -71,7 +72,7 @@ export function getFeePayerMode(): FeePayerMode | null {
 export function peekFeePayerSecret(): string | null {
   if (cached) return cached.secret()
   if (!hasWindow()) return null
-  return sessionStorage.getItem(SECRET) || localStorage.getItem(SECRET)
+  return walletSession.getItem(SECRET) || walletLocal.getItem(SECRET)
 }
 
 /** Convenience: the established fee-payer Keypair, or null. Sync, no prompt. */
@@ -111,7 +112,7 @@ export async function ensureFeePayer(evaluator?: PrfEvaluator): Promise<Keypair 
     return cached
   }
 
-  const credentialId = localStorage.getItem(KEY_ID)
+  const credentialId = walletLocal.getItem(KEY_ID)
   if (!credentialId) {
     // No passkey registered yet — best-effort from any persisted secret.
     cached = existing ? Keypair.fromSecret(existing) : null
@@ -152,13 +153,13 @@ export async function ensureFeePayer(evaluator?: PrfEvaluator): Promise<Keypair 
 
   cached = chosen.kp
   localStorage.setItem(MODE, chosen.mode)
-  sessionStorage.setItem(SECRET, chosen.kp.secret())
-  sessionStorage.setItem(PUBKEY, chosen.kp.publicKey())
+  walletSession.setItem(SECRET, chosen.kp.secret())
+  walletSession.setItem(PUBKEY, chosen.kp.publicKey())
   // Only the legacy variant is recoverable without the passkey, so only it is
   // persisted; PRF seeds stay session-scoped (ADR 0003, C3).
   if (chosen.mode === 'legacy') {
-    localStorage.setItem(SECRET, chosen.kp.secret())
-    localStorage.setItem(PUBKEY, chosen.kp.publicKey())
+    walletLocal.setItem(SECRET, chosen.kp.secret())
+    walletLocal.setItem(PUBKEY, chosen.kp.publicKey())
   }
   return chosen.kp
 }
@@ -200,8 +201,8 @@ async function pickFundedCandidate(
 export function clearFeePayer(): void {
   cached = null
   if (!hasWindow()) return
-  sessionStorage.removeItem(SECRET)
-  sessionStorage.removeItem(PUBKEY)
+  walletSession.removeItem(SECRET)
+  walletSession.removeItem(PUBKEY)
 }
 
 /**
@@ -211,9 +212,9 @@ export function clearFeePayer(): void {
 export function resetFeePayer(): void {
   cached = null
   if (!hasWindow()) return
-  sessionStorage.removeItem(SECRET)
-  sessionStorage.removeItem(PUBKEY)
-  localStorage.removeItem(SECRET)
-  localStorage.removeItem(PUBKEY)
+  walletSession.removeItem(SECRET)
+  walletSession.removeItem(PUBKEY)
+  walletLocal.removeItem(SECRET)
+  walletLocal.removeItem(PUBKEY)
   localStorage.removeItem(MODE)
 }

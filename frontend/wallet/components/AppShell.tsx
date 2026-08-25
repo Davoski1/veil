@@ -1,4 +1,5 @@
 'use client'
+import { walletLocal } from '@/lib/walletStorage'
 
 /**
  * The desktop app shell from the `Veil Web` design: a fixed 248px sidebar
@@ -101,7 +102,7 @@ export function AppShell({
     } catch {
       // A malformed profile is not worth failing navigation over.
     }
-    setAddress(localStorage.getItem('veil_signer_public_key'))
+    setAddress(walletLocal.getItem('veil_signer_public_key'))
   }, [])
 
   // `/settings` would otherwise light up for `/settings/passkeys` too, so the

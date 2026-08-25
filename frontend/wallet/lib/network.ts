@@ -17,6 +17,28 @@ export type VeilNetwork = {
 export const NETWORK_STORAGE_KEY = 'veil_network'
 
 /**
+ * Wallet keys that are network-scoped: each identifies state belonging to one
+ * network's wallet and must not be shared across networks. The wallet contract
+ * is deployed per network (its own factory each), so one passkey resolves to a
+ * different `C…` address on testnet vs mainnet — see `lib/walletStorage.ts` for
+ * the full rationale. Any other key (theme, chosen network, …) is not namespaced.
+ */
+export const WALLET_KEYS = [
+  'invisible_wallet_address',
+  'invisible_wallet_key_id',
+  'invisible_wallet_public_key',
+  'invisible_wallet_portable_signer',
+  'invisible_wallet_recovery_private_key',
+  'veil_signer_secret',
+  'veil_signer_public_key',
+] as const
+
+const WALLET_KEY_SET = new Set<string>(WALLET_KEYS)
+
+/** The suffix mainnet slots carry. Testnet uses the bare key (back-compat). */
+const MAINNET_KEY_SUFFIX = '_mainnet'
+
+/**
  * Build-time default. This used to be the *only* source of the active network,
  * which meant a deployed site was frozen to whichever value it was built with —
  * the live wallet could not reach mainnet without a rebuild. It is now just the
@@ -104,6 +126,49 @@ export function getNetworkName(): VeilNetworkName {
   return activeNetworkName
 }
 
+/**
+ * Map a logical wallet key to the active network's physical slot. Testnet (and
+ * any non-wallet key) is returned unchanged; a wallet key on mainnet gains the
+ * `_mainnet` suffix, so the two networks never share a slot.
+ */
+export function namespaceKey(key: string, network: VeilNetworkName = activeNetworkName): string {
+  if (!WALLET_KEY_SET.has(key)) return key
+  return network === 'mainnet' ? `${key}${MAINNET_KEY_SUFFIX}` : key
+}
+
+/**
+ * localStorage-backed storage adapter that namespaces wallet keys per network.
+ * Passed to the SDK via `walletConfig.storage` so the SDK's own persistence of
+ * wallet credentials lands in the active network's slot too. Matches the SDK's
+ * `StorageAdapter` shape and is null-safe when storage is unavailable.
+ */
+export const namespacedStorageAdapter = {
+  getItem(key: string): string | null {
+    if (typeof localStorage === 'undefined') return null
+    try {
+      return localStorage.getItem(namespaceKey(key))
+    } catch {
+      return null
+    }
+  },
+  setItem(key: string, value: string): void {
+    if (typeof localStorage === 'undefined') return
+    try {
+      localStorage.setItem(namespaceKey(key), value)
+    } catch {
+      /* quota / blocked */
+    }
+  },
+  removeItem(key: string): void {
+    if (typeof localStorage === 'undefined') return
+    try {
+      localStorage.removeItem(namespaceKey(key))
+    } catch {
+      /* blocked */
+    }
+  },
+}
+
 /** True when this build/deploy can actually talk to the given network. */
 export function isNetworkAvailable(name: VeilNetworkName): boolean {
   if (name === 'testnet') return true
@@ -139,7 +204,9 @@ export function setActiveNetwork(name: VeilNetworkName): boolean {
   // user simply changed networks. The fee-payer key is left alone: a Stellar
   // keypair is the same G-address on every network.
   try {
-    window.sessionStorage.removeItem('invisible_wallet_address')
+    // Drop the CURRENT network's session address (activeNetworkName is still the
+    // network we're leaving here), so its slot isn't misread after the reload.
+    window.sessionStorage.removeItem(namespaceKey('invisible_wallet_address'))
   } catch {
     // Session storage unavailable; the reload below still applies the switch.
   }
@@ -152,6 +219,9 @@ export const walletConfig: WalletConfig = {
   factoryAddress: getNetwork().factoryContractId,
   rpcUrl: getNetwork().rpcUrl,
   networkPassphrase: getNetwork().networkPassphrase,
+  // Namespace the SDK's own credential reads/writes per network, so switching or
+  // resetting one network cannot touch the other's wallet — see walletStorage.ts.
+  storage: namespacedStorageAdapter,
 }
 
 export function getNativeAssetContractId(): string {

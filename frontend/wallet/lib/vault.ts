@@ -16,6 +16,7 @@ import {
 } from '@stellar/stellar-sdk'
 
 import { getNetwork } from './network'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const STROOPS_PER_XLM = 10_000_000n
 
@@ -84,8 +85,8 @@ function getSigner(secret?: string): Keypair {
   const stored = typeof window === 'undefined'
     ? null
     : (
-      sessionStorage.getItem('veil_signer_secret')
-      || localStorage.getItem('veil_signer_secret')
+      walletSession.getItem('veil_signer_secret')
+      || walletLocal.getItem('veil_signer_secret')
     )
   const resolved = secret?.trim() || stored
 

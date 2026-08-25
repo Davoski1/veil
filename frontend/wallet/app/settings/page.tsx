@@ -17,6 +17,7 @@ import {
   storeEncryptedMnemonic,
   getEncryptedMnemonic,
 } from '@/lib/recovery'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 type Section = 'overview' | 'add-signer' | 'guardian' | 'recovery-backup'
 
@@ -259,7 +260,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) { router.replace('/lock'); return }
     setAddress(addr)
   }, [router])
@@ -278,12 +279,12 @@ export default function SettingsPage() {
       fetchSigners()
     }
     if (typeof window !== 'undefined') {
-      setLocalPublicKey(localStorage.getItem('invisible_wallet_public_key'))
+      setLocalPublicKey(walletLocal.getItem('invisible_wallet_public_key'))
     }
   }, [address, section, fetchSigners])
 
   function getSignerKeypair(): Keypair {
-    const secret = sessionStorage.getItem('veil_signer_secret')
+    const secret = walletSession.getItem('veil_signer_secret')
     if (!secret) throw new Error('No signer key in session')
     return Keypair.fromSecret(secret)
   }

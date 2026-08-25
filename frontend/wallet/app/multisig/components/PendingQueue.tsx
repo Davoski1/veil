@@ -8,6 +8,7 @@ import {
   type ProposalDetails,
   type MultisigDetails
 } from "@/lib/multisig";
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 interface PendingQueueProps {
   contractId: string;
@@ -109,7 +110,7 @@ export default function PendingQueue({ contractId, onReset }: PendingQueueProps)
   };
 
   const prefillActiveSigner = (proposalId: number) => {
-    const activeSecret = sessionStorage.getItem("veil_signer_secret") || localStorage.getItem("veil_signer_secret") || "";
+    const activeSecret = walletSession.getItem("veil_signer_secret") || walletLocal.getItem("veil_signer_secret") || "";
     if (activeSecret) {
       setSigningSecrets(prev => ({ ...prev, [proposalId]: activeSecret }));
     }

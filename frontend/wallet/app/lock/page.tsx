@@ -7,6 +7,7 @@ import { useInvisibleWallet } from '@veil/sdk'
 import { ensureFeePayer } from '@/lib/feePayer'
 import { FEE_PAYER_PRF_SALT, type PrfEvaluator } from '@veil/prf'
 import { walletConfig } from '@/lib/network'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 // ── Lock screen ───────────────────────────────────────────────────────────────
 export default function LockPage() {
@@ -26,7 +27,7 @@ export default function LockPage() {
       // wallet.login() only checks localStorage + chain; it doesn't prompt the
       // device. We call navigator.credentials.get() with userVerification:
       // 'required' so the OS always shows Face ID / fingerprint / Windows Hello.
-      const keyId = localStorage.getItem('invisible_wallet_key_id')
+      const keyId = walletLocal.getItem('invisible_wallet_key_id')
       if (!keyId) {
         setError('No passkey found. Please register again.')
         return
@@ -78,13 +79,13 @@ export default function LockPage() {
         return
       }
 
-      const existing = sessionStorage.getItem('invisible_wallet_address')
+      const existing = walletSession.getItem('invisible_wallet_address')
       if (existing && existing !== result.walletAddress) {
         sessionStorage.clear()
         setError('Account mismatch detected. Please register again.')
         return
       }
-      sessionStorage.setItem('invisible_wallet_address', result.walletAddress)
+      walletSession.setItem('invisible_wallet_address', result.walletAddress)
 
       // Re-establish the fee-payer for this session. PRF wallets re-derive the
       // seed from the assertion above (no extra prompt) and keep it in

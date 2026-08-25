@@ -1,4 +1,5 @@
 import { Keypair } from '@stellar/stellar-sdk'
+import { walletLocal } from '@/lib/walletStorage'
 
 /**
  * Deterministically derive a fee-payer Ed25519 keypair from a WebAuthn credential ID.
@@ -61,7 +62,7 @@ export async function deriveFeePayerKeypair(credentialIdBase64url: string): Prom
  * Returns null if no credential ID is stored.
  */
 export async function deriveStoredFeePayer(): Promise<Keypair | null> {
-  const keyId = localStorage.getItem('invisible_wallet_key_id')
+  const keyId = walletLocal.getItem('invisible_wallet_key_id')
   if (!keyId) return null
   return deriveFeePayerKeypair(keyId)
 }
