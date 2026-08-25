@@ -1,3 +1,10 @@
+import { TextEncoder, TextDecoder } from 'util'
+
+// jsdom does not expose these globals; @stellar/stellar-sdk — pulled in
+// transitively via passkeyAuth.ts -> walletStorage.ts -> network.ts — needs
+// them at import time.
+Object.assign(globalThis, { TextEncoder, TextDecoder })
+
 import { requirePasskey } from '../passkeyAuth'
 
 describe('requirePasskey', () => {

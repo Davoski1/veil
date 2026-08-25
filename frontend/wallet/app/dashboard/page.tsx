@@ -1,4 +1,5 @@
 'use client'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 export const dynamic = 'force-dynamic'
 
@@ -188,7 +189,7 @@ function DashboardPageContent() {
   const horizonNextRef = useRef<(() => Promise<any>) | null>(null)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('invisible_wallet_address')
+    const stored = walletSession.getItem('invisible_wallet_address')
     if (!stored) { router.replace('/lock'); return }
     setWalletAddress(stored)
 
@@ -239,10 +240,10 @@ function DashboardPageContent() {
     setContractXlm(contractXlm)
 
     // ── 2. Fee-payer G... balance (holds the testnet faucet XLM) ────────────
-    const signerSecret    = sessionStorage.getItem('veil_signer_secret')
+    const signerSecret    = walletSession.getItem('veil_signer_secret')
     const signerPublicKey = signerSecret
       ? Keypair.fromSecret(signerSecret).publicKey()
-      : (localStorage.getItem('veil_signer_public_key') || null)
+      : (walletLocal.getItem('veil_signer_public_key') || null)
 
     // Track whether fee-payer exists so we can show a recovery banner
     setHasFeePayerKey(!!signerPublicKey)
@@ -384,10 +385,10 @@ function DashboardPageContent() {
     if (!walletAddress) return
     setIsLoadingMore(true)
     try {
-      const signerSecret    = sessionStorage.getItem('veil_signer_secret')
+      const signerSecret    = walletSession.getItem('veil_signer_secret')
       const signerPublicKey = signerSecret
         ? Keypair.fromSecret(signerSecret).publicKey()
-        : (localStorage.getItem('veil_signer_public_key') || '')
+        : (walletLocal.getItem('veil_signer_public_key') || '')
 
       const additionalRecords: import('@/components/TxDetailSheet').TxRecord[] = []
 
@@ -538,14 +539,14 @@ function DashboardPageContent() {
     setIsSweeping(true)
     setSweepError(null)
     try {
-      const signerSecret = sessionStorage.getItem('veil_signer_secret')
-        || localStorage.getItem('veil_signer_secret')
+      const signerSecret = walletSession.getItem('veil_signer_secret')
+        || walletLocal.getItem('veil_signer_secret')
       if (!signerSecret) throw new Error('Signing key not found. Return to dashboard and tap "Set up fee-payer".')
       const feePayerKp = Keypair.fromSecret(signerSecret)
 
       const localSignAuthEntry = async (payload: Uint8Array): Promise<WebAuthnSignature | null> => {
-        const keyId        = localStorage.getItem('invisible_wallet_key_id')
-        const publicKeyHex = localStorage.getItem('invisible_wallet_public_key')
+        const keyId        = walletLocal.getItem('invisible_wallet_key_id')
+        const publicKeyHex = walletLocal.getItem('invisible_wallet_public_key')
         if (!keyId || !publicKeyHex) throw new Error('No passkey found. Please register the wallet first.')
 
         const challenge  = payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) as ArrayBuffer

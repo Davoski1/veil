@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { deployAndInitMultisig } from "@/lib/multisig";
+import { walletSession } from '@/lib/walletStorage'
 
 interface WizardProps {
   onDeploySuccess: (contractId: string) => void;
@@ -15,7 +16,7 @@ export default function Wizard({ onDeploySuccess }: WizardProps) {
 
   // Prefill the first owner with the active wallet address if logged in
   useEffect(() => {
-    const activeAddress = sessionStorage.getItem("invisible_wallet_address");
+    const activeAddress = walletSession.getItem("invisible_wallet_address");
     if (activeAddress) {
       setOwners([activeAddress, "", ""]);
     } else {

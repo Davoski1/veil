@@ -7,6 +7,7 @@ import { Keypair } from '@stellar/stellar-sdk'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork } from '@/lib/network'
 import { requirePasskey } from '@/lib/passkeyAuth'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const network = getNetwork()
 
@@ -194,7 +195,7 @@ export default function AgentPage() {
 
   const walletAddress =
     typeof window !== 'undefined'
-      ? (sessionStorage.getItem('invisible_wallet_address') ?? '')
+      ? (walletSession.getItem('invisible_wallet_address') ?? '')
       : ''
 
   // Always derive fee-payer public key from the secret — never from the cached
@@ -202,8 +203,8 @@ export default function AgentPage() {
   const feePayerAddress = (() => {
     if (typeof window === 'undefined') return ''
     try {
-      const secret = sessionStorage.getItem('veil_signer_secret')
-        ?? localStorage.getItem('veil_signer_secret')
+      const secret = walletSession.getItem('veil_signer_secret')
+        ?? walletLocal.getItem('veil_signer_secret')
       if (!secret) return ''
       return Keypair.fromSecret(secret).publicKey()
     } catch { return '' }
@@ -314,8 +315,8 @@ export default function AgentPage() {
       await requirePasskey()
 
       const signerSecret =
-        sessionStorage.getItem('veil_signer_secret') ??
-        localStorage.getItem('veil_signer_secret')
+        walletSession.getItem('veil_signer_secret') ??
+        walletLocal.getItem('veil_signer_secret')
 
       if (!signerSecret) {
         setMessages((prev) => [

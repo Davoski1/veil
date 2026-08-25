@@ -16,6 +16,7 @@ import { resetFeePayer } from '@/lib/feePayer'
 import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet } from '@veil/sdk'
+import { walletLocal, walletSession, clearActiveNetworkWallet } from '@/lib/walletStorage'
 
 const Server = Horizon.Server
 const network = getNetwork()
@@ -48,15 +49,15 @@ export default function DangerPage() {
 
   // ── Load current user info ──────────────────────────────────────────────────
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) {
       router.replace('/lock')
       return
     }
 
     const secret =
-      sessionStorage.getItem('veil_signer_secret') ||
-      localStorage.getItem('veil_signer_secret')
+      walletSession.getItem('veil_signer_secret') ||
+      walletLocal.getItem('veil_signer_secret')
     
     if (!secret) {
       setError('No fee-payer signing key found. Please set up your wallet first.')
@@ -178,15 +179,10 @@ export default function DangerPage() {
 
       // Clear local wallet data. resetFeePayer() drops the in-memory fee-payer
       // cache and the pinned derivation mode as well (ADR 0003).
+      // clearActiveNetworkWallet() wipes only THIS network's slots, so a reset
+      // on testnet can never destroy a mainnet wallet (and vice versa).
       resetFeePayer()
-      localStorage.removeItem('veil_signer_secret')
-      localStorage.removeItem('veil_signer_public_key')
-      localStorage.removeItem('invisible_wallet_address')
-      localStorage.removeItem('invisible_wallet_key_id')
-      localStorage.removeItem('invisible_wallet_public_key')
-      sessionStorage.removeItem('veil_signer_secret')
-      sessionStorage.removeItem('veil_signer_public_key')
-      sessionStorage.removeItem('invisible_wallet_address')
+      clearActiveNetworkWallet()
 
     } catch (err: any) {
       console.error(err)

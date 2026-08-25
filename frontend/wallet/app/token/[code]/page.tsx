@@ -8,6 +8,7 @@ import {
   Horizon, Keypair, rpc as SorobanRpc, Contract, Account,
   TransactionBuilder, BASE_FEE, Asset, nativeToScVal, scValToNative,
 } from '@stellar/stellar-sdk'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 const Server = Horizon.Server
 import { TxDetailSheet, type TxRecord } from '@/components/TxDetailSheet'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
@@ -67,8 +68,8 @@ export default function TokenPage() {
   const [priceChange,  setPriceChange]  = useState<number | null>(null)
 
   const fetchData = useCallback(async () => {
-    const signerSecret = sessionStorage.getItem('veil_signer_secret')
-      ?? localStorage.getItem('veil_signer_secret')
+    const signerSecret = walletSession.getItem('veil_signer_secret')
+      ?? walletLocal.getItem('veil_signer_secret')
 
     // Derive public key — prefer from secret, fall back to stored public key.
     // Never redirect to /lock here; missing secret just means read-only mode.
@@ -76,11 +77,11 @@ export default function TokenPage() {
     if (signerSecret) {
       signerPublicKey = Keypair.fromSecret(signerSecret).publicKey()
     } else {
-      const storedPubKey = localStorage.getItem('veil_signer_public_key')
+      const storedPubKey = walletLocal.getItem('veil_signer_public_key')
       if (!storedPubKey) { router.replace('/dashboard'); return }
       signerPublicKey = storedPubKey
     }
-    const walletAddress   = sessionStorage.getItem('invisible_wallet_address') ?? ''
+    const walletAddress   = walletSession.getItem('invisible_wallet_address') ?? ''
     const horizonServer   = new Server(network.horizonUrl)
 
     setLoading(true)

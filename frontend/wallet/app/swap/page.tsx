@@ -16,6 +16,7 @@ import {
   Networks,
   Transaction,
 } from '@stellar/stellar-sdk'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 const Server = Horizon.Server
 import { VeilMark } from '@/components/ui/VeilMark'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
@@ -93,7 +94,7 @@ export default function SwapPage() {
 
   // ── Load session ──
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) { router.replace('/lock'); return }
     setWalletAddress(addr)
     fetchBalances(addr)
@@ -101,10 +102,10 @@ export default function SwapPage() {
 
   const fetchBalances = async (_addr: string) => {
     try {
-      const signerSecret = sessionStorage.getItem('veil_signer_secret')
+      const signerSecret = walletSession.getItem('veil_signer_secret')
       const accountAddr = signerSecret
         ? Keypair.fromSecret(signerSecret).publicKey()
-        : (localStorage.getItem('veil_signer_public_key') || null)
+        : (walletLocal.getItem('veil_signer_public_key') || null)
       if (!accountAddr || accountAddr.startsWith('C')) {
         setErrorMsg('Signing key not found. Go to Dashboard and tap "Set up fee-payer" first.')
         return
@@ -165,8 +166,8 @@ export default function SwapPage() {
           ).toString()
           const signerPub =
             Keypair.fromSecret(
-              sessionStorage.getItem('veil_signer_secret') ||
-                localStorage.getItem('veil_signer_secret') ||
+              walletSession.getItem('veil_signer_secret') ||
+                walletLocal.getItem('veil_signer_secret') ||
                 ''
             ).publicKey() || ''
 
@@ -240,8 +241,8 @@ export default function SwapPage() {
       await requirePasskey()
 
       const signerSecret =
-        sessionStorage.getItem('veil_signer_secret') ||
-        localStorage.getItem('veil_signer_secret')
+        walletSession.getItem('veil_signer_secret') ||
+        walletLocal.getItem('veil_signer_secret')
       if (!signerSecret) {
         setErrorMsg('Signing key not found.')
         setStep('error')

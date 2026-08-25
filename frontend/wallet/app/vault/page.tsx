@@ -19,14 +19,15 @@ import {
   type VaultDetails,
   type VaultWithdrawal,
 } from '@/lib/vault'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const VAULT_STORAGE_KEY = 'veil_vault_contract'
 
 type DelayUnit = 'hours' | 'days'
 
 function getStoredSignerSecret(): string | null {
-  return sessionStorage.getItem('veil_signer_secret')
-    || localStorage.getItem('veil_signer_secret')
+  return walletSession.getItem('veil_signer_secret')
+    || walletLocal.getItem('veil_signer_secret')
 }
 
 function formatDelay(seconds: number): string {
@@ -86,7 +87,7 @@ export default function VaultPage() {
   const [withdrawalAmount, setWithdrawalAmount] = useState('')
 
   useEffect(() => {
-    const walletAddress = sessionStorage.getItem('invisible_wallet_address')
+    const walletAddress = walletSession.getItem('invisible_wallet_address')
     if (!walletAddress) {
       router.replace('/lock')
       return
@@ -138,7 +139,7 @@ export default function VaultPage() {
   const isOwner = !!details && details.config.owner === activeSigner
 
   async function confirmOwnerAction(): Promise<void> {
-    const keyId = localStorage.getItem('invisible_wallet_key_id')
+    const keyId = walletLocal.getItem('invisible_wallet_key_id')
     if (keyId && keyId !== 'recovery') {
       await requirePasskey()
     }

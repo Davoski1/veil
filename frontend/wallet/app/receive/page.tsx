@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
 import { QRCodeCanvas } from 'qrcode.react'
 import { buildSep7PayUri } from '@/lib/sep7'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 // ── Shared address card
 
@@ -194,20 +195,20 @@ export default function ReceivePage() {
   const deposits = useActivityFeed().filter((t) => t.type === 'received').slice(0, 4)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('invisible_wallet_address')
+    const stored = walletSession.getItem('invisible_wallet_address')
     if (!stored) { router.replace('/lock'); return }
     setContractAddress(stored)
 
     // Derive the G... fee-payer address from session/local storage
-    const signerSecret = sessionStorage.getItem('veil_signer_secret')
-      || localStorage.getItem('veil_signer_secret')
+    const signerSecret = walletSession.getItem('veil_signer_secret')
+      || walletLocal.getItem('veil_signer_secret')
     if (signerSecret) {
       try {
         setFeePayerAddress(Keypair.fromSecret(signerSecret).publicKey())
       } catch { /* malformed secret */ }
       return
     }
-    const storedPub = localStorage.getItem('veil_signer_public_key')
+    const storedPub = walletLocal.getItem('veil_signer_public_key')
     if (storedPub) setFeePayerAddress(storedPub)
   }, [router])
 

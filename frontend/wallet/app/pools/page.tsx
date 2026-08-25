@@ -16,6 +16,7 @@ import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork } from '@/lib/network'
 import { beginTx, endTx } from '@/lib/txState'
 import { requirePasskey } from '@/lib/passkeyAuth'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const Server = Horizon.Server
 const network = getNetwork()
@@ -146,13 +147,13 @@ function createPoolView(record: HorizonPoolRecord): PoolView | null {
 }
 
 function getSignerPublicKey(): string | null {
-  const signerSecret = sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret')
+  const signerSecret = walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret')
   if (signerSecret) return Keypair.fromSecret(signerSecret).publicKey()
-  return localStorage.getItem('veil_signer_public_key')
+  return walletLocal.getItem('veil_signer_public_key')
 }
 
 function getSignerSecret(): string | null {
-  return sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret')
+  return walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret')
 }
 
 function makePoolShareAsset(pool: PoolView): LiquidityPoolAsset {
@@ -190,7 +191,7 @@ export default function PoolsPage() {
   const server = useMemo(() => new Server(network.horizonUrl), [])
 
   useEffect(() => {
-    const storedWallet = sessionStorage.getItem('invisible_wallet_address')
+    const storedWallet = walletSession.getItem('invisible_wallet_address')
     if (!storedWallet) {
       router.replace('/lock')
       return
