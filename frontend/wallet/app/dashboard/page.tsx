@@ -666,16 +666,43 @@ function DashboardPageContent() {
           </div>
         </div>
 
-        {/* The sidebar carries the seven primary destinations from the design.
-            These are the rest of the wallet's surfaces — they had no home once
-            the old action grid went, and an unreachable route is a lost
-            feature, so they live here as a secondary row. */}
-        <div className="vw-more">
+        {/* ── Primary action cards (Send / Receive / Swap / Buy) ─────────── */}
+        <div className="vw-actions-grid">
+          <button className="vw-action-card" onClick={() => router.push('/send')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Send</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/receive')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Receive</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/swap')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M7 16l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M17 8l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 12h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span>Swap</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/buy')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Buy</span>
+          </button>
+        </div>
+
+        {/* ── Secondary actions — horizontally scrollable chip row ────────── */}
+        <div className="vw-more vw-more--scroll">
           <button className="vw-chip" onClick={() => router.push('/assets')}>Assets</button>
+          <button className="vw-chip" onClick={() => router.push('/agent')}>Agent</button>
           <button className="vw-chip" onClick={() => setSep24Modal('withdraw')}>Withdraw</button>
-          <button className="vw-chip" onClick={() => router.push('/buy')}>Buy crypto</button>
-          <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>
           <button className="vw-chip" onClick={() => router.push('/vault')}>Vault</button>
+          <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>
           <button className="vw-chip" onClick={() => router.push('/multisig')}>Multisig</button>
           <button className="vw-chip" onClick={() => setShowConnectDapp(true)}>Connect dApp</button>
         </div>
