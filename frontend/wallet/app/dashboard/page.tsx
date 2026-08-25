@@ -18,7 +18,8 @@ import { TxDetailSheet, type TxRecord } from '@/components/TxDetailSheet'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { ensureFeePayer } from '@/lib/feePayer'
 import { fetchPrices } from '@/lib/fetchPrice'
-import { buildFriendbotUrl, getNativeAssetContractId, getNetwork } from '@/lib/network'
+import { change24h, historyKey, isComparableTotal, readHistory, recordSnapshot, writeHistory } from '@/lib/balanceHistory'
+import { buildFriendbotUrl, getNativeAssetContractId, getNetwork, getNetworkName } from '@/lib/network'
 import { sweepContractBalance } from '@/lib/sweepContractBalance'
 import { derToRawSignature, hexToUint8Array } from '@veil/utils'
 import type { WebAuthnSignature } from '@veil/sdk'
@@ -175,6 +176,25 @@ function DashboardPageContent() {
   // Only show a total once at least one asset has a price. A partial sum
   // rendered as "the" balance understates the wallet without saying so.
   const totalLabel = pricedAssets.length > 0 ? usd(totalUsd) : '—'
+
+  // 24h change on the total. Recorded locally rather than fetched: Lens serves
+  // a spot price and nothing historical, so this is the change in what the
+  // wallet is worth. Null — and so hidden — until a snapshot is a day old.
+  const [dayChange, setDayChange] = useState<number | null>(null)
+  useEffect(() => {
+    // A partial total is not comparable with a full one, and recording it would
+    // report a price-feed outage as a loss. Drop the chip entirely until every
+    // asset is priced rather than showing a number nobody can act on.
+    if (!walletAddress || !isComparableTotal(assets.length, pricedAssets.length)) {
+      setDayChange(null)
+      return
+    }
+    const key = historyKey(getNetworkName(), walletAddress)
+    const now = Date.now()
+    const history = recordSnapshot(readHistory(key), totalUsd, now)
+    writeHistory(key, history)
+    setDayChange(change24h(history, totalUsd, now))
+  }, [walletAddress, totalUsd, assets.length, pricedAssets.length])
 
   const balanceLine = assets
     .slice()
@@ -666,16 +686,43 @@ function DashboardPageContent() {
           </div>
         </div>
 
-        {/* The sidebar carries the seven primary destinations from the design.
-            These are the rest of the wallet's surfaces — they had no home once
-            the old action grid went, and an unreachable route is a lost
-            feature, so they live here as a secondary row. */}
-        <div className="vw-more">
+        {/* ── Primary action cards (Send / Receive / Swap / Buy) ─────────── */}
+        <div className="vw-actions-grid">
+          <button className="vw-action-card" onClick={() => router.push('/send')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Send</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/receive')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Receive</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/swap')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M7 16l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M17 8l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 12h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span>Swap</span>
+          </button>
+          <button className="vw-action-card" onClick={() => router.push('/buy')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--gold)' }}>
+              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Buy</span>
+          </button>
+        </div>
+
+        {/* ── Secondary actions — horizontally scrollable chip row ────────── */}
+        <div className="vw-more vw-more--scroll">
           <button className="vw-chip" onClick={() => router.push('/assets')}>Assets</button>
+          <button className="vw-chip" onClick={() => router.push('/agent')}>Agent</button>
           <button className="vw-chip" onClick={() => setSep24Modal('withdraw')}>Withdraw</button>
-          <button className="vw-chip" onClick={() => router.push('/buy')}>Buy crypto</button>
-          <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>
           <button className="vw-chip" onClick={() => router.push('/vault')}>Vault</button>
+          <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>
           <button className="vw-chip" onClick={() => router.push('/multisig')}>Multisig</button>
           <button className="vw-chip" onClick={() => setShowConnectDapp(true)}>Connect dApp</button>
         </div>
@@ -752,41 +799,100 @@ function DashboardPageContent() {
         )}
 
 
-        {/* ── Balance plate + earning ── */}
-        <div className="vw-row vw-row--first">
-          <div className="vw-silver">
-            <div className="vw-silver__sheen" />
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div className="vw-silver__label">Total balance</div>
-              <VeilMark size={28} color="#0F0F0F" />
+        {/* ── Three-column layout: center + right rail ── */}
+        <div className="vw-center-col">
+          {/* ── Balance plate + earning (center top) ── */}
+          <div className="vw-balance-row">
+            <div className="vw-silver">
+              <div className="vw-silver__sheen" />
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="vw-silver__label">Total balance</div>
+                <VeilMark size={28} color="#0F0F0F" />
+              </div>
+              <div className="vw-silver__amountrow">
+                <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
+                {!hideAmounts && dayChange !== null && (
+                  <span className={'vw-silver__delta ' + (dayChange >= 0 ? 'vw-silver__delta--up' : 'vw-silver__delta--down')}>
+                    {dayChange >= 0 ? '▲' : '▼'} {Math.abs(dayChange).toFixed(2)}% · 24h
+                  </span>
+                )}
+              </div>
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
+                <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
+              </div>
             </div>
-            <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
-              <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
+
+            <div className="vw-panel" style={{ flex: 1, minWidth: 0, padding: '26px 28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
+                <div className="vw-label">Earning</div>
+                <div className="vw-meta">Blend USDC pool</div>
+              </div>
+              <p style={{ fontSize: '14px', color: 'rgba(246,247,248,0.6)', lineHeight: 1.7, marginTop: '16px' }}>
+                Idle USDC can earn in the Blend pool. Nothing is deposited automatically —
+                you approve every move with your passkey.
+              </p>
+              <div style={{ flex: 1 }} />
+              <button className="vw-pill" style={{ alignSelf: 'flex-start', marginTop: '18px' }} onClick={() => router.push('/earn')}>
+                Open earn
+              </button>
             </div>
           </div>
 
-          <div className="vw-panel vw-grow" style={{ padding: '26px 28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-              <div className="vw-label">Earning</div>
-              <div className="vw-meta">Blend USDC pool</div>
+          {/* ── Activity feed (center middle) ── */}
+          <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
+              <div className="vw-label">Activity</div>
+              <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/activity')}>See all</button>
             </div>
-            {/* This screen does not read a Blend position, so it says so rather
-                than drawing a yield chart from numbers nobody measured. */}
-            <p style={{ fontSize: '14px', color: 'rgba(246,247,248,0.6)', lineHeight: 1.7, marginTop: '16px' }}>
-              Idle USDC can earn in the Blend pool. Nothing is deposited automatically —
-              you approve every move with your passkey.
+            {recent.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
+                {loading ? 'Loading…' : 'Nothing yet.'}
+              </p>
+            ) : recent.map((tx) => (
+              <button key={tx.id} className="vw-listrow" style={{ padding: '14px 0' }} onClick={() => setSelectedTx(tx)}>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500 }}>
+                    {tx.type === 'sent' ? 'Sent' : tx.type === 'swapped' ? 'Swapped' : 'Received'}
+                  </span>
+                  <span className="vw-meta">
+                    {tx.counterparty.length > 12
+                      ? tx.counterparty.slice(0, 6) + '…' + tx.counterparty.slice(-6)
+                      : tx.counterparty}
+                  </span>
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 600, flexShrink: 0, color: tx.type === 'received' ? 'var(--teal)' : 'var(--off-white)' }}>
+                  {hideAmounts
+                    ? '••••'
+                    : (tx.type === 'sent' ? '-' : tx.type === 'received' ? '+' : '') + tx.amount + ' ' + tx.asset}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Agent card (center bottom) ── */}
+          <div className="vw-agent">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(183,172,232,0.16)', border: '1px solid rgba(183,172,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#B7ACE8', flexShrink: 0 }}>✦</div>
+              <div className="vw-label vw-label--lilac">Agent</div>
+            </div>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontWeight: 600, fontSize: '19px', lineHeight: 1.4 }}>
+              &ldquo;Swap 10 XLM to USDC and send it to Ada.&rdquo;
+            </div>
+            <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.55)', lineHeight: 1.6 }}>
+              It builds the transactions. You sign each one with your passkey.
             </p>
-            <div style={{ flex: 1 }} />
-            <button className="vw-pill" style={{ alignSelf: 'flex-start', marginTop: '18px' }} onClick={() => router.push('/earn')}>
-              Open earn
+            <button
+              onClick={() => router.push('/agent')}
+              style={{ border: '1px solid rgba(183,172,232,0.35)', color: '#B7ACE8', background: 'none', borderRadius: '100px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
+            >
+              Open agent
             </button>
           </div>
         </div>
 
-        {/* ── Assets + activity + agent ── */}
-        <div className="vw-row" style={{ flex: 1 }}>
-          <div className="vw-panel vw-grow" style={{ padding: '8px 28px 18px' }}>
+        {/* ── Right rail: assets with live fiat values ── */}
+        <div className="vw-rail">
+          <div className="vw-panel" style={{ padding: '8px 28px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 6px' }}>
               <div className="vw-label">Assets</div>
               <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/assets')}>Manage</button>
@@ -821,57 +927,6 @@ function DashboardPageContent() {
                 </button>
               )
             })}
-          </div>
-
-          <div className="vw-side">
-            <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
-                <div className="vw-label">Activity</div>
-                <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/activity')}>See all</button>
-              </div>
-              {recent.length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
-                  {loading ? 'Loading…' : 'Nothing yet.'}
-                </p>
-              ) : recent.map((tx) => (
-                <button key={tx.id} className="vw-listrow" style={{ padding: '14px 0' }} onClick={() => setSelectedTx(tx)}>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>
-                      {tx.type === 'sent' ? 'Sent' : tx.type === 'swapped' ? 'Swapped' : 'Received'}
-                    </span>
-                    <span className="vw-meta">
-                      {tx.counterparty.length > 12
-                        ? tx.counterparty.slice(0, 6) + '…' + tx.counterparty.slice(-6)
-                        : tx.counterparty}
-                    </span>
-                  </span>
-                  <span style={{ fontSize: '14px', fontWeight: 600, flexShrink: 0, color: tx.type === 'received' ? 'var(--teal)' : 'var(--off-white)' }}>
-                    {hideAmounts
-                      ? '••••'
-                      : (tx.type === 'sent' ? '-' : tx.type === 'received' ? '+' : '') + tx.amount + ' ' + tx.asset}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="vw-agent">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(183,172,232,0.16)', border: '1px solid rgba(183,172,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#B7ACE8', flexShrink: 0 }}>✦</div>
-                <div className="vw-label vw-label--lilac">Agent</div>
-              </div>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontWeight: 600, fontSize: '19px', lineHeight: 1.4 }}>
-                &ldquo;Swap 10 XLM to USDC and send it to Ada.&rdquo;
-              </div>
-              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.55)', lineHeight: 1.6 }}>
-                It builds the transactions. You sign each one with your passkey.
-              </p>
-              <button
-                onClick={() => router.push('/agent')}
-                style={{ border: '1px solid rgba(183,172,232,0.35)', color: '#B7ACE8', background: 'none', borderRadius: '100px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
-              >
-                Open agent
-              </button>
-            </div>
           </div>
         </div>
 

@@ -274,7 +274,7 @@ describe('useInvisibleWallet', () => {
   // ── login() ────────────────────────────────────────────────────────────────
 
   describe('login()', () => {
-    it('returns null and sets an error when no wallet address is stored', async () => {
+    it('returns null and sets an error when no wallet address is stored and no options', async () => {
       const { result } = renderHook(() => useInvisibleWallet(CONFIG))
 
       let loginResult!: Awaited<ReturnType<typeof result.current.login>>
@@ -322,6 +322,75 @@ describe('useInvisibleWallet', () => {
       expect(loginResult).toBeNull()
       expect(result.current.isDeployed).toBe(false)
       expect(result.current.error).toContain('not yet deployed')
+    })
+
+    it('accepts a walletAddress option and verifies on-chain when no local address is stored', async () => {
+      jest.mocked(SorobanRpc.Server).mockImplementation(
+        () => ({ getContractData: jest.fn().mockResolvedValue({}) }) as any,
+      )
+
+      const { result } = renderHook(() => useInvisibleWallet(CONFIG))
+
+      let loginResult!: Awaited<ReturnType<typeof result.current.login>>
+      await act(async () => {
+        loginResult = await result.current.login({ walletAddress: 'CKNOWN_WALLET' })
+      })
+
+      expect(loginResult).toEqual({ walletAddress: 'CKNOWN_WALLET' })
+      expect(result.current.address).toBe('CKNOWN_WALLET')
+      expect(result.current.isDeployed).toBe(true)
+      // Should persist for subsequent calls
+      expect(localStorage.getItem('invisible_wallet_address')).toBe('CKNOWN_WALLET')
+    })
+
+    it('returns null when walletAddress option points to a contract not deployed on-chain', async () => {
+      jest.mocked(SorobanRpc.Server).mockImplementation(
+        () => ({
+          getContractData: jest.fn().mockRejectedValue(new Error('contract not found')),
+        }) as any,
+      )
+
+      const { result } = renderHook(() => useInvisibleWallet(CONFIG))
+
+      let loginResult!: Awaited<ReturnType<typeof result.current.login>>
+      await act(async () => {
+        loginResult = await result.current.login({ walletAddress: 'CNOT_DEPLOYED' })
+      })
+
+      expect(loginResult).toBeNull()
+      expect(result.current.isDeployed).toBe(false)
+      expect(result.current.error).toContain('not yet deployed')
+    })
+
+    it('triggers a WebAuthn assertion when credentialId is provided and derives wallet address from public key', async () => {
+      // Mock webAuthnProvider.authenticate to return a result with publicKeyBytes
+      jest.mock('../webauthn', () => ({
+        webAuthnProvider: {
+          authenticate: jest.fn().mockResolvedValue({
+            authData: new Uint8Array(37),
+            clientDataJSON: new Uint8Array(64),
+            signature: new Uint8Array(64).fill(1),
+            publicKeyBytes: new Uint8Array(65).fill(4),
+          }),
+        },
+      }))
+
+      // The computeWalletAddress mock returns 'CWALLET_ADDRESS_MOCK'
+      jest.mocked(SorobanRpc.Server).mockImplementation(
+        () => ({ getContractData: jest.fn().mockResolvedValue({}) }) as any,
+      )
+
+      const { result } = renderHook(() => useInvisibleWallet(CONFIG))
+
+      let loginResult!: Awaited<ReturnType<typeof result.current.login>>
+      await act(async () => {
+        loginResult = await result.current.login({ credentialId: 'bW9jay1jcmVkZW50aWFsLWlk' })
+      })
+
+      // computeWalletAddress mock returns 'CWALLET_ADDRESS_MOCK'
+      expect(loginResult).toEqual({ walletAddress: 'CWALLET_ADDRESS_MOCK' })
+      expect(result.current.address).toBe('CWALLET_ADDRESS_MOCK')
+      expect(result.current.isDeployed).toBe(true)
     })
   })
 

@@ -19,6 +19,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 
 import { CurrencyPicker } from './CurrencyPicker'
 import { NetworkSwitcher } from './NetworkSwitcher'
+import { TabBar, showsTabBar } from './ui/TabBar'
 import { VeilWordmark } from './ui/VeilMark'
 
 type NavItem = {
@@ -182,9 +183,17 @@ export function AppShell({
         </nav>
       </header>
 
-      <main className="flex-1 min-w-0 px-9 pt-7 pb-10 max-lg:pt-20 max-lg:px-5 flex flex-col">
+      {/* The bar is fixed, so the content column has to reserve its height or
+          the last row of every tab route sits underneath it. */}
+      <main
+        className={`flex-1 min-w-0 px-9 pt-7 pb-10 max-lg:pt-20 max-lg:px-5 flex flex-col${
+          showsTabBar(pathname) ? ' max-lg:pb-[calc(72px+env(safe-area-inset-bottom))]' : ''
+        }`}
+      >
         {children}
       </main>
+
+      <TabBar />
     </div>
   )
 }

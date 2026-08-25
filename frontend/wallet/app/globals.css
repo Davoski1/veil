@@ -131,10 +131,46 @@ body {
 .btn-ghost:hover  { border-color: rgba(246,247,248,0.5); background: rgba(246,247,248,0.05); }
 .btn-ghost:active { transform: scale(0.98); }
 
-/* ── Action button grid ──────────────────────────────────────────────── */
+/* ── Primary action cards (4-col) ────────────────────────────────────── */
+.vw-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.vw-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 120ms var(--ease), border-color 120ms var(--ease), transform 100ms var(--ease);
+}
+
+.vw-action-card:hover  { background: var(--surface-md); border-color: rgba(253,218,36,0.25); }
+.vw-action-card:active { transform: scale(0.96); }
+
+.vw-action-card span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--off-white);
+}
+
+@media (max-width: 400px) {
+  .vw-actions-grid { gap: 8px; }
+  .vw-action-card { padding: 14px 4px; }
+  .vw-action-card span { font-size: 12px; }
+}
+
+/* Legacy action grid — kept for pages that haven't migrated yet */
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
   margin-bottom: 2.5rem;
 }
@@ -163,15 +199,9 @@ body {
 
 @media (max-width: 480px) {
   .action-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.4rem;
   }
-  .action-btn:nth-child(1),
-  .action-btn:nth-child(2),
-  .action-btn:nth-child(3),
-  .action-btn:nth-child(4),
-  .action-btn:nth-child(5),
-  .action-btn:nth-child(6) { grid-column: span 2; }
 }
 
 /* ── Card system ─────────────────────────────────────────────────────── */
@@ -405,6 +435,59 @@ body {
 .vw-grow { flex: 1; min-width: 0; }
 .vw-side { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px; }
 
+/* ── Three-column dashboard layout (≥1024px) ─────────────────────────────
+   Center = balance + earning + activity + agent
+   Right rail = assets list with live fiat values, sticky on scroll
+   Left = sidebar nav from AppShell */
+.vw-center-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vw-balance-row {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  margin-top: 26px;
+}
+
+.vw-rail {
+  width: 380px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 3.5rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Balance plate fills the center column instead of the fixed 452px */
+.vw-balance-row .vw-silver {
+  width: 100%;
+  flex: 1;
+}
+
+@media (max-width: 1023px) {
+  .vw-rail {
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .vw-balance-row {
+    flex-direction: column;
+  }
+  .vw-balance-row .vw-silver {
+    width: 100%;
+  }
+}
+
 /* The metallic plate. The sheen is a separate overlay so it sits above the
    gradient but below the text. */
 .vw-silver { width: 452px; flex-shrink: 0; border-radius: 26px; padding: 28px 30px; position: relative; overflow: hidden; color: #0F0F0F; box-sizing: border-box;
@@ -412,7 +495,19 @@ body {
   box-shadow: 0 22px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
 .vw-silver__sheen { position: absolute; inset: 0; background: linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.5) 46%,transparent 55%); pointer-events: none; }
 .vw-silver__label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: rgba(15,15,15,0.55); }
-.vw-silver__amount { font-family: 'Lora', Georgia, serif; font-style: italic; font-weight: 600; font-size: 52px; line-height: 1.1; margin-top: 20px; }
+/* Inter tabular numerals, not the Lora italic the rest of the plate uses: this
+   is a figure read against yesterday's, and italic serif digits neither align
+   in a column nor hold their width as the total changes. Lora italic stays on
+   the page and section titles. */
+.vw-silver__amountrow { position: relative; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+.vw-silver__amount { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 52px; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* The plate is a light metallic gradient carrying near-black text, so the
+   change chip takes the darker end of the teal/red pair to stay legible on it
+   rather than the values used against the dark surfaces elsewhere. */
+.vw-silver__delta { font-family: 'Inter', system-ui, sans-serif; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; border-radius: 100px; padding: 4px 10px; white-space: nowrap; }
+.vw-silver__delta--up { color: #00646E; background: rgba(0,100,110,0.14); }
+.vw-silver__delta--down { color: #9E332B; background: rgba(158,51,43,0.13); }
 .vw-silver__sub { font-family: 'Inconsolata', monospace; font-size: 13px; color: rgba(15,15,15,0.6); }
 
 .vw-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
@@ -427,7 +522,9 @@ body {
   .vw-silver, .vw-side { width: 100%; }
 }
 .vw-more { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.vw-chip { border: 1px solid var(--border-dim); background: rgba(255,255,255,0.02); border-radius: 100px; padding: 7px 15px; font-size: 12.5px; color: rgba(246,247,248,0.6); cursor: pointer; white-space: nowrap; }
+.vw-more--scroll { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+.vw-more--scroll::-webkit-scrollbar { display: none; }
+.vw-chip { border: 1px solid var(--border-dim); background: rgba(255,255,255,0.02); border-radius: 100px; padding: 7px 15px; font-size: 12.5px; color: rgba(246,247,248,0.6); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .vw-chip:hover { color: var(--off-white); border-color: rgba(253,218,36,0.3); }
 /* Swap is the one other two-column screen in the design: a fixed 560px
    exchange card beside a flexible route/details column. */
