@@ -30,7 +30,7 @@ export function LandingAgent({ t }: { t: Messages }) {
               </span>
             </span>
 
-            <h2 className="font-lora italic font-semibold text-near-black text-[clamp(2rem,4.6vw,3.5rem)] leading-[1.1] tracking-[-0.02em] mt-7">
+            <h2 className="font-lora italic font-normal text-near-black text-[clamp(2rem,4.6vw,3.5rem)] leading-[1.1] tracking-[-0.02em] mt-7">
               {copy.title1}
               <br />
               {copy.title2}

@@ -114,9 +114,9 @@
     "poweredBy": "Impulsado por Stellar Soroban · WebAuthn / FIDO2"
   },
   "heroNew": {
-    "line1": "Gasta donde sea.",
-    "line2": "Gana en dólares.",
-    "line3": "Sin claves.",
+    "line1": "La billetera passkey",
+    "line2": "con agente",
+    "line3": "para Stellar.",
     "body": "Guarda dólares, gasta en tu moneda. El saldo genera rendimiento por debajo, y nada se mueve sin tu passkey — tu rostro, tu huella, tu dispositivo, tu decisión.",
     "cta1": "Crear billetera",
     "cta2": "Ver la documentación",
