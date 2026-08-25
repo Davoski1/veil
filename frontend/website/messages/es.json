@@ -112,5 +112,126 @@
     "twitter": "Twitter / X",
     "stellar": "Stellar.org",
     "poweredBy": "Impulsado por Stellar Soroban · WebAuthn / FIDO2"
+  },
+  "heroNew": {
+    "line1": "Gasta donde sea.",
+    "line2": "Gana en dólares.",
+    "line3": "Sin claves.",
+    "body": "Guarda dólares, gasta en tu moneda. El saldo genera rendimiento por debajo, y nada se mueve sin tu passkey — tu rostro, tu huella, tu dispositivo, tu decisión.",
+    "cta1": "Crear billetera",
+    "cta2": "Ver la documentación",
+    "metrics": [
+      {
+        "value": "0",
+        "label": "Frases semilla"
+      },
+      {
+        "value": "0",
+        "label": "Comisiones de red"
+      },
+      {
+        "value": "~5s",
+        "label": "Liquidación"
+      }
+    ]
+  },
+  "flow": {
+    "label": "Enviar dinero",
+    "title1": "Tres toques. Sin comisión.",
+    "title2": "Sin frase semilla.",
+    "body": "Cada movimiento de dinero es un flujo con un paso de revisión y un resultado real — nunca un formulario que se traga tu dinero y espera lo mejor. Apruebas el importe y el destinatario exactos con tu rostro o tu huella, y Veil cubre la comisión de red."
+  },
+  "capabilities": {
+    "label": "Todo lo que hace",
+    "title": "Un solo saldo. Todas las formas en que realmente usas tu dinero.",
+    "live": "Activo",
+    "coming": "Pronto",
+    "items": [
+      {
+        "name": "Acceso con passkey",
+        "blurb": "Rostro o huella. No existe frase semilla que perder."
+      },
+      {
+        "name": "Comisiones cubiertas",
+        "blurb": "Nunca necesitas un token de gas. Veil paga la red."
+      },
+      {
+        "name": "Enviar y recibir",
+        "blurb": "A cualquier dirección de Stellar, en unos cinco segundos."
+      },
+      {
+        "name": "Intercambiar",
+        "blurb": "La mejor ruta entre pools mediante el agregador Soroswap."
+      },
+      {
+        "name": "Moneda local",
+        "blurb": "Lee tu saldo en naira, cedi, chelín o dólares."
+      },
+      {
+        "name": "Agente de IA",
+        "blurb": "Pide una transferencia; él la construye, tú la firmas."
+      },
+      {
+        "name": "Rendimiento",
+        "blurb": "Pon a trabajar tu USDC inactivo en el pool de Blend."
+      },
+      {
+        "name": "Recargas y facturas",
+        "blurb": "Saldo móvil, datos, luz y TV, pagados desde tu saldo."
+      }
+    ]
+  },
+  "trust": {
+    "label": "Seguridad",
+    "title": "No deberías tener que confiar en nosotros. Por eso lo construimos para que no haga falta.",
+    "link": "Leer el modelo de amenazas",
+    "items": [
+      {
+        "title": "No custodial por diseño",
+        "body": "Tu billetera es un contrato que solo tu passkey puede autorizar. Veil no puede mover tu dinero, congelarlo ni firmar por ti — no existe ninguna clave de nuestro lado para hacerlo."
+      },
+      {
+        "title": "Compilaciones verificables",
+        "body": "Los contratos se compilan de forma reproducible en un contenedor fijado. El bytecode que corre en la mainnet de Stellar coincide byte por byte con los hashes que publicamos, y puedes recompilarlo tú mismo para comprobarlo."
+      },
+      {
+        "title": "Un modelo de amenazas publicado",
+        "body": "Escribimos cómo se podría atacar a Veil, usando STRIDE, y lo publicamos en la documentación en vez de guardarlo internamente. Las limitaciones conocidas figuran junto a las mitigaciones."
+      },
+      {
+        "title": "Código abierto, MIT",
+        "body": "La billetera, los contratos, el oráculo y el indexador son públicos y con licencia permisiva. Nada sobre cómo se mueve tu dinero está oculto."
+      }
+    ]
+  },
+  "faq": {
+    "label": "Preguntas",
+    "title": "Lo que la gente pregunta primero.",
+    "items": [
+      {
+        "q": "¿Necesito saber algo de cripto?",
+        "a": "No. Entras con tu rostro o tu huella, y tu saldo se muestra en tu propia moneda. No hay frase semilla que anotar, ni token de gas que comprar, ni dirección que memorizar para poder recibir un pago."
+      },
+      {
+        "q": "¿El dinero es realmente mío?",
+        "a": "Sí, y se puede demostrar. Tus fondos viven en un contrato que solo tu passkey puede autorizar. Veil no tiene ninguna clave que pueda moverlos, así que no hay nada que podamos congelar, prestar ni perder. La contrapartida es real: la autocustodia significa que ningún servicio de atención puede revertir una transacción que tú firmaste."
+      },
+      {
+        "q": "¿Qué pasa si pierdo mi teléfono?",
+        "a": "Tu passkey vive en el llavero de tu dispositivo y, para la mayoría, se sincroniza con Apple o Google. Entrar desde un dispositivo nuevo usa esa misma passkey. Guarda una copia de la dirección de tu billetera fuera de la app — la recuperación es mucho más rápida si la tienes."
+      },
+      {
+        "q": "¿Cuánto cuesta?",
+        "a": "Abrirla no cuesta nada, y las comisiones de red están cubiertas, así que una transferencia te cuesta cero. Stellar cobra una fracción de céntimo, que Veil asume. Cuando interviene un tercero — una casa de intercambio, un anchor — su comisión se muestra antes de que firmes, nunca después."
+      },
+      {
+        "q": "¿De dónde viene el rendimiento?",
+        "a": "De Blend, un pool de préstamos en Stellar: otros toman prestado tu USDC aportando garantías y pagan intereses. No es un producto de Veil ni una tasa garantizada. Es DeFi, la tasa varía y los pools conllevan riesgo de contrato inteligente. No se deposita nada sin que lo apruebes con tu passkey."
+      },
+      {
+        "q": "¿Esto está en funcionamiento o es un prototipo?",
+        "a": "En funcionamiento, en la mainnet de Stellar. Los contratos están desplegados y verificados desde el código fuente, y los flujos principales tienen transacciones reales detrás — entre ellas un gasto autorizado por passkey y un intercambio en un DEX real. Las recargas y facturas son la excepción: necesitan un socio con licencia y todavía no están activas."
+      }
+    ]
   }
 }

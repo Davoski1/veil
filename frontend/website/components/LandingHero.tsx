@@ -15,11 +15,9 @@
  */
 import Link from 'next/link'
 
-const METRICS: { value: string; label: string }[] = [
-  { value: '0', label: 'Seed phrases' },
-  { value: '₦0', label: 'Network fees' },
-  { value: '~5s', label: 'Settlement' },
-]
+import type { Messages } from '@/lib/i18n'
+
+
 
 /** The drape mark, matching the wallet's `VeilMark`. */
 function Mark({ size = 26, color = '#FDDA24' }: { size?: number; color?: string }) {
@@ -169,7 +167,8 @@ function Phone({ className = '' }: { className?: string }) {
   )
 }
 
-export function LandingHero() {
+export function LandingHero({ t }: { t: Messages }) {
+  const copy = t.heroNew
   return (
     <section className="relative bg-near-black overflow-hidden">
       {/* Warm falloff behind the devices, so they sit in light rather than on a flat field. */}
@@ -189,17 +188,15 @@ export function LandingHero() {
           </span>
 
           <h1 className="font-anton uppercase text-off-white mt-9 text-[clamp(2.6rem,5.4vw,4.1rem)] leading-[1.02] tracking-[-0.01em]">
-            Spend anywhere.
+            {copy.line1}
             <br />
-            Earn dollars.
+            {copy.line2}
             <br />
-            <span className="text-gold">No keys.</span>
+            <span className="text-gold">{copy.line3}</span>
           </h1>
 
           <p className="font-inter text-[17px] leading-[1.75] text-off-white/60 mt-7 max-w-[470px]">
-            Hold dollars, spend in naira. The balance earns yield underneath, and
-            nothing moves without your passkey — face, fingerprint, your device,
-            your call.
+            {copy.body}
           </p>
 
           <div className="flex flex-wrap gap-3 mt-9">
@@ -207,20 +204,20 @@ export function LandingHero() {
               href="https://app.useveilapp.xyz"
               className="bg-gold text-near-black font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-transform duration-200 ease-stellar hover:-translate-y-[1px]"
             >
-              Create wallet
+              {copy.cta1}
             </Link>
             <Link
               href="https://docs.useveilapp.xyz"
               className="border border-white/15 bg-white/[0.04] text-off-white font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-colors duration-200 hover:border-white/30"
             >
-              Read the docs
+              {copy.cta2}
             </Link>
           </div>
 
           <div className="h-px bg-white/10 mt-12" />
 
           <dl className="flex gap-12 mt-7 flex-wrap">
-            {METRICS.map((m) => (
+            {copy.metrics.map((m) => (
               <div key={m.label} className="flex flex-col gap-[6px]">
                 <dt className="sr-only">{m.label}</dt>
                 <dd className="font-lora italic font-semibold text-[30px] leading-none text-off-white">

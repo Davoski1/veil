@@ -1,3 +1,5 @@
+import type { Messages } from '@/lib/i18n'
+
 /**
  * Flow showcase — three devices telling one story: Amount, Review & sign, Sent.
  *
@@ -186,7 +188,8 @@ function CropMarks() {
   )
 }
 
-export function FlowShowcase() {
+export function FlowShowcase({ t }: { t: Messages }) {
+  const copy = t.flow
   return (
     <section id="how-sending-works" className="relative overflow-hidden bg-warm-grey py-28 max-lg:py-20">
       <div
@@ -202,17 +205,15 @@ export function FlowShowcase() {
       <div className="relative max-w-[1240px] mx-auto px-6 lg:px-10">
         <div className="max-w-[640px]">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
-            Sending money
+            {copy.label}
           </span>
           <h2 className="font-lora italic font-semibold text-near-black text-display mt-3 max-lg:text-display-sm">
-            Three taps. No fee.
+            {copy.title1}
             <br />
-            No seed phrase.
+            {copy.title2}
           </h2>
           <p className="font-inter text-[17px] leading-[1.75] text-near-black/65 mt-6">
-            Every money action is a flow with a review step and a real outcome — never
-            a form that swallows your money and hopes. You approve the exact amount and
-            recipient with your face or fingerprint, and Veil covers the network fee.
+            {copy.body}
           </p>
         </div>
       </div>

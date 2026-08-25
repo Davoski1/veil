@@ -583,18 +583,18 @@ export default function LandingPage({ locale }: { locale: Locale }) {
       <HtmlLang locale={locale} />
       <Navbar t={t} locale={locale} />
       <main>
-        <LandingHero />
+        <LandingHero t={t} />
         <HowItWorks t={t} />
         <WhyVeil t={t} />
-        <FlowShowcase />
-        <Capabilities />
-        <Trust />
+        <FlowShowcase t={t} />
+        <Capabilities t={t} />
+        <Trust t={t} />
         {/* Consumer story first: the product vision is a fiat-facing neobank,
             so the developer quickstart sits below the ecosystem proof rather
             than fourth from the top. */}
         <BuiltOnStellar t={t} />
         <DevQuickstart t={t} />
-        <Faq />
+        <Faq t={t} />
         <EarlyAccess t={t} />
       </main>
       <Footer t={t} locale={locale} />
