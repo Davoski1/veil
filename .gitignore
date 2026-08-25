@@ -31,3 +31,5 @@ TODO.md
 
 # Throwaway SEP-10/SEP-45 probe scripts
 frontend/wallet/__sep*probe*.mjs
+frontend/wallet/__sep45probe.mjs
+frontend/wallet/__shot.mjs

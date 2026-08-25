@@ -681,9 +681,6 @@ function DashboardPageContent() {
               {hideAmounts ? 'Show amounts' : 'Hide amounts'}
             </button>
             <button className="vw-pill" onClick={() => setSep24Modal('deposit')}>Add money</button>
-            <button className="vw-pill vw-pill--gold" onClick={() => router.push('/send')}>
-              <span aria-hidden="true">↗</span> Send
-            </button>
           </div>
         </div>
 
@@ -720,7 +717,6 @@ function DashboardPageContent() {
         {/* ── Secondary actions — horizontally scrollable chip row ────────── */}
         <div className="vw-more vw-more--scroll">
           <button className="vw-chip" onClick={() => router.push('/assets')}>Assets</button>
-          <button className="vw-chip" onClick={() => router.push('/agent')}>Agent</button>
           <button className="vw-chip" onClick={() => setSep24Modal('withdraw')}>Withdraw</button>
           <button className="vw-chip" onClick={() => router.push('/vault')}>Vault</button>
           <button className="vw-chip" onClick={() => router.push('/pools')}>Pools</button>

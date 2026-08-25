@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500&family=Anton&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=Inconsolata:wght@400;500&family=Inter:wght@400;500;600&family=Anton&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +23,13 @@
 
 /* ── Reset ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* body already clips, but the scroll container is html — without this a
+     descendant that overhangs still gives the page a sideways scroll on a
+     phone, which is what makes an otherwise-fine layout feel broken. */
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'Inter', system-ui, sans-serif;

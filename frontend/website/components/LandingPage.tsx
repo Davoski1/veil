@@ -1,5 +1,9 @@
 'use client'
 
+import { LandingAgent } from './LandingAgent'
+import { FlowShowcase } from './LandingFlow'
+import { Capabilities, Faq, Trust } from './LandingSections'
+import { LandingHero } from './LandingHero'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -54,8 +58,13 @@ function Navbar({ t, locale }: { t: Messages; locale: Locale }) {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-near-black/80 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Wordmark */}
-        <a href={localePath(locale, '/')} className="font-lora font-semibold italic text-gold text-xl tracking-tight select-none">
-          Veil
+        <a href={localePath(locale, '/')} className="flex items-center gap-2.5 select-none">
+          <svg width="22" height="22" viewBox="0 0 96 96" aria-hidden="true" className="shrink-0">
+            <rect x="22" y="26" width="52" height="12" rx="6" fill="#FDDA24" />
+            <rect x="28" y="44" width="40" height="12" rx="6" fill="#FDDA24" opacity="0.5" />
+            <rect x="34" y="62" width="28" height="12" rx="6" fill="#FDDA24" opacity="0.22" />
+          </svg>
+          <span className="font-lora font-semibold italic text-gold text-xl tracking-tight">Veil</span>
         </a>
 
         {/* Desktop nav */}
@@ -528,7 +537,7 @@ function Footer({ t, locale }: { t: Messages; locale: Locale }) {
   const links = [
     { label: t.footer.docs,    href: 'https://docs.useveilapp.xyz' },
     { label: t.footer.github,  href: 'https://github.com/Miracle656/veil' },
-    { label: t.footer.twitter, href: '#' },
+    { label: t.footer.twitter, href: 'https://x.com/veilonstellar' },
     { label: t.footer.stellar, href: 'https://stellar.org' },
   ]
 
@@ -539,10 +548,15 @@ function Footer({ t, locale }: { t: Messages; locale: Locale }) {
         {/* Wordmark — Lora, Gold */}
         <a
           href={localePath(locale, '/')}
-          className="font-lora font-semibold italic text-gold text-2xl tracking-tight select-none"
+          className="flex items-center gap-3 select-none"
           style={{ minWidth: 'max-content' }}
         >
-          Veil
+          <svg width="26" height="26" viewBox="0 0 96 96" aria-hidden="true" className="shrink-0">
+            <rect x="22" y="26" width="52" height="12" rx="6" fill="#FDDA24" />
+            <rect x="28" y="44" width="40" height="12" rx="6" fill="#FDDA24" opacity="0.5" />
+            <rect x="34" y="62" width="28" height="12" rx="6" fill="#FDDA24" opacity="0.22" />
+          </svg>
+          <span className="font-lora font-semibold italic text-gold text-2xl tracking-tight">Veil</span>
         </a>
 
         {/* Nav links */}
@@ -580,11 +594,19 @@ export default function LandingPage({ locale }: { locale: Locale }) {
       <HtmlLang locale={locale} />
       <Navbar t={t} locale={locale} />
       <main>
-        <Hero t={t} />
+        <LandingHero t={t} />
         <HowItWorks t={t} />
         <WhyVeil t={t} />
-        <DevQuickstart t={t} />
+        <FlowShowcase t={t} />
+        <Capabilities t={t} />
+        <Trust t={t} />
+        <LandingAgent t={t} />
+        {/* Consumer story first: the product vision is a fiat-facing neobank,
+            so the developer quickstart sits below the ecosystem proof rather
+            than fourth from the top. */}
         <BuiltOnStellar t={t} />
+        <DevQuickstart t={t} />
+        <Faq t={t} />
         <EarlyAccess t={t} />
       </main>
       <Footer t={t} locale={locale} />

@@ -80,7 +80,7 @@ export default function WalletProductPage() {
             All Products
           </Link>
           <a href="https://app.useveilapp.xyz" target="_blank" rel="noopener noreferrer"
-            className="btn-gold !py-2 !px-5 !text-sm hidden md:inline-flex">
+            className="btn-gold !py-2 !px-4 !text-[13px] md:!px-5 md:!text-sm inline-flex whitespace-nowrap">
             Try the Wallet
           </a>
         </div>
