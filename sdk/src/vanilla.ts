@@ -289,8 +289,11 @@ export class InvisibleWallet {
                 if (assertion?.response) {
                     const response = assertion.response as AuthenticatorAssertionResponse;
                     // Try to extract the P-256 public key from the response
-                    if (typeof response.getPublicKey === 'function') {
-                        const spkiBuffer = response.getPublicKey();
+                    // getPublicKey() is not in the standard TS DOM typings but is
+                    // supported by Chrome/Edge and some browsers on assertion responses.
+                    const resp = response as any;
+                    if (typeof resp.getPublicKey === 'function') {
+                        const spkiBuffer: ArrayBuffer | null = resp.getPublicKey();
                         if (spkiBuffer) {
                             const cryptoKey = await crypto.subtle.importKey(
                                 'spki', spkiBuffer,

@@ -834,8 +834,11 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
                 // Trigger a WebAuthn assertion so the user authenticates with
                 // their passkey.  The provider now exposes publicKeyBytes when
                 // the authenticator supports SPKI export on assertion responses.
+                const challengeU8 = crypto.getRandomValues(new Uint8Array(32));
                 const assertResult = await webAuthnProvider.authenticate({
-                    challenge: crypto.getRandomValues(new Uint8Array(32)),
+                    challenge: challengeU8.buffer.slice(
+                        challengeU8.byteOffset, challengeU8.byteOffset + challengeU8.byteLength
+                    ) as ArrayBuffer,
                     credentialId: options.credentialId,
                     rpId: resolvedRpId,
                     transports: portable?.transports,

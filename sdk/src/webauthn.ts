@@ -182,9 +182,12 @@ export const webAuthnProvider: WebAuthnProvider = {
         // others do not.  When available, the SDK can derive the deterministic
         // wallet address from the key alone — critical for cross-device login.
         let publicKeyBytes: Uint8Array | null = null;
-        if (typeof response.getPublicKey === 'function') {
+        // getPublicKey() is not in the standard TS DOM typings but is supported
+        // by Chrome/Edge and some other browsers on assertion responses.
+        const resp = response as any;
+        if (typeof resp.getPublicKey === 'function') {
             try {
-                const spkiBuffer = response.getPublicKey();
+                const spkiBuffer: ArrayBuffer | null = resp.getPublicKey();
                 if (spkiBuffer) {
                     const cryptoKey = await crypto.subtle.importKey(
                         'spki', spkiBuffer,

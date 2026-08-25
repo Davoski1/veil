@@ -752,41 +752,93 @@ function DashboardPageContent() {
         )}
 
 
-        {/* ── Balance plate + earning ── */}
-        <div className="vw-row vw-row--first">
-          <div className="vw-silver">
-            <div className="vw-silver__sheen" />
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div className="vw-silver__label">Total balance</div>
-              <VeilMark size={28} color="#0F0F0F" />
+        {/* ── Three-column layout: center + right rail ── */}
+        <div className="vw-center-col">
+          {/* ── Balance plate + earning (center top) ── */}
+          <div className="vw-balance-row">
+            <div className="vw-silver">
+              <div className="vw-silver__sheen" />
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="vw-silver__label">Total balance</div>
+                <VeilMark size={28} color="#0F0F0F" />
+              </div>
+              <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
+                <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
+              </div>
             </div>
-            <div className="vw-silver__amount">{hideAmounts ? '••••' : totalLabel}</div>
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', gap: '12px' }}>
-              <div className="vw-silver__sub">{hideAmounts ? '••••' : (balanceLine || 'No assets yet')}</div>
+
+            <div className="vw-panel" style={{ flex: 1, minWidth: 0, padding: '26px 28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
+                <div className="vw-label">Earning</div>
+                <div className="vw-meta">Blend USDC pool</div>
+              </div>
+              <p style={{ fontSize: '14px', color: 'rgba(246,247,248,0.6)', lineHeight: 1.7, marginTop: '16px' }}>
+                Idle USDC can earn in the Blend pool. Nothing is deposited automatically —
+                you approve every move with your passkey.
+              </p>
+              <div style={{ flex: 1 }} />
+              <button className="vw-pill" style={{ alignSelf: 'flex-start', marginTop: '18px' }} onClick={() => router.push('/earn')}>
+                Open earn
+              </button>
             </div>
           </div>
 
-          <div className="vw-panel vw-grow" style={{ padding: '26px 28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-              <div className="vw-label">Earning</div>
-              <div className="vw-meta">Blend USDC pool</div>
+          {/* ── Activity feed (center middle) ── */}
+          <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
+              <div className="vw-label">Activity</div>
+              <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/activity')}>See all</button>
             </div>
-            {/* This screen does not read a Blend position, so it says so rather
-                than drawing a yield chart from numbers nobody measured. */}
-            <p style={{ fontSize: '14px', color: 'rgba(246,247,248,0.6)', lineHeight: 1.7, marginTop: '16px' }}>
-              Idle USDC can earn in the Blend pool. Nothing is deposited automatically —
-              you approve every move with your passkey.
+            {recent.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
+                {loading ? 'Loading…' : 'Nothing yet.'}
+              </p>
+            ) : recent.map((tx) => (
+              <button key={tx.id} className="vw-listrow" style={{ padding: '14px 0' }} onClick={() => setSelectedTx(tx)}>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500 }}>
+                    {tx.type === 'sent' ? 'Sent' : tx.type === 'swapped' ? 'Swapped' : 'Received'}
+                  </span>
+                  <span className="vw-meta">
+                    {tx.counterparty.length > 12
+                      ? tx.counterparty.slice(0, 6) + '…' + tx.counterparty.slice(-6)
+                      : tx.counterparty}
+                  </span>
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 600, flexShrink: 0, color: tx.type === 'received' ? 'var(--teal)' : 'var(--off-white)' }}>
+                  {hideAmounts
+                    ? '••••'
+                    : (tx.type === 'sent' ? '-' : tx.type === 'received' ? '+' : '') + tx.amount + ' ' + tx.asset}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Agent card (center bottom) ── */}
+          <div className="vw-agent">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(183,172,232,0.16)', border: '1px solid rgba(183,172,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#B7ACE8', flexShrink: 0 }}>✦</div>
+              <div className="vw-label vw-label--lilac">Agent</div>
+            </div>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontWeight: 600, fontSize: '19px', lineHeight: 1.4 }}>
+              &ldquo;Swap 10 XLM to USDC and send it to Ada.&rdquo;
+            </div>
+            <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.55)', lineHeight: 1.6 }}>
+              It builds the transactions. You sign each one with your passkey.
             </p>
-            <div style={{ flex: 1 }} />
-            <button className="vw-pill" style={{ alignSelf: 'flex-start', marginTop: '18px' }} onClick={() => router.push('/earn')}>
-              Open earn
+            <button
+              onClick={() => router.push('/agent')}
+              style={{ border: '1px solid rgba(183,172,232,0.35)', color: '#B7ACE8', background: 'none', borderRadius: '100px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
+            >
+              Open agent
             </button>
           </div>
         </div>
 
-        {/* ── Assets + activity + agent ── */}
-        <div className="vw-row" style={{ flex: 1 }}>
-          <div className="vw-panel vw-grow" style={{ padding: '8px 28px 18px' }}>
+        {/* ── Right rail: assets with live fiat values ── */}
+        <div className="vw-rail">
+          <div className="vw-panel" style={{ padding: '8px 28px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 6px' }}>
               <div className="vw-label">Assets</div>
               <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/assets')}>Manage</button>
@@ -821,57 +873,6 @@ function DashboardPageContent() {
                 </button>
               )
             })}
-          </div>
-
-          <div className="vw-side">
-            <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 4px' }}>
-                <div className="vw-label">Activity</div>
-                <button className="vw-meta" style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => router.push('/activity')}>See all</button>
-              </div>
-              {recent.length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '14px 0' }}>
-                  {loading ? 'Loading…' : 'Nothing yet.'}
-                </p>
-              ) : recent.map((tx) => (
-                <button key={tx.id} className="vw-listrow" style={{ padding: '14px 0' }} onClick={() => setSelectedTx(tx)}>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>
-                      {tx.type === 'sent' ? 'Sent' : tx.type === 'swapped' ? 'Swapped' : 'Received'}
-                    </span>
-                    <span className="vw-meta">
-                      {tx.counterparty.length > 12
-                        ? tx.counterparty.slice(0, 6) + '…' + tx.counterparty.slice(-6)
-                        : tx.counterparty}
-                    </span>
-                  </span>
-                  <span style={{ fontSize: '14px', fontWeight: 600, flexShrink: 0, color: tx.type === 'received' ? 'var(--teal)' : 'var(--off-white)' }}>
-                    {hideAmounts
-                      ? '••••'
-                      : (tx.type === 'sent' ? '-' : tx.type === 'received' ? '+' : '') + tx.amount + ' ' + tx.asset}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="vw-agent">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(183,172,232,0.16)', border: '1px solid rgba(183,172,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#B7ACE8', flexShrink: 0 }}>✦</div>
-                <div className="vw-label vw-label--lilac">Agent</div>
-              </div>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontWeight: 600, fontSize: '19px', lineHeight: 1.4 }}>
-                &ldquo;Swap 10 XLM to USDC and send it to Ada.&rdquo;
-              </div>
-              <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.55)', lineHeight: 1.6 }}>
-                It builds the transactions. You sign each one with your passkey.
-              </p>
-              <button
-                onClick={() => router.push('/agent')}
-                style={{ border: '1px solid rgba(183,172,232,0.35)', color: '#B7ACE8', background: 'none', borderRadius: '100px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
-              >
-                Open agent
-              </button>
-            </div>
           </div>
         </div>
 
