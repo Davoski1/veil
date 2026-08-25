@@ -3,7 +3,8 @@
 import { spendableNativeXlm } from '@/lib/reserves'
 import { getUsdcIssuer } from '@/lib/network'
 import { inclusionFee } from '@/lib/fees'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, Card, SectionLabel, Pill } from '@/components/ui/primitives'
+import { DEST_CODES, makeDestAsset, resolveFlip, type StellarAsset } from './direction'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -46,11 +47,6 @@ const SLIPPAGE_OPTIONS = [
 
 type Step = 'form' | 'confirm' | 'swapping' | 'done' | 'error'
 
-interface StellarAsset {
-  code: string
-  issuer?: string
-  balance: string
-}
 
 // ── Swap Page ─────────────────────────────────────────────────────────────────
 export default function SwapPage() {
@@ -381,6 +377,8 @@ export default function SwapPage() {
 
   const slippageTolerance = slippageBps / 10000
 
+  const flip = resolveFlip(sourceAsset?.code, destAsset.code, sourceBalances, DEFAULT_USDC.issuer)
+
   return (
     <div className="wallet-shell">
       <nav className="wallet-nav">
@@ -409,119 +407,74 @@ export default function SwapPage() {
           Dashboard
         </button>
         <VeilMark size={22} />
-        {/* Slippage settings icon */}
-        <button
-          onClick={() => setShowSlippage((v) => !v)}
-          title="Slippage settings"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'rgba(246,247,248,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.4" />
-            <path
-              d="M7 10h6M10 7v6"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
       </nav>
-
-      {/* Slippage panel */}
-      {showSlippage && (
-        <div
-          className="card"
-          style={{ margin: '0 1.25rem', padding: '0.875rem', display: 'flex', gap: '0.5rem' }}
-        >
-          <span style={{ fontSize: '0.75rem', color: 'rgba(246,247,248,0.45)', alignSelf: 'center', marginRight: '0.5rem' }}>
-            Slippage:
-          </span>
-          {SLIPPAGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.bps}
-              onClick={() => { setSlippageBps(opt.bps); setShowSlippage(false) }}
-              style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '999px',
-                border: slippageBps === opt.bps ? '1px solid var(--gold)' : '1px solid rgba(246,247,248,0.15)',
-                background: slippageBps === opt.bps ? 'rgba(212,175,55,0.12)' : 'transparent',
-                color: slippageBps === opt.bps ? 'var(--gold)' : 'var(--off-white)',
-                cursor: 'pointer',
-                fontSize: '0.8125rem',
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       <main className="wallet-main wallet-main--wide">
         <div style={{ marginBottom: '1.75rem' }}>
-          <PageHeader eyebrow="Exchange" title="Swap" />
+          <PageHeader
+            eyebrow="Exchange"
+            title="Swap"
+            action={
+              <Pill
+                variant={showSlippage ? 'outline-gold' : 'ghost'}
+                onClick={() => setShowSlippage((v) => !v)}
+              >
+                {slippageBps / 100}% slippage
+              </Pill>
+            }
+          />
         </div>
+
+        {/* Slippage selector */}
+        {showSlippage && (
+          <Card className="mb-4">
+            <div className="flex items-center gap-2">
+              <SectionLabel tone="dim">Slippage</SectionLabel>
+              <div className="flex gap-2 ml-auto">
+                {SLIPPAGE_OPTIONS.map((opt) => (
+                  <Pill
+                    key={opt.bps}
+                    variant={slippageBps === opt.bps ? 'outline-gold' : 'ghost'}
+                    onClick={() => { setSlippageBps(opt.bps); setShowSlippage(false) }}
+                  >
+                    {opt.label}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {step === 'form' && (
           <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
             <div className="vw-swapcol">
+            {/* The pay/receive pair sits flush so the toggle straddles the seam. */}
+            <div className="flex flex-col relative">
             {/* You Pay */}
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <label
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'rgba(246,247,248,0.4)',
-                    fontFamily: 'Anton, Impact, sans-serif',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  YOU PAY
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'rgba(246,247,248,0.3)' }}>
+            <Card>
+              <div className="flex justify-between items-center mb-3">
+                <SectionLabel tone="dim">You pay</SectionLabel>
+                <div className="flex gap-2 items-center">
+                  <span className="font-mono text-[12px] text-[rgba(246,247,248,0.35)]">
                     Balance: {sourceAsset?.balance || '0'} {sourceAsset?.code}
                   </span>
-                  <button
+                  <Pill
+                    variant="outline-gold"
                     onClick={() =>
                       setSourceAmount(
-                        // Only XLM carries the reserve; issued assets are fully
-                        // spendable.
                         sourceAsset?.code === 'XLM' && spendableXlm !== null
                           ? spendableXlm
                           : sourceAsset?.balance || '',
                       )
                     }
-                    style={{
-                      fontSize: '0.6875rem',
-                      padding: '0.125rem 0.375rem',
-                      border: '1px solid rgba(212,175,55,0.35)',
-                      borderRadius: '4px',
-                      background: 'transparent',
-                      color: 'var(--gold)',
-                      cursor: 'pointer',
-                    }}
                   >
                     Max
-                  </button>
+                  </Pill>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div className="flex gap-4 items-center">
                 <select
-                  style={{
-                    background: 'var(--surface-md)',
-                    border: 'none',
-                    color: 'white',
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
+                  className="bg-surface-md border-0 text-off-white py-2 px-3 rounded-xl cursor-pointer text-[15px] font-semibold"
                   value={sourceAsset?.code || ''}
                   onChange={(e) =>
                     setSourceAsset(sourceBalances.find((b) => b.code === e.target.value) || null)
@@ -544,100 +497,78 @@ export default function SwapPage() {
                     textAlign: 'right',
                     border: 'none',
                     padding: 0,
-                    fontSize: '1.5rem',
+                    fontSize: '1.75rem',
                     background: 'none',
+                    fontFamily: 'Inconsolata, monospace',
                   }}
                 />
               </div>
-            </div>
+            </Card>
 
-            {/* Down Arrow */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '-0.5rem 0' }}>
-              <div
+            {/* Circular swap toggle */}
+            <div className="flex justify-center" style={{ margin: '-18px 0', zIndex: 10 }}>
+              <button
+                type="button"
+                aria-label="Swap direction"
+                disabled={!flip}
+                title={flip ? 'Swap direction' : 'This pair cannot be flipped'}
+                onClick={() => {
+                  if (!flip) return
+                  setDestAsset(flip.nextDest)
+                  setSourceAsset(flip.nextSource)
+                  // The receive amount becomes what we now pay; the quote effect
+                  // refills the other side rather than showing a stale figure.
+                  setSourceAmount(destAmount)
+                  setDestAmount('')
+                }}
+                className="rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{
+                  width: 40,
+                  height: 40,
                   background: 'var(--surface-md)',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '4px solid var(--background)',
+                  border: '4px solid var(--near-black)',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <path
-                    d="M8 3v10M4 9l4 4 4-4"
+                    d="M9 3v12M5 11l4 4 4-4"
                     stroke="var(--gold)"
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 </svg>
-              </div>
+              </button>
             </div>
 
             {/* You Receive */}
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <label
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'rgba(246,247,248,0.4)',
-                    fontFamily: 'Anton, Impact, sans-serif',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  YOU RECEIVE
-                </label>
+            <Card>
+              <div className="flex justify-between items-center mb-3">
+                <SectionLabel tone="dim">You receive</SectionLabel>
                 {usingSoroswap && quote && (
-                  <span
-                    style={{
-                      fontSize: '0.6875rem',
-                      background: 'rgba(212,175,55,0.1)',
-                      border: '1px solid rgba(212,175,55,0.3)',
-                      color: 'var(--gold)',
-                      padding: '0.125rem 0.5rem',
-                      borderRadius: '999px',
-                    }}
-                  >
+                  <span className="text-[11px] font-semibold uppercase rounded-pill px-2 py-[2px] whitespace-nowrap text-gold bg-[rgba(253,218,36,0.1)]" style={{ letterSpacing: '0.08em' }}>
                     via {quote.protocols.join(' · ')}
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div className="flex gap-4 items-center">
                 <select
-                  style={{
-                    background: 'var(--surface-md)',
-                    border: 'none',
-                    color: 'white',
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
+                  className="bg-surface-md border-0 text-off-white py-2 px-3 rounded-xl cursor-pointer text-[15px] font-semibold"
                   value={destAsset.code}
-                  onChange={(e) =>
-                    setDestAsset(
-                      e.target.value === 'XLM'
-                        ? { code: 'XLM', balance: '0' }
-                        : { code: 'USDC', issuer: DEFAULT_USDC.issuer, balance: '0' }
-                    )
-                  }
+                  onChange={(e) => setDestAsset(makeDestAsset(e.target.value, DEFAULT_USDC.issuer))}
                 >
-                  <option value="USDC">USDC</option>
-                  <option value="XLM">XLM</option>
+                  {DEST_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
                 </select>
-                <div
-                  style={{
-                    flex: 1,
-                    textAlign: 'right',
-                    fontSize: '1.5rem',
-                    fontFamily: 'Inconsolata, monospace',
-                  }}
-                >
+                <div className="flex-1 text-right font-mono text-[1.75rem] text-off-white">
                   {isFetchingQuote ? '...' : destAmount || '0.00'}
                 </div>
               </div>
+            </Card>
+
             </div>
 
             {errorMsg && (
@@ -645,64 +576,70 @@ export default function SwapPage() {
                 className="card"
                 style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)' }}
               >
-                <p style={{ fontSize: '0.8125rem', color: 'var(--teal)', textAlign: 'center' }}>
+                <p className="text-[13px] text-teal text-center">
                   {errorMsg}
                 </p>
               </div>
             )}
 
-            <button
-              className="btn-gold"
-              onClick={() => setStep('confirm')}
-              disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
-              style={{ marginTop: '1rem' }}
-            >
-              Review swap
-            </button>
+            <div style={{ marginTop: '0.5rem' }}>
+              <button
+                className="btn-gold"
+                onClick={() => setStep('confirm')}
+                disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
+              >
+                Review swap
+              </button>
+            </div>
             </div>
 
             <div className="vw-swapside">
-            {/* Quote details */}
-            {usingSoroswap && quote && !errorMsg && (
-              <div className="card" style={{ padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <Row
-                  label="Price impact"
-                  value={
-                    quote.priceImpact < 0.005
-                      ? '< 0.01%'
-                      : `${(quote.priceImpact * 100).toFixed(2)}%`
-                  }
-                />
-                <Row label="Route" value={quote.protocols.join(' · ')} />
-                <Row label="Slippage" value={`${slippageBps / 100}%`} />
-              </div>
-            )}
-
-            {!usingSoroswap && rate && !errorMsg && (
-              <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
-                <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)' }}>
-                  1 {sourceAsset?.code} ≈ {rate} {destAsset.code}
-                  {' '}· via SDEX (no Soroswap liquidity)
-                </p>
-              </div>
+            {/* Quote panel */}
+            {rate && !errorMsg && (
+              <Card>
+                <SectionLabel tone="dim" className="mb-3">Quote details</SectionLabel>
+                <div className="flex flex-col gap-2">
+                  <Row label="Rate" value={`1 ${sourceAsset?.code} ≈ ${rate} ${destAsset.code}`} />
+                  {usingSoroswap && quote && (
+                    <>
+                      <Row
+                        label="Price impact"
+                        value={
+                          quote.priceImpact < 0.005
+                            ? '< 0.01%'
+                            : `${(quote.priceImpact * 100).toFixed(2)}%`
+                        }
+                      />
+                      <Row label="Route" value={quote.protocols.join(' · ')} />
+                    </>
+                  )}
+                  {!usingSoroswap && (
+                    <Row label="Route" value="SDEX" />
+                  )}
+                  <Row label="Slippage" value={`${slippageBps / 100}%`} />
+                  <Row
+                    label="Min. received"
+                    value={`${(parseFloat(destAmount) * (1 - slippageTolerance)).toFixed(7)} ${destAsset.code}`}
+                  />
+                </div>
+              </Card>
             )}
             </div>
           </div>
         )}
 
         {step === 'confirm' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div className="card">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="flex flex-col gap-5">
+            <Card>
+              <SectionLabel tone="dim" className="mb-4">Confirm swap</SectionLabel>
+              <div className="flex flex-col gap-3">
                 <Row label="Pay" value={`${sourceAmount} ${sourceAsset?.code}`} />
                 <Row label="Receive (est.)" value={`${destAmount} ${destAsset.code}`} />
                 <Row
-                  label="Min. Received"
-                  value={`${(parseFloat(destAmount) * (1 - slippageTolerance)).toFixed(7)} ${
-                    destAsset.code
-                  }`}
+                  label="Min. received"
+                  value={`${(parseFloat(destAmount) * (1 - slippageTolerance)).toFixed(7)} ${destAsset.code}`}
                 />
-                <Row label="Slippage Tolerance" value={`${slippageBps / 100}%`} />
+                <Row label="Slippage tolerance" value={`${slippageBps / 100}%`} />
                 {usingSoroswap && quote && (
                   <>
                     <Row
@@ -716,10 +653,11 @@ export default function SwapPage() {
                     <Row label="Route" value={quote.protocols.join(' · ')} />
                   </>
                 )}
-                <Row label="Network Fee" value="0.00001 XLM" />
+                {!usingSoroswap && <Row label="Route" value="SDEX" />}
+                <Row label="Network fee" value="0.00001 XLM" />
               </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            </Card>
+            <div className="flex flex-col gap-3">
               <button className="btn-gold" onClick={handleSwap}>
                 Confirm swap
               </button>
@@ -731,29 +669,20 @@ export default function SwapPage() {
         )}
 
         {step === 'swapping' && (
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <Card className="text-center">
+            <div className="flex justify-center mb-4">
               <div className="spinner spinner-light" />
             </div>
-            <p style={{ fontWeight: 500 }}>Waiting for passkey…</p>
-            <p
-              style={{
-                fontSize: '0.8125rem',
-                color: 'rgba(246,247,248,0.4)',
-                marginTop: '0.5rem',
-              }}
-            >
+            <p className="font-medium">Waiting for passkey…</p>
+            <p className="text-[13px] text-[rgba(246,247,248,0.4)] mt-2">
               Approve with Face ID / fingerprint to continue
             </p>
-          </div>
+          </Card>
         )}
 
         {step === 'done' && (
-          <div
-            className="card"
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}
-          >
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ margin: '0 auto' }}>
+          <Card className="flex flex-col gap-5 items-center text-center">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
               <circle cx="20" cy="20" r="19" stroke="var(--teal)" strokeWidth="1.5" />
               <path
                 d="M13 20.5l5 5 9-9"
@@ -764,26 +693,11 @@ export default function SwapPage() {
               />
             </svg>
             <div>
-              <p
-                style={{
-                  fontFamily: 'Lora, Georgia, serif',
-                  fontWeight: 600,
-                  fontStyle: 'italic',
-                  fontSize: '1.25rem',
-                }}
-              >
+              <p className="font-lora italic font-semibold text-[1.25rem]">
                 Swap successful
               </p>
               {txHash && (
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'rgba(246,247,248,0.35)',
-                    fontFamily: 'Inconsolata, monospace',
-                    marginTop: '0.5rem',
-                    wordBreak: 'break-all',
-                  }}
-                >
+                <p className="font-mono text-[12px] text-[rgba(246,247,248,0.35)] mt-2 break-all">
                   {txHash.slice(0, 20)}...
                 </p>
               )}
@@ -791,31 +705,22 @@ export default function SwapPage() {
             <button className="btn-gold" onClick={() => router.push('/dashboard')}>
               Done
             </button>
-          </div>
+          </Card>
         )}
 
         {step === 'error' && (
-          <div
-            className="card"
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}
-          >
-            <div style={{ color: 'var(--teal)', fontSize: '2.5rem' }}>!</div>
+          <Card className="flex flex-col gap-5 items-center text-center">
+            <div className="text-teal text-[2.5rem]">!</div>
             <div>
-              <p style={{ fontWeight: 500 }}>Swap failed</p>
-              <p
-                style={{
-                  fontSize: '0.8125rem',
-                  color: 'rgba(246,247,248,0.4)',
-                  marginTop: '0.5rem',
-                }}
-              >
+              <p className="font-medium">Swap failed</p>
+              <p className="text-[13px] text-[rgba(246,247,248,0.4)] mt-2">
                 {errorMsg}
               </p>
             </div>
             <button className="btn-ghost" onClick={() => setStep('form')}>
               Try again
             </button>
-          </div>
+          </Card>
         )}
       </main>
     </div>
@@ -824,18 +729,11 @@ export default function SwapPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        gap: '1rem',
-      }}
-    >
-      <span style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', flexShrink: 0 }}>
+    <div className="flex justify-between items-start gap-4">
+      <span className="text-[13px] text-[rgba(246,247,248,0.4)] shrink-0">
         {label}
       </span>
-      <span style={{ fontSize: '0.875rem', textAlign: 'right', wordBreak: 'break-all' }}>
+      <span className="text-[14px] text-right break-all">
         {value}
       </span>
     </div>
