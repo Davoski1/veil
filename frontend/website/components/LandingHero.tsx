@@ -1,28 +1,25 @@
-/**
- * Landing hero — the Talise-style arrangement in Veil's brand.
- *
- * The device is drawn in CSS rather than screenshotted, so it stays sharp at
- * any density, themes with the page, and does not go stale the next time the
- * wallet UI changes.
- *
- * The numbers inside the phone are illustrative product art, which is normal
- * for a marketing shot. The three stated metrics below the CTAs are NOT — those
- * are claims a reader will hold us to, so each one is true today:
- * fees really are sponsored, there really is no seed phrase, and Stellar really
- * settles in about five seconds. The design's "6.2% APY" is deliberately absent:
- * a yield figure is a financial claim, it moves with the Blend pool, and we have
- * no live position to quote.
- */
 import Link from 'next/link'
 
 import type { Messages } from '@/lib/i18n'
 
+/**
+ * Landing hero — centred statement over a collage of the approved mobile screens.
+ *
+ * The screens are ported from the Claude Design landing file, so the site shows
+ * what the app actually looks like. That file's sharp badge, square CTAs and
+ * corner brackets are deliberately NOT carried over: Veil is a rounded system,
+ * and its phones are rounded too (44-50px shells, 14-20px inner cards) — only the
+ * chrome around them was boxy.
+ *
+ * Responsiveness here is composition, not scaling. A phone mock shrinks badly:
+ * past a point the type inside stops being legible and it reads as a blurry
+ * sticker. So the collage adds devices as room appears — one on a phone, two on a
+ * tablet, three on a desktop — rather than squeezing three into 360px.
+ */
 
-
-/** The drape mark, matching the wallet's `VeilMark`. */
-function Mark({ size = 26, color = '#FDDA24' }: { size?: number; color?: string }) {
+function Mark({ size = 19, color = '#FDDA24' }: { size?: number; color?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label="Veil">
+    <svg width={size} height={size} viewBox="0 0 96 96" aria-hidden="true">
       <rect x="22" y="26" width="52" height="12" rx="6" fill={color} />
       <rect x="28" y="44" width="40" height="12" rx="6" fill={color} opacity="0.5" />
       <rect x="34" y="62" width="28" height="12" rx="6" fill={color} opacity="0.22" />
@@ -30,217 +27,346 @@ function Mark({ size = 26, color = '#FDDA24' }: { size?: number; color?: string 
   )
 }
 
-const PAY_FOR: { name: string; sub: string }[] = [
-  { name: 'Airtime', sub: 'All networks' },
-  { name: 'Data', sub: 'Bundles' },
-  { name: 'Power', sub: 'Prepaid' },
-  { name: 'TV', sub: 'DStv · GOtv' },
-  { name: 'Bills', sub: 'Water · waste' },
-  { name: 'Transfer', sub: 'To any bank' },
-  { name: 'Betting', sub: 'Top up' },
-  { name: 'More', sub: 'All services' },
-]
-
-/** The in-app screen, drawn in CSS. Decorative — hidden from screen readers. */
-function PhoneScreen() {
+function Phone({
+  children,
+  tall,
+  className = '',
+}: {
+  children: React.ReactNode
+  tall?: boolean
+  className?: string
+}) {
   return (
-    <div className="flex flex-col gap-[10px] p-[14px] h-full">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-[6px]">
-          <Mark size={14} />
-          <span className="font-anton text-gold text-[11px] tracking-[0.08em]">VEIL</span>
+    <div
+      aria-hidden="true"
+      className={`shrink-0 overflow-hidden bg-near-black box-border border-[#1c1c1e] ${
+        tall
+          ? 'w-[288px] sm:w-[310px] lg:w-[330px] h-[588px] sm:h-[634px] lg:h-[672px] rounded-[46px] lg:rounded-[50px] border-[9px] lg:border-[10px] shadow-[0_34px_90px_rgba(0,0,0,0.72)]'
+          : 'w-[276px] lg:w-[296px] h-[550px] lg:h-[590px] rounded-[42px] lg:rounded-[44px] border-[9px] shadow-[0_24px_60px_rgba(0,0,0,0.6)]'
+      } ${className}`}
+    >
+      <div className="flex flex-col h-full px-[18px] pt-[26px] pb-[22px]">{children}</div>
+    </div>
+  )
+}
+
+const LABEL = 'text-[9px] tracking-[0.14em] uppercase text-off-white/40 font-bold'
+const FIELD = 'bg-white/[0.04] border border-white/[0.08] rounded-[14px]'
+
+function SendScreen() {
+  return (
+    <>
+      <div className="flex items-center gap-[11px]">
+        <span className="w-[30px] h-[30px] rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-off-white/70 text-[13px]">
+          &lsaquo;
         </span>
-        <span className="font-mono text-[8px] text-gold/70 border border-gold/25 rounded-pill px-[7px] py-[2px]">
+        <span className="font-lora italic font-semibold text-[22px]">Send</span>
+      </div>
+
+      <div className={`${LABEL} mt-5`}>Asset</div>
+      <div className={`${FIELD} px-[13px] py-[10px] mt-[7px] flex justify-between items-center`}>
+        <span className="flex items-center gap-[10px]">
+          <span className="w-[28px] h-[28px] rounded-full bg-teal/15 border border-teal/35 flex items-center justify-center text-[12px] text-teal font-bold">
+            $
+          </span>
+          <span className="flex flex-col gap-px">
+            <span className="font-semibold text-[13px]">USDC</span>
+            <span className="font-mono text-[10px] text-off-white/45">412.98 available</span>
+          </span>
+        </span>
+        <span className="text-off-white/40 text-[11px]">▾</span>
+      </div>
+
+      <div className={`${LABEL} mt-4`}>Amount</div>
+      <div className={`${FIELD} px-[13px] pt-[18px] pb-3 mt-[7px] flex flex-col items-center`}>
+        <span className="font-lora italic font-semibold text-[38px] leading-none">₦25,000</span>
+        <span className="font-mono text-[11px] text-off-white/50 mt-[7px]">≈ 16.08 USDC</span>
+        <span className="text-[10px] text-off-white/45 mt-[11px]">Balance ₦642,384</span>
+        <span className="flex gap-[5px] flex-wrap justify-center mt-2">
+          {['₦5,000', '₦10,000', '₦25,000', '₦50,000'].map((c) => (
+            <span
+              key={c}
+              className={`rounded-pill px-[9px] py-[4px] text-[9px] font-semibold border ${
+                c === '₦25,000'
+                  ? 'border-gold/40 bg-gold/[0.08] text-gold'
+                  : 'border-white/10 text-off-white/60'
+              }`}
+            >
+              {c}
+            </span>
+          ))}
+        </span>
+      </div>
+
+      <div className={`${LABEL} mt-4`}>To</div>
+      <div className={`${FIELD} px-[13px] py-[11px] mt-[7px] flex justify-between items-center`}>
+        <span className="font-mono text-[13px]">alice*veil.xyz</span>
+        <span className="flex gap-[6px] shrink-0">
+          {['◫', '⌗'].map((i) => (
+            <span
+              key={i}
+              className="w-[24px] h-[24px] rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[11px] text-off-white/60"
+            >
+              {i}
+            </span>
+          ))}
+        </span>
+      </div>
+
+      <div className="flex justify-between mt-[14px] px-[3px]">
+        <span className="text-[11px] text-off-white/45">Network fee</span>
+        <span className="text-[11px] text-teal">Sponsored</span>
+      </div>
+
+      <div className="flex-1" />
+      <div className="bg-gold text-near-black rounded-pill py-[13px] text-center font-semibold text-[12px]">
+        ⬡ Review &amp; sign
+      </div>
+    </>
+  )
+}
+
+function HomeScreen() {
+  return (
+    <>
+      <div className="flex justify-between items-center px-[5px]">
+        <span className="flex items-center gap-2">
+          <Mark size={19} />
+          <span className="font-anton text-[13px] tracking-[0.08em] text-gold">VEIL</span>
+        </span>
+        <span className="font-mono text-[11px] text-gold bg-gold/[0.08] border border-gold/[0.18] rounded-pill px-[11px] py-[4px]">
           GDKF…9QX3
         </span>
       </div>
 
-      {/* Metallic balance plate — the same gradient the wallet ships. */}
       <div
-        className="relative overflow-hidden rounded-[14px] p-[13px] text-near-black"
+        className="relative overflow-hidden rounded-[20px] px-[18px] py-[20px] mt-4 text-near-black"
         style={{
           background:
             'linear-gradient(135deg,#3a3d42 0%,#8f959c 22%,#e8ebee 38%,#9aa0a7 52%,#5c6066 70%,#caced3 88%,#75797f 100%)',
-          boxShadow: '0 10px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5)',
         }}
       >
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.5) 46%,transparent 55%)' }}
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.55) 46%,transparent 55%)' }}
         />
-        <div className="relative flex items-start justify-between">
-          <span className="text-[7px] font-bold tracking-[0.14em] uppercase text-near-black/55">
+        <div className="relative flex justify-between items-start">
+          <span className="text-[9px] tracking-[0.14em] uppercase font-bold text-near-black/55">
             Total balance
           </span>
-          <Mark size={13} color="#0F0F0F" />
+          <Mark size={21} color="#0F0F0F" />
         </div>
-        <div className="relative font-lora italic font-semibold text-[26px] leading-none mt-[7px]">
-          ₦642,384
-          <span className="text-[15px]">.10</span>
+        <div className="relative font-lora italic font-semibold text-[35px] leading-[1.1] mt-[11px]">
+          ₦642,384<span className="text-[17px] text-near-black/45">.10</span>
         </div>
-        <div className="relative flex items-center justify-between mt-[9px] gap-2">
-          <span className="font-mono text-[8px] text-near-black/60 whitespace-nowrap">
-            412.98 USDC
-          </span>
-          <span className="bg-near-black/85 text-[#00e0f0] rounded-pill px-[7px] py-[2px] text-[8px] font-semibold whitespace-nowrap">
-            +₦109.32 today
+        <div className="relative flex justify-between items-center mt-[13px] gap-2">
+          <span className="font-mono text-[10px] text-near-black/60">412.98 USDC</span>
+          <span className="bg-near-black/85 text-[#00e0f0] rounded-pill px-[9px] py-[3px] text-[9px] font-semibold shrink-0">
+            +₦109.32
           </span>
         </div>
-        <div className="relative flex gap-[7px] mt-[11px]">
-          <span className="flex-1 bg-near-black text-off-white rounded-pill py-[6px] text-center text-[9px] font-semibold">
+        <div className="relative flex gap-2 mt-[14px]">
+          <span className="flex-1 bg-near-black text-gold rounded-pill py-[9px] text-center font-semibold text-[11px]">
             ↗ Send
           </span>
-          <span className="flex-1 bg-near-black/10 border border-near-black/20 rounded-pill py-[6px] text-center text-[9px] font-semibold">
+          <span className="flex-1 border-[1.5px] border-near-black/55 rounded-pill py-2 text-center font-semibold text-[11px]">
             ↙ Receive
           </span>
         </div>
       </div>
 
-      <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[11px]">
-        <div className="text-[7px] font-bold tracking-[0.14em] uppercase text-gold">Pay for</div>
-        <div className="grid grid-cols-4 gap-x-[6px] gap-y-[9px] mt-[8px]">
-          {PAY_FOR.map((s) => (
-            <div key={s.name} className="flex flex-col gap-[1px] min-w-0">
-              <span className="text-[8px] font-semibold text-off-white whitespace-nowrap">{s.name}</span>
-              <span className="text-[6px] text-off-white/40 whitespace-nowrap truncate">{s.sub}</span>
+      <div className="bg-white/[0.03] border border-white/[0.08] rounded-[16px] px-[14px] py-1 mt-[11px]">
+        <div className="text-[9px] font-bold tracking-[0.14em] uppercase text-gold pt-[9px] pb-[2px]">
+          Pay for
+        </div>
+        <div className="grid grid-cols-4">
+          {[
+            ['Airtime', 'Networks'], ['Data', 'Bundles'], ['Power', 'Prepaid'], ['TV', 'DStv'],
+            ['Bills', 'Water'], ['Transfer', 'Banks'], ['Betting', 'Top up'], ['More', 'All'],
+          ].map(([n, s], i) => (
+            <div
+              key={n}
+              className={`py-[9px] flex flex-col gap-[2px] ${i > 3 ? 'border-t border-white/[0.06]' : ''}`}
+            >
+              <span className={`text-[11px] font-medium ${n === 'More' ? 'text-gold' : ''}`}>{n}</span>
+              <span className="text-[8px] text-off-white/40">{s}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[11px] flex-1">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[7px] font-bold tracking-[0.14em] uppercase text-gold">Activity</span>
-          <span className="text-[7px] text-off-white/40">See all</span>
-        </div>
+      <div className="bg-white/[0.03] border border-white/[0.08] rounded-[16px] px-[14px] py-1 mt-[9px]">
+        <div className="text-[9px] font-bold tracking-[0.14em] uppercase text-gold pt-[9px] pb-px">Assets</div>
         {[
-          { label: 'MTN Airtime', sub: '0803 123 4567 · 2h', amount: '−₦2,000', teal: false },
-          { label: 'Yield earned', sub: 'Blend USDC pool · today', amount: '+₦109.32', teal: true },
-        ].map((row) => (
-          <div key={row.label} className="flex items-center justify-between mt-[9px] gap-2">
-            <span className="flex flex-col gap-[1px] min-w-0">
-              <span className="text-[8px] font-medium text-off-white whitespace-nowrap">{row.label}</span>
-              <span className="font-mono text-[6px] text-off-white/45 whitespace-nowrap">{row.sub}</span>
+          { code: 'USDC', sub: 'Stablecoin', amt: '412.98', glyph: '$', teal: true },
+          { code: 'XLM', sub: 'Stellar Lumens', amt: '100.00', glyph: '✦', teal: false },
+        ].map((a, i) => (
+          <div
+            key={a.code}
+            className={`flex justify-between items-center py-[10px] ${i === 0 ? 'border-b border-white/[0.06]' : ''}`}
+          >
+            <span className="flex items-center gap-[9px]">
+              <span
+                className={`w-[28px] h-[28px] rounded-full flex items-center justify-center font-bold text-[11px] ${
+                  a.teal ? 'bg-teal/15 border border-teal/35 text-teal' : 'bg-gold/10 border border-gold/30 text-gold'
+                }`}
+              >
+                {a.glyph}
+              </span>
+              <span className="flex flex-col gap-px">
+                <span className="text-[11px] font-semibold">{a.code}</span>
+                <span className="text-[8px] text-off-white/45">{a.sub}</span>
+              </span>
             </span>
-            <span
-              className={`font-mono text-[8px] font-semibold whitespace-nowrap ${row.teal ? 'text-teal' : 'text-off-white'}`}
-            >
-              {row.amount}
-            </span>
+            <span className="font-mono text-[11px] shrink-0">{a.amt}</span>
           </div>
         ))}
       </div>
 
-      <div className="relative flex items-center justify-between bg-white/[0.04] border border-white/10 rounded-pill px-[14px] py-[7px]">
-        {['Home', 'Earn', '', 'Agent', 'Settings'].map((tab, i) =>
+      <div className="flex-1" />
+      <div className="relative bg-white/[0.06] border border-white/10 rounded-[22px] px-5 py-[10px] flex justify-between items-center mt-[10px]">
+        {[
+          { icon: '⌂', label: 'Home', on: true },
+          { icon: '◎', label: 'Earn', on: false },
+          null,
+          { icon: '✦', label: 'Agent', on: false },
+          { icon: '⚙', label: 'Settings', on: false },
+        ].map((tab, i) =>
           tab ? (
-            <span
-              key={tab}
-              className={`text-[7px] ${i === 0 ? 'text-gold' : 'text-off-white/45'}`}
-            >
-              {tab}
+            <span key={tab.label} className="flex flex-col items-center gap-[2px] w-[42px]">
+              <span className={`text-[14px] ${tab.on ? 'text-gold' : 'text-off-white/45'}`}>{tab.icon}</span>
+              <span className={`text-[8px] ${tab.on ? 'text-gold font-semibold' : 'text-off-white/45'}`}>
+                {tab.label}
+              </span>
             </span>
           ) : (
-            <span key="fab" className="w-[7px]" />
+            <span
+              key={`fab-${i}`}
+              className="w-[50px] h-[50px] rounded-full bg-gold text-near-black flex items-center justify-center text-[24px] -mt-7 shadow-[0_8px_20px_rgba(253,218,36,0.35)]"
+            >
+              +
+            </span>
           ),
         )}
-        <span className="absolute left-1/2 -translate-x-1/2 -top-[11px] w-[28px] h-[28px] rounded-full bg-gold text-near-black flex items-center justify-center text-[15px] font-semibold shadow-[0_5px_14px_rgba(253,218,36,0.35)]">
-          +
-        </span>
       </div>
-    </div>
+    </>
   )
 }
 
-function Phone({ className = '' }: { className?: string }) {
+function ConfirmScreen() {
   return (
-    <div
-      aria-hidden="true"
-      className={`rounded-[34px] sm:rounded-[38px] lg:rounded-[40px] border border-white/20 bg-[#0A0A0A] p-[6px] sm:p-[7px] lg:p-[8px] shadow-[0_40px_80px_rgba(0,0,0,0.7)] lg:shadow-[0_60px_120px_rgba(0,0,0,0.8)] ${className}`}
-    >
-      <div className="relative w-[228px] h-[478px] sm:w-[258px] sm:h-[542px] lg:w-[286px] lg:h-[600px] rounded-[26px] sm:rounded-[30px] lg:rounded-[32px] bg-near-black overflow-hidden">
-        {/* Notch */}
-        <div className="absolute top-[7px] left-1/2 -translate-x-1/2 w-[70px] h-[16px] rounded-pill bg-black z-10" />
-        <PhoneScreen />
+    <>
+      <div className={LABEL}>Confirm transfer</div>
+      <div className="font-lora italic font-semibold text-[42px] mt-[11px]">₦25,000</div>
+      <div className="font-mono text-[12px] text-off-white/50 mt-[5px]">To alice*veil.xyz</div>
+
+      <div className="w-full mt-[30px] flex flex-col">
+        {[
+          ['They receive', '₦25,000'],
+          ['Debited', '16.08 USDC'],
+          ['Network fee', 'Sponsored'],
+        ].map(([k, v], i) => (
+          <div
+            key={k}
+            className={`flex justify-between py-3 border-t border-white/[0.08] ${i === 2 ? 'border-b' : ''}`}
+          >
+            <span className="text-[11px] text-off-white/45">{k}</span>
+            <span className={`text-[11px] ${v === 'Sponsored' ? 'text-teal' : 'font-mono'}`}>{v}</span>
+          </div>
+        ))}
       </div>
-    </div>
+
+      <div className="flex-1" />
+      <div className="relative w-full h-[54px] rounded-pill border border-gold/35 bg-gold/[0.05] flex items-center justify-center overflow-hidden">
+        <span className="absolute left-0 top-0 bottom-0 w-[112px] bg-gold/[0.13]" />
+        <span className="absolute left-[4px] top-[3px] w-[46px] h-[46px] rounded-full bg-gold text-near-black flex items-center justify-center text-[18px] font-bold">
+          »
+        </span>
+        <span className="relative font-mono text-[12px] tracking-[0.08em] text-off-white/45">
+          SLIDE TO CONFIRM
+        </span>
+      </div>
+      <div className="text-[10px] text-off-white/40 mt-3 text-center">Then confirm with your passkey.</div>
+    </>
   )
 }
 
 export function LandingHero({ t }: { t: Messages }) {
   const copy = t.heroNew
+
   return (
     <section className="relative bg-near-black overflow-hidden">
-      {/* Warm falloff behind the devices, so they sit in light rather than on a flat field. */}
       <div
+        aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(60% 55% at 78% 42%, rgba(253,218,36,0.20) 0%, rgba(253,218,36,0.06) 40%, transparent 72%)',
+            'radial-gradient(70% 50% at 50% 30%, rgba(253,218,36,0.13) 0%, rgba(253,218,36,0.04) 42%, transparent 72%)',
         }}
       />
 
-      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 pt-28 pb-14 sm:pt-32 sm:pb-20 lg:pt-36 lg:pb-28 flex items-center gap-10 lg:gap-16 max-lg:flex-col max-lg:text-left">
-        <div className="flex-1 min-w-0 max-w-[560px]">
-          <span className="hidden lg:flex items-center gap-[11px]">
-            <Mark size={24} />
-            <span className="font-anton text-gold text-[20px] tracking-[0.08em]">VEIL</span>
+      <div className="relative flex flex-col items-center text-center px-5 sm:px-8 lg:px-14 pt-28 sm:pt-32 lg:pt-36">
+        {/* Rounded, not the design's square badge — Veil is a pill system. */}
+        <span className="inline-flex items-center gap-[11px] bg-white/[0.06] border border-white/[0.08] rounded-pill px-4 sm:px-5 py-[9px]">
+          <span className="w-[9px] h-[9px] rounded-full bg-gold shrink-0" />
+          <span className="font-anton text-[10.5px] sm:text-[13px] tracking-[0.14em] text-gold whitespace-nowrap">
+            PASSKEY DOLLARS ON STELLAR
           </span>
+        </span>
 
-          <h1 className="font-anton uppercase text-off-white mt-0 lg:mt-9 text-[clamp(2.6rem,5.4vw,4.1rem)] leading-[1.02] tracking-[-0.01em]">
-            {copy.line1}
-            <br />
-            {copy.line2}
-            <br />
-            <span className="text-gold">{copy.line3}</span>
-          </h1>
+        <h1 className="font-anton uppercase text-off-white mt-8 sm:mt-10 text-[clamp(2.4rem,8vw,5.2rem)] leading-[1.03] tracking-[-0.01em]">
+          {copy.line1}
+          <br />
+          {copy.line2}
+          <br />
+          <span className="text-gold">{copy.line3}</span>
+        </h1>
 
-          <p className="font-inter text-[17px] leading-[1.75] text-off-white/60 mt-7 max-w-[470px]">
-            {copy.body}
-          </p>
+        <p className="font-inter text-[15.5px] sm:text-[17px] leading-[1.75] text-off-white/60 mt-6 sm:mt-7 max-w-[600px]">
+          {copy.body}
+        </p>
 
-          <div className="flex flex-wrap gap-3 mt-9">
-            <Link
-              href="https://app.useveilapp.xyz"
-              className="bg-gold text-near-black font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-transform duration-200 ease-stellar hover:-translate-y-[1px]"
-            >
-              {copy.cta1}
-            </Link>
-            <Link
-              href="https://docs.useveilapp.xyz"
-              className="border border-white/15 bg-white/[0.04] text-off-white font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-colors duration-200 hover:border-white/30"
-            >
-              {copy.cta2}
-            </Link>
-          </div>
-
-          <div className="h-px bg-white/10 mt-10 sm:mt-12" />
-
-          <dl className="flex gap-8 sm:gap-12 mt-7 flex-wrap">
-            {copy.metrics.map((m) => (
-              <div key={m.label} className="flex flex-col gap-[6px]">
-                <dt className="sr-only">{m.label}</dt>
-                <dd className="font-lora italic font-semibold text-[30px] leading-none text-off-white">
-                  {m.value}
-                </dd>
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-off-white/45 whitespace-nowrap">
-                  {m.label}
-                </span>
-              </div>
-            ))}
-          </dl>
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mt-8 sm:mt-10">
+          <Link
+            href="https://app.useveilapp.xyz"
+            className="bg-gold text-near-black font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-transform duration-200 ease-stellar hover:-translate-y-[1px]"
+          >
+            {copy.cta1}
+          </Link>
+          <Link
+            href="https://docs.useveilapp.xyz"
+            className="border border-white/15 bg-white/[0.04] text-off-white font-semibold text-[15px] rounded-pill px-7 py-[14px] transition-colors duration-200 hover:border-white/30"
+          >
+            {copy.cta2}
+          </Link>
         </div>
 
-        <div className="relative shrink-0 flex items-center justify-center max-lg:mt-4">
-          {/* Back device: depth only, so it stays mostly behind the front one. */}
-          <div className="absolute right-[-56px] top-[30px] rotate-[8deg] opacity-75 max-md:hidden">
-            <div className="rounded-[40px] border border-white/10 bg-[#0A0A0A] w-[300px] h-[614px] shadow-[0_40px_90px_rgba(0,0,0,0.75)] flex flex-col items-center justify-center gap-4">
-              <Mark size={44} />
-              <span className="font-anton text-gold text-[22px] tracking-[0.08em]">VEIL</span>
+        <dl className="flex flex-wrap justify-center gap-x-10 sm:gap-x-16 gap-y-6 mt-12 sm:mt-14 pt-10 border-t border-white/10 w-full max-w-[720px]">
+          {copy.metrics.map((m) => (
+            <div key={m.label} className="flex flex-col gap-[6px]">
+              <dt className="sr-only">{m.label}</dt>
+              <dd className="font-lora italic font-semibold text-[28px] sm:text-[32px] leading-none text-off-white">
+                {m.value}
+              </dd>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-off-white/45 whitespace-nowrap">
+                {m.label}
+              </span>
             </div>
-          </div>
-          <Phone className="relative -rotate-[3deg]" />
-        </div>
+          ))}
+        </dl>
+      </div>
+
+      {/* Collage: devices appear as room allows rather than being scaled down. */}
+      <div className="relative flex justify-center items-end gap-5 lg:gap-6 mt-16 sm:mt-20 px-5 sm:px-8 lg:px-14 pb-4">
+        <Phone className="hidden xl:flex">
+          <SendScreen />
+        </Phone>
+        <Phone tall>
+          <HomeScreen />
+        </Phone>
+        <Phone className="hidden md:flex">
+          <ConfirmScreen />
+        </Phone>
       </div>
     </section>
   )

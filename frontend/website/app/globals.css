@@ -23,7 +23,13 @@
 
 /* ── Reset ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* body already clips, but the scroll container is html — without this a
+     descendant that overhangs still gives the page a sideways scroll on a
+     phone, which is what makes an otherwise-fine layout feel broken. */
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
