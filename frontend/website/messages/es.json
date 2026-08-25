@@ -247,5 +247,44 @@
         "a": "En funcionamiento, en la mainnet de Stellar. Los contratos están desplegados y verificados desde el código fuente, y los flujos principales tienen transacciones reales detrás — entre ellas un gasto autorizado por passkey y un intercambio en un DEX real. Las recargas y facturas son la excepción: necesitan un socio con licencia y todavía no están activas."
       }
     ]
+  },
+  "agent": {
+    "badge": "AGENTE · ACTIVO",
+    "title1": "Dile qué hacer.",
+    "title2": "Luego apruébalo.",
+    "body": "Pídelo en lenguaje corriente y el agente construye la transacción — un intercambio, una transferencia, una factura recurrente. Siempre te entrega una carga sin firmar. Tu passkey es lo único que puede enviarla.",
+    "bullets": [
+      {
+        "strong": "Nunca tiene tus claves",
+        "rest": "puede construir, no puede firmar."
+      },
+      {
+        "strong": "Muestra la carga entera",
+        "rest": "importe, destinatario, ruta, comisión."
+      },
+      {
+        "strong": "Una aprobación por cada una",
+        "rest": "nada se agrupa tras un solo toque."
+      },
+      {
+        "strong": "Nunca rechaza en silencio",
+        "rest": "cada rechazo explica el motivo."
+      }
+    ],
+    "ask": "Cambia ₦50,000 a XLM y envía ₦5,000 de saldo a mi hermano",
+    "reply": "Dos transacciones listas. Ambas construidas y sin firmar — aprueba cada una con tu passkey.",
+    "queueLabel": "ESPERANDO TU APROBACIÓN",
+    "sign": "FIRMAR",
+    "queue": [
+      {
+        "title": "Cambiar 32.15 USDC → 253.4 XLM",
+        "sub": "Soroswap · comisión cubierta"
+      },
+      {
+        "title": "Saldo MTN ₦5,000",
+        "sub": "0805 991 2210 · 3.22 USDC"
+      }
+    ],
+    "index": "[ 04 DE 06 ] · EL AGENTE"
   }
 }

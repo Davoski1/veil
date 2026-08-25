@@ -306,15 +306,7 @@ export function LandingHero({ t }: { t: Messages }) {
       />
 
       <div className="relative flex flex-col items-center text-center px-5 sm:px-8 lg:px-14 pt-28 sm:pt-32 lg:pt-36">
-        {/* Rounded, not the design's square badge — Veil is a pill system. */}
-        <span className="inline-flex items-center gap-[11px] bg-white/[0.06] border border-white/[0.08] rounded-pill px-4 sm:px-5 py-[9px]">
-          <span className="w-[9px] h-[9px] rounded-full bg-gold shrink-0" />
-          <span className="font-anton text-[10.5px] sm:text-[13px] tracking-[0.14em] text-gold whitespace-nowrap">
-            PASSKEY DOLLARS ON STELLAR
-          </span>
-        </span>
-
-        <h1 className="font-anton uppercase text-off-white mt-8 sm:mt-10 text-[clamp(2.4rem,8vw,5.2rem)] leading-[1.03] tracking-[-0.01em]">
+        <h1 className="font-anton uppercase text-off-white mt-0 text-[clamp(2.4rem,8vw,5.2rem)] leading-[1.03] tracking-[-0.01em]">
           {copy.line1}
           <br />
           {copy.line2}

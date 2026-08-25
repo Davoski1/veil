@@ -247,5 +247,44 @@
         "a": "Live on Stellar mainnet. The contracts are deployed and source-verified, and the core flows have real transactions behind them — a passkey-authorised spend and a live DEX swap among them. Bills and airtime are the exception: those need a licensed naira partner and are not switched on yet."
       }
     ]
+  },
+  "agent": {
+    "badge": "AGENT · LIVE",
+    "title1": "Tell it what to do.",
+    "title2": "Then approve it.",
+    "body": "Ask in plain words and the agent builds the transaction — a swap, a transfer, a recurring bill. It hands you an unsigned payload every time. Your passkey is the only thing that can send it.",
+    "bullets": [
+      {
+        "strong": "Never holds your keys",
+        "rest": "it can build, it cannot sign."
+      },
+      {
+        "strong": "Shows the whole payload",
+        "rest": "amount, recipient, route, fee."
+      },
+      {
+        "strong": "One approval each",
+        "rest": "nothing is batched behind a single tap."
+      },
+      {
+        "strong": "Refuses silently never",
+        "rest": "every rejection says why."
+      }
+    ],
+    "ask": "Swap ₦50,000 to XLM and send ₦5,000 airtime to my brother",
+    "reply": "Two transactions ready. Both built and unsigned — approve each with your passkey.",
+    "queueLabel": "AWAITING YOUR APPROVAL",
+    "sign": "SIGN",
+    "queue": [
+      {
+        "title": "Swap 32.15 USDC → 253.4 XLM",
+        "sub": "Soroswap · fee sponsored"
+      },
+      {
+        "title": "MTN Airtime ₦5,000",
+        "sub": "0805 991 2210 · 3.22 USDC"
+      }
+    ],
+    "index": "[ 04 OF 06 ] · THE AGENT"
   }
 }
