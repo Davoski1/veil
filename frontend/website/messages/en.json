@@ -139,7 +139,21 @@
     "label": "Sending money",
     "title1": "Three taps. No fee.",
     "title2": "No seed phrase.",
-    "body": "Every money action is a flow with a review step and a real outcome — never a form that swallows your money and hopes. You approve the exact amount and recipient with your face or fingerprint, and Veil covers the network fee."
+    "body": "Every money action is a flow with a review step and a real outcome — never a form that swallows your money and hopes. You approve the exact amount and recipient with your face or fingerprint, and Veil covers the network fee.",
+    "cards": [
+      {
+        "title": "Hold & earn",
+        "body": "Keep a balance in dollars that quietly earns yield in the Blend pool, and withdraw whenever you want."
+      },
+      {
+        "title": "Sign with your face",
+        "body": "Approve the exact amount and recipient with a passkey. No seed phrase, and Veil covers the network fee."
+      },
+      {
+        "title": "Swap in one step",
+        "body": "Best route across pools through the Soroswap aggregator, settled on Stellar in about five seconds."
+      }
+    ]
   },
   "capabilities": {
     "label": "Everything it does",

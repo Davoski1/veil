@@ -1,236 +1,181 @@
 import type { Messages } from '@/lib/i18n'
 
 /**
- * Flow showcase — three devices telling one story: Amount, Review & sign, Sent.
+ * "Everything money, in one place" — three cards on a ruled field.
  *
- * Borrowed arrangement from Talise's landing, because it matches a rule we had
- * already set in PRODUCT_VISION.md: every money action is a *flow*, not a
- * screen. A static feature grid cannot show that; three phones in sequence can.
+ * This replaced a set of phone mockups. The phones were a mistake: a device
+ * frame implicitly claims "this is our app", and ours did not match the real
+ * mobile design, so it read as wrong rather than as illustration. Cards show a
+ * *fragment* of a surface instead — enough to convey the idea, without pretending
+ * to be a screenshot of something that looks different in the product.
  *
- * The devices are deliberately large and heavily overlapped. A tasteful, small
- * mock reads as a diagram; the point of this section is that it reads as a
- * product. Gold takes the role Talise's green plays — a glow behind the centre
- * device so the dark phones sit in light rather than float on a flat field.
- *
- * All CSS: stays sharp at any density and does not go stale when the app UI
- * changes.
+ * All three cards describe shipped behaviour: a balance that earns in Blend,
+ * a passkey-signed send with sponsored fees, and a Soroswap route. Nothing here
+ * depends on bills, which are not switched on.
  */
 
-function Mark({ size = 14, color = '#FDDA24' }: { size?: number; color?: string }) {
+/** Crosshair markers on the rule lines — the drafting-table cue Talise uses. */
+function Cross({ className }: { className: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 96 96" aria-hidden="true">
-      <rect x="22" y="26" width="52" height="12" rx="6" fill={color} />
-      <rect x="28" y="44" width="40" height="12" rx="6" fill={color} opacity="0.5" />
-      <rect x="34" y="62" width="28" height="12" rx="6" fill={color} opacity="0.22" />
-    </svg>
+    <span aria-hidden="true" className={`absolute ${className}`}>
+      <span className="block w-[13px] h-px bg-near-black/25 absolute top-1/2 -translate-y-1/2 left-0" />
+      <span className="block h-[13px] w-px bg-near-black/25 absolute left-1/2 -translate-x-1/2 top-0" />
+    </span>
   )
 }
 
-function Shell({
-  children,
-  className = '',
-  front,
-}: {
-  children: React.ReactNode
-  className?: string
-  front?: boolean
-}) {
+function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      aria-hidden="true"
-      className={`shrink-0 rounded-[42px] border bg-[#0A0A0A] p-[8px] ${
-        front
-          ? 'border-white/25 shadow-[0_60px_120px_rgba(0,0,0,0.55)] z-20'
-          : 'border-white/12 shadow-[0_38px_80px_rgba(0,0,0,0.4)] z-10'
-      } ${className}`}
-    >
-      <div
-        className={`relative rounded-[35px] bg-near-black overflow-hidden ${
-          front ? 'w-[300px] h-[608px]' : 'w-[272px] h-[552px]'
-        }`}
-      >
-        <div className="absolute top-[9px] left-1/2 -translate-x-1/2 w-[86px] h-[19px] rounded-pill bg-black z-10" />
-        <div className="flex flex-col h-full pt-[38px] px-[18px] pb-[18px]">{children}</div>
-      </div>
+    <div className="bg-white rounded-[20px] p-5 sm:p-6 shadow-[0_18px_44px_rgba(15,15,15,0.10)] border border-near-black/[0.06]">
+      {children}
     </div>
   )
 }
 
-function StepHeader({ title }: { title: string }) {
+/** 1 — a balance that quietly earns. */
+function BalanceCard() {
+  // Heights are fixed, not random: a chart that reshuffles on every render
+  // reads as decoration, and this one is standing in for real yield accrual.
+  const bars = [34, 46, 40, 58, 82, 52, 66]
   return (
-    <div className="flex items-center gap-[9px]">
-      <span className="text-off-white/40 text-[16px] leading-none">‹</span>
-      <span className="font-inter font-semibold text-off-white text-[15px]">{title}</span>
-    </div>
-  )
-}
-
-/** 1 — Amount. */
-function AmountPhone() {
-  return (
-    <Shell className="rotate-[-8deg] translate-y-[40px] mr-[-58px] max-xl:hidden">
-      <StepHeader title="Send" />
-      <div className="flex-1 flex flex-col items-center justify-center gap-[10px]">
-        <span className="font-lora italic font-semibold text-off-white text-[52px] leading-none whitespace-nowrap">
-          ₦25,000
-        </span>
-        <span className="font-mono text-[12px] text-off-white/45">≈ 16.08 USDC</span>
+    <Card>
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-near-black/45">
+        Total balance
       </div>
-      <div className="flex gap-[7px]">
-        {['25%', '50%', '75%'].map((c) => (
+      <div className="font-lora italic font-semibold text-near-black text-[32px] sm:text-[40px] leading-none mt-2">
+        ₦642,384<span className="text-[24px] text-near-black/45">.10</span>
+      </div>
+      <div className="inline-flex items-center mt-3 rounded-pill bg-teal/12 border border-teal/25 px-3 py-[5px]">
+        <span className="font-mono text-[11px] text-teal">+₦109.32 today · earning</span>
+      </div>
+      <div className="flex items-end gap-[7px] h-[62px] mt-6">
+        {bars.map((h, i) => (
           <span
-            key={c}
-            className="flex-1 text-center font-mono text-[11px] text-off-white/60 border border-white/10 bg-white/[0.04] rounded-pill py-[9px]"
-          >
-            {c}
-          </span>
+            key={i}
+            className={`flex-1 rounded-[4px] ${i === 4 ? 'bg-gold' : 'bg-near-black/10'}`}
+            style={{ height: `${h}%` }}
+          />
         ))}
       </div>
-      <span className="mt-[14px] bg-white/[0.06] border border-white/10 text-off-white/70 rounded-pill py-[14px] text-center text-[14px] font-semibold">
-        Review
-      </span>
-    </Shell>
+    </Card>
   )
 }
 
-/** 2 — Review and sign. The moment the product is actually about. */
-function ReviewPhone() {
+/** 2 — the passkey moment. */
+function SendCard() {
   return (
-    <Shell front>
-      <StepHeader title="Review send" />
-
-      <div className="bg-white/[0.04] border border-white/10 rounded-[20px] p-[18px] mt-[22px]">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-off-white/40">
-          From your balance
+    <Card>
+      <div className="flex items-center justify-between gap-3 bg-near-black/[0.04] border border-near-black/[0.07] rounded-[14px] p-[14px]">
+        <span className="flex items-center gap-3 min-w-0">
+          <span className="w-[34px] h-[34px] rounded-full bg-gold/20 border border-gold/40 flex items-center justify-center text-near-black font-semibold text-[13px] shrink-0">
+            A
+          </span>
+          <span className="flex flex-col gap-[2px] min-w-0">
+            <span className="font-inter font-semibold text-near-black text-[14px]">Adaeze</span>
+            <span className="font-mono text-[11px] text-near-black/45">GDKF…9QX3</span>
+          </span>
         </span>
-        <div className="font-lora italic font-semibold text-off-white text-[40px] leading-none mt-[10px]">
+        <span className="font-inter font-semibold text-near-black text-[16px] whitespace-nowrap">
           ₦25,000
-        </div>
-        <div className="font-mono text-[11px] text-off-white/45 mt-[8px]">16.08 USDC</div>
-      </div>
-
-      <div className="flex justify-center py-[12px]">
-        <span className="w-[30px] h-[30px] rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-off-white/50 text-[14px]">
-          ↓
         </span>
       </div>
 
-      <div className="bg-white/[0.04] border border-white/10 rounded-[20px] p-[18px]">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-off-white/40">To</span>
-        <div className="font-inter font-semibold text-off-white text-[18px] mt-[8px]">Adaeze</div>
-        <div className="font-mono text-[11px] text-off-white/45 mt-[5px]">GDKF…9QX3</div>
-      </div>
-
-      <div className="flex items-center justify-center gap-[7px] mt-[20px]">
+      <div className="flex items-center gap-2 mt-4">
         <span className="text-teal text-[12px]">✓</span>
-        <span className="font-mono text-[11px] text-off-white/55 text-center">
-          No network fee — sponsored by Veil
+        <span className="font-mono text-[11px] text-near-black/55">
+          No network fee, sponsored by Veil
         </span>
       </div>
 
-      <div className="flex-1" />
-
-      {/* Slide-to-sign: the passkey is the confirmation, not a password. */}
-      <div className="relative bg-white/[0.05] border border-white/10 rounded-pill h-[56px] flex items-center justify-center">
-        <span className="font-inter font-semibold text-off-white text-[15px]">Slide to sign</span>
-        <span className="absolute left-[4px] w-[48px] h-[48px] rounded-full bg-gold text-near-black flex items-center justify-center text-[19px] font-bold shadow-[0_6px_20px_rgba(253,218,36,0.45)]">
+      <div className="relative mt-5 h-[52px] rounded-pill bg-near-black flex items-center justify-center">
+        <span className="font-anton uppercase tracking-[0.08em] text-gold text-[14px]">
+          Slide to sign
+        </span>
+        <span className="absolute left-[4px] w-[44px] h-[44px] rounded-full bg-gold text-near-black flex items-center justify-center text-[18px] font-bold">
           »
         </span>
       </div>
-    </Shell>
+    </Card>
   )
 }
 
-/** 3 — Sent. */
-function SuccessPhone() {
+/** 3 — one step, best route. */
+function SwapCard() {
+  const rows = [
+    { from: 'XLM', to: 'USDC', note: 'best of 3 pools' },
+    { from: 'USDC', to: 'XLM', note: 'best of 3 pools' },
+    { from: 'XLM', to: 'EURC', note: 'routed' },
+  ]
   return (
-    <Shell className="rotate-[8deg] translate-y-[40px] ml-[-58px] max-xl:hidden">
-      <div className="flex-1 flex flex-col items-center justify-center gap-[14px] text-center">
-        <span className="w-[62px] h-[62px] rounded-full bg-teal/15 border border-teal/35 flex items-center justify-center text-teal text-[28px]">
-          ✓
-        </span>
-        <span className="font-lora italic font-semibold text-off-white text-[44px] leading-none whitespace-nowrap">
-          ₦25,000
-        </span>
-        <span className="font-inter font-semibold text-off-white text-[16px]">Sent to Adaeze</span>
-        <span className="font-mono text-[11px] text-off-white/45 leading-[1.8]">
-          Fee ₦0 · settled in 5s
-          <br />
-          Signed with your passkey
-        </span>
-      </div>
-      <div className="flex gap-[8px]">
-        <span className="flex-1 border border-white/10 bg-white/[0.05] text-off-white/70 rounded-pill py-[13px] text-center text-[13px] font-semibold">
-          Receipt
-        </span>
-        <span className="flex-1 bg-gold text-near-black rounded-pill py-[13px] text-center text-[13px] font-semibold">
-          Done
-        </span>
-      </div>
-      <div className="flex items-center justify-center gap-[7px] mt-[14px]">
-        <Mark size={14} />
-        <span className="font-anton text-gold text-[11px] tracking-[0.08em]">VEIL</span>
-      </div>
-    </Shell>
-  )
-}
-
-/** Corner crop marks — the design-tool cue that makes the field feel composed. */
-function CropMarks() {
-  const base = 'absolute w-[18px] h-[18px] border-near-black/25'
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-8 max-md:hidden">
-      <span className={`${base} left-0 top-0 border-l border-t`} />
-      <span className={`${base} right-0 top-0 border-r border-t`} />
-      <span className={`${base} left-0 bottom-0 border-l border-b`} />
-      <span className={`${base} right-0 bottom-0 border-r border-b`} />
-    </div>
+    <Card>
+      {rows.map((r, i) => (
+        <div
+          key={r.from + r.to}
+          className={`flex items-center justify-between gap-3 py-[13px] ${
+            i < rows.length - 1 ? 'border-b border-near-black/[0.07]' : ''
+          }`}
+        >
+          <span className="flex items-center gap-2 font-inter font-semibold text-near-black text-[14px]">
+            {r.from}
+            <span className="text-near-black/35">→</span>
+            {r.to}
+          </span>
+          <span className="font-mono text-[11px] text-near-black/45 whitespace-nowrap">{r.note}</span>
+        </div>
+      ))}
+      <div className="font-mono text-[11px] text-teal mt-4">Settles in ~5 seconds</div>
+    </Card>
   )
 }
 
 export function FlowShowcase({ t }: { t: Messages }) {
   const copy = t.flow
-  return (
-    <section id="how-sending-works" className="relative overflow-hidden bg-warm-grey py-28 max-lg:py-20">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none opacity-60"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(15,15,15,0.18) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-      <CropMarks />
+  const cards = [BalanceCard, SendCard, SwapCard]
 
-      <div className="relative max-w-[1240px] mx-auto px-6 lg:px-10">
-        <div className="max-w-[640px]">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
-            {copy.label}
-          </span>
-          <h2 className="font-lora italic font-semibold text-near-black text-display mt-3 max-lg:text-display-sm">
-            {copy.title1}
-            <br />
-            {copy.title2}
-          </h2>
-          <p className="font-inter text-[17px] leading-[1.75] text-near-black/65 mt-6">
-            {copy.body}
-          </p>
-        </div>
+  return (
+    <section id="how-sending-works" className="relative overflow-hidden bg-warm-grey py-16 sm:py-20 lg:py-24">
+      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 text-center">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
+          {copy.label}
+        </span>
+        <h2 className="font-lora italic font-semibold text-near-black text-display mt-4 max-lg:text-display-sm">
+          {copy.title1}
+          <br />
+          {copy.title2}
+        </h2>
+        <p className="font-inter text-[17px] leading-[1.75] text-near-black/65 mt-6 max-w-[640px] mx-auto">
+          {copy.body}
+        </p>
       </div>
 
-      <div className="relative mt-20 max-lg:mt-14 flex items-center justify-center">
-        {/* Gold falloff behind the centre device — Veil's answer to Talise's green field. */}
-        <div
-          aria-hidden="true"
-          className="absolute w-[760px] h-[760px] rounded-full pointer-events-none max-md:w-[440px] max-md:h-[440px]"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(253,218,36,0.30) 0%, rgba(253,218,36,0.10) 42%, transparent 68%)',
-          }}
-        />
-        <AmountPhone />
-        <ReviewPhone />
-        <SuccessPhone />
+      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 mt-12 lg:mt-16">
+        {/* Ruled field: one line above the cards, verticals between them. */}
+        <div aria-hidden="true" className="absolute inset-x-5 sm:inset-x-6 lg:inset-x-10 top-0 h-px bg-near-black/12" />
+        <Cross className="top-0 left-6 lg:left-10 -translate-x-1/2 -translate-y-1/2 w-[13px] h-[13px]" />
+        <Cross className="top-0 right-6 lg:right-10 translate-x-1/2 -translate-y-1/2 w-[13px] h-[13px]" />
+        <Cross className="top-0 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[13px] h-[13px] max-lg:hidden" />
+        <Cross className="top-0 left-2/3 -translate-x-1/2 -translate-y-1/2 w-[13px] h-[13px] max-lg:hidden" />
+
+        <div className="grid grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1 gap-x-6 lg:gap-x-10 gap-y-10 lg:gap-y-12 pt-10 lg:pt-14">
+          {cards.map((C, i) => (
+            <div key={i} className="relative flex flex-col">
+              {/* Divider between columns, matching the rule above. */}
+              {i > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-3 lg:-left-5 top-[-40px] lg:top-[-56px] bottom-0 w-px bg-near-black/12 max-lg:hidden"
+                />
+              )}
+              <C />
+              <h3 className="font-lora italic font-semibold text-near-black text-[24px] mt-7">
+                {copy.cards[i].title}
+              </h3>
+              <p className="font-inter text-[15px] leading-[1.75] text-near-black/60 mt-3">
+                {copy.cards[i].body}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )

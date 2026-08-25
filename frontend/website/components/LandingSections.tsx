@@ -28,13 +28,13 @@ export function Capabilities({ t }: { t: Messages }) {
   const copy = t.capabilities
   return (
     <section id="capabilities" className="bg-near-black section-pad">
-      <div className="max-w-[1240px] mx-auto px-6 lg:px-10">
+      <div className="max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10">
         <SectionLabel>{copy.label}</SectionLabel>
         <h2 className="font-lora italic font-semibold text-off-white text-display-sm mt-3 max-w-[620px]">
           {copy.title}
         </h2>
 
-        <div className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-4 mt-12">
+        <div className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-3 sm:gap-4 mt-10 sm:mt-12">
           {copy.items.map((c, i) => (
             <div
               key={c.name}
@@ -66,7 +66,7 @@ export function Trust({ t }: { t: Messages }) {
   const copy = t.trust
   return (
     <section id="security" className="bg-off-white section-pad">
-      <div className="max-w-[1240px] mx-auto px-6 lg:px-10">
+      <div className="max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
           {copy.label}
         </span>
@@ -74,7 +74,7 @@ export function Trust({ t }: { t: Messages }) {
           {copy.title}
         </h2>
 
-        <div className="grid grid-cols-2 max-md:grid-cols-1 gap-x-14 gap-y-10 mt-12">
+        <div className="grid grid-cols-2 max-md:grid-cols-1 gap-x-10 lg:gap-x-14 gap-y-8 lg:gap-y-10 mt-10 sm:mt-12">
           {copy.items.map((item) => (
             <div key={item.title} className="flex flex-col gap-3">
               <h3 className="font-inter font-semibold text-near-black text-[17px]">{item.title}</h3>
@@ -99,7 +99,7 @@ export function Faq({ t }: { t: Messages }) {
   const copy = t.faq
   return (
     <section id="faq" className="bg-near-black section-pad">
-      <div className="max-w-[880px] mx-auto px-6 lg:px-10">
+      <div className="max-w-[880px] mx-auto px-5 sm:px-6 lg:px-10">
         <SectionLabel>{copy.label}</SectionLabel>
         <h2 className="font-lora italic font-semibold text-off-white text-display-sm mt-3">
           {copy.title}
@@ -108,8 +108,8 @@ export function Faq({ t }: { t: Messages }) {
         <div className="mt-11 border-t border-white/10">
           {copy.items.map((item) => (
             <details key={item.q} className="group border-b border-white/10 py-6">
-              <summary className="flex items-center justify-between gap-6 cursor-pointer list-none">
-                <h3 className="font-inter font-semibold text-off-white text-[17px]">{item.q}</h3>
+              <summary className="flex items-center justify-between gap-4 sm:gap-6 cursor-pointer list-none">
+                <h3 className="font-inter font-semibold text-off-white text-[15.5px] sm:text-[17px]">{item.q}</h3>
                 <span
                   aria-hidden="true"
                   className="text-gold text-[20px] leading-none shrink-0 transition-transform duration-200 ease-stellar group-open:rotate-45"

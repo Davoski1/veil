@@ -531,7 +531,7 @@ function Footer({ t, locale }: { t: Messages; locale: Locale }) {
   const links = [
     { label: t.footer.docs,    href: 'https://docs.useveilapp.xyz' },
     { label: t.footer.github,  href: 'https://github.com/Miracle656/veil' },
-    { label: t.footer.twitter, href: '#' },
+    { label: t.footer.twitter, href: 'https://x.com/veilonstellar' },
     { label: t.footer.stellar, href: 'https://stellar.org' },
   ]
 

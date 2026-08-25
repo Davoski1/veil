@@ -156,9 +156,9 @@ function Phone({ className = '' }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`rounded-[40px] border border-white/20 bg-[#0A0A0A] p-[8px] shadow-[0_60px_120px_rgba(0,0,0,0.8)] ${className}`}
+      className={`rounded-[34px] sm:rounded-[38px] lg:rounded-[40px] border border-white/20 bg-[#0A0A0A] p-[6px] sm:p-[7px] lg:p-[8px] shadow-[0_40px_80px_rgba(0,0,0,0.7)] lg:shadow-[0_60px_120px_rgba(0,0,0,0.8)] ${className}`}
     >
-      <div className="relative w-[286px] h-[600px] rounded-[32px] bg-near-black overflow-hidden">
+      <div className="relative w-[228px] h-[478px] sm:w-[258px] sm:h-[542px] lg:w-[286px] lg:h-[600px] rounded-[26px] sm:rounded-[30px] lg:rounded-[32px] bg-near-black overflow-hidden">
         {/* Notch */}
         <div className="absolute top-[7px] left-1/2 -translate-x-1/2 w-[70px] h-[16px] rounded-pill bg-black z-10" />
         <PhoneScreen />
@@ -180,7 +180,7 @@ export function LandingHero({ t }: { t: Messages }) {
         }}
       />
 
-      <div className="relative max-w-[1240px] mx-auto px-6 lg:px-10 py-20 lg:py-28 flex items-center gap-16 max-lg:flex-col max-lg:text-left">
+      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 py-14 sm:py-20 lg:py-28 flex items-center gap-10 lg:gap-16 max-lg:flex-col max-lg:text-left">
         <div className="flex-1 min-w-0 max-w-[560px]">
           <span className="flex items-center gap-[11px]">
             <Mark size={24} />
@@ -214,9 +214,9 @@ export function LandingHero({ t }: { t: Messages }) {
             </Link>
           </div>
 
-          <div className="h-px bg-white/10 mt-12" />
+          <div className="h-px bg-white/10 mt-10 sm:mt-12" />
 
-          <dl className="flex gap-12 mt-7 flex-wrap">
+          <dl className="flex gap-8 sm:gap-12 mt-7 flex-wrap">
             {copy.metrics.map((m) => (
               <div key={m.label} className="flex flex-col gap-[6px]">
                 <dt className="sr-only">{m.label}</dt>

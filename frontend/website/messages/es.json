@@ -139,7 +139,21 @@
     "label": "Enviar dinero",
     "title1": "Tres toques. Sin comisión.",
     "title2": "Sin frase semilla.",
-    "body": "Cada movimiento de dinero es un flujo con un paso de revisión y un resultado real — nunca un formulario que se traga tu dinero y espera lo mejor. Apruebas el importe y el destinatario exactos con tu rostro o tu huella, y Veil cubre la comisión de red."
+    "body": "Cada movimiento de dinero es un flujo con un paso de revisión y un resultado real — nunca un formulario que se traga tu dinero y espera lo mejor. Apruebas el importe y el destinatario exactos con tu rostro o tu huella, y Veil cubre la comisión de red.",
+    "cards": [
+      {
+        "title": "Guarda y gana",
+        "body": "Manten un saldo en dolares que genera rendimiento en el pool de Blend, y retiralo cuando quieras."
+      },
+      {
+        "title": "Firma con tu rostro",
+        "body": "Aprueba el importe y el destinatario exactos con una passkey. Sin frase semilla, y Veil cubre la comision de red."
+      },
+      {
+        "title": "Intercambia en un paso",
+        "body": "La mejor ruta entre pools con el agregador Soroswap, liquidado en Stellar en unos cinco segundos."
+      }
+    ]
   },
   "capabilities": {
     "label": "Todo lo que hace",
