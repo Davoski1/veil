@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -97,7 +98,7 @@ export default function TokenPage() {
             const sacContract = new Contract(sacAddress)
             const dummyKp     = Keypair.random()
             const dummyAcct   = new Account(dummyKp.publicKey(), '0')
-            const balanceTx   = new TransactionBuilder(dummyAcct, { fee: BASE_FEE, networkPassphrase: network.networkPassphrase })
+            const balanceTx   = new TransactionBuilder(dummyAcct, { fee: inclusionFee(), networkPassphrase: network.networkPassphrase })
               .addOperation(sacContract.call('balance', nativeToScVal(walletAddress, { type: 'address' })))
               .setTimeout(30).build()
             const sim = await rpcServer.simulateTransaction(balanceTx)

@@ -24,6 +24,8 @@
 
   /* Animation */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --text-muted: rgba(246, 247, 248, 0.55);
 }
 
 /* ── Light theme overrides ───────────────────────────────────────────── */
@@ -36,6 +38,7 @@
   --gold:       #C4A800;
   --teal:       #007A85;
   --navy:       #002E5D;
+  --text-muted: rgba(26, 26, 26, 0.60);
 }
 
 [data-theme="light"] .wallet-nav {
@@ -175,14 +178,16 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--border-dim);
-  border-radius: 16px;
+  /* 26px is the panel radius used throughout the Veil Web design. */
+  border-radius: 26px;
   padding: 1.5rem;
 }
 
 .card-md {
   background: var(--surface-md);
   border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 16px;
+  /* Inner fields sit one step tighter than the 26px outer panel. */
+  border-radius: 20px;
   padding: 1.5rem;
 }
 
@@ -365,3 +370,93 @@ body {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.5; }
 }
+
+.text-muted {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Pages inside the shared app shell ───────────────────────────────────
+   Every screen still renders its own .wallet-shell/.wallet-nav/.wallet-main.
+   Inside the shell that header is duplicate chrome — the sidebar already
+   carries the wordmark, navigation and network — so it is hidden here rather
+   than deleted from 24 page files. .wallet-main keeps its centred measure but
+   drops the horizontal padding the shell already provides. */
+.veil-app-shell .wallet-nav { display: none; }
+.veil-app-shell .wallet-shell { min-height: 0; }
+.veil-app-shell .wallet-main { padding-left: 0; padding-right: 0; }
+
+/* ── Home screen (Veil Web design) ──────────────────────────────────────
+   The dashboard is the one screen that uses the full shell width; every
+   other screen keeps the narrow 480px measure. */
+.wallet-main--wide { max-width: none; }
+
+.vw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.vw-eyebrow { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(246,247,248,0.4); font-weight: 700; }
+.vw-title { font-family: 'Lora', Georgia, serif; font-style: italic; font-weight: 600; font-size: 30px; margin-top: 3px; }
+.vw-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vw-pill { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); border-radius: 100px; padding: 9px 18px; font-size: 13px; font-weight: 500; color: rgba(246,247,248,0.72); cursor: pointer; white-space: nowrap; }
+.vw-pill--gold { background: #FDDA24; color: #0F0F0F; border-color: #FDDA24; font-weight: 600; padding: 10px 22px; display: inline-flex; align-items: center; gap: 7px; }
+
+.vw-row { display: flex; gap: 20px; margin-top: 20px; align-items: stretch; }
+.vw-row--first { margin-top: 26px; }
+.vw-panel { background: rgba(255,255,255,0.03); border: 1px solid var(--border-dim); border-radius: 26px; box-sizing: border-box; display: flex; flex-direction: column; }
+.vw-grow { flex: 1; min-width: 0; }
+.vw-side { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px; }
+
+/* The metallic plate. The sheen is a separate overlay so it sits above the
+   gradient but below the text. */
+.vw-silver { width: 452px; flex-shrink: 0; border-radius: 26px; padding: 28px 30px; position: relative; overflow: hidden; color: #0F0F0F; box-sizing: border-box;
+  background: linear-gradient(135deg,#3a3d42 0%,#8f959c 22%,#e8ebee 38%,#9aa0a7 52%,#5c6066 70%,#caced3 88%,#75797f 100%);
+  box-shadow: 0 22px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
+.vw-silver__sheen { position: absolute; inset: 0; background: linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.5) 46%,transparent 55%); pointer-events: none; }
+.vw-silver__label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: rgba(15,15,15,0.55); }
+.vw-silver__amount { font-family: 'Lora', Georgia, serif; font-style: italic; font-weight: 600; font-size: 52px; line-height: 1.1; margin-top: 20px; }
+.vw-silver__sub { font-family: 'Inconsolata', monospace; font-size: 13px; color: rgba(15,15,15,0.6); }
+
+.vw-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.vw-label--lilac { color: #B7ACE8; }
+.vw-meta { font-family: 'Inconsolata', monospace; font-size: 12px; color: rgba(246,247,248,0.4); }
+.vw-listrow { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.06); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: var(--off-white); cursor: pointer; text-align: left; }
+.vw-listrow:last-child { border-bottom: none; }
+.vw-agent { background: rgba(183,172,232,0.06); border: 1px solid rgba(183,172,232,0.22); border-radius: 26px; padding: 22px 26px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
+
+@media (max-width: 1180px) {
+  .vw-row { flex-direction: column; }
+  .vw-silver, .vw-side { width: 100%; }
+}
+.vw-more { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.vw-chip { border: 1px solid var(--border-dim); background: rgba(255,255,255,0.02); border-radius: 100px; padding: 7px 15px; font-size: 12.5px; color: rgba(246,247,248,0.6); cursor: pointer; white-space: nowrap; }
+.vw-chip:hover { color: var(--off-white); border-color: rgba(253,218,36,0.3); }
+/* Swap is the one other two-column screen in the design: a fixed 560px
+   exchange card beside a flexible route/details column. */
+.vw-swapcol { width: 560px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; }
+.vw-swapside { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
+@media (max-width: 1180px) { .vw-swapcol { width: 100%; } }
+
+/* ── Send screen ─────────────────────────────────────────────────────── */
+.vw-sendcol { width: 600px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; }
+@media (max-width: 1180px) { .vw-sendcol { width: 100%; } }
+
+.vw-amountcard { background: rgba(255,255,255,0.04); border: 1px solid var(--border-dim); border-radius: 16px; padding: 26px 22px 18px; display: flex; flex-direction: column; align-items: center; }
+.vw-amountinput { font-family: 'Lora', Georgia, serif; font-style: italic; font-weight: 600; font-size: 56px; line-height: 1; text-align: center; width: 100%; background: none; border: 0; color: var(--off-white); outline: none; }
+.vw-amountinput::placeholder { color: rgba(246,247,248,0.25); }
+/* Chrome/Safari spinners wreck the centred display type. */
+.vw-amountinput::-webkit-outer-spin-button,
+.vw-amountinput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.vw-amountinput { -moz-appearance: textfield; appearance: textfield; }
+.vw-amountsub { font-family: 'Inconsolata', monospace; font-size: 14px; color: rgba(246,247,248,0.5); margin-top: 10px; min-height: 1em; }
+.vw-amountfoot { align-self: stretch; display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
+.vw-amountbal { font-size: 12px; color: rgba(246,247,248,0.45); }
+.vw-chips { display: flex; gap: 7px; }
+.vw-amountchip { border: 1px solid var(--border-dim); background: rgba(255,255,255,0.04); color: rgba(246,247,248,0.7); border-radius: 100px; padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.vw-amountchip:hover { border-color: rgba(253,218,36,0.35); color: var(--gold); }
+
+.vw-sumrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+.vw-sumrow span { color: rgba(246,247,248,0.45); white-space: nowrap; }
+.vw-sumrow strong { font-weight: 600; }
+.vw-sumrow--last { border-bottom: none; }
+.vw-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(253,218,36,0.1); border: 1px solid rgba(253,218,36,0.3); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--gold); flex-shrink: 0; }
+.vw-receivecol { width: 480px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; }
+@media (max-width: 1180px) { .vw-receivecol { width: 100%; } }

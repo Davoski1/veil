@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from './fees'
 import { useState, useEffect, useCallback } from 'react'
 import { Core } from '@walletconnect/core'
 import { Web3Wallet, type IWeb3Wallet } from '@walletconnect/web3wallet'
@@ -27,7 +28,7 @@ async function getWalletNonce(
     const dummyKp = Keypair.random()
     const dummyAcct = new Account(dummyKp.publicKey(), '0')
     const probeTx = new TransactionBuilder(dummyAcct, {
-      fee: BASE_FEE,
+      fee: inclusionFee(),
       networkPassphrase,
     })
       .addOperation(new Contract(contractAddress).call('get_nonce'))
@@ -153,7 +154,9 @@ async function signAuthEntry(payload: Uint8Array): Promise<WebAuthnSignature | n
     payload.byteOffset + payload.byteLength,
   ) as ArrayBuffer
 
-  const credIdBin = atob(keyId.replace(/-/g, '+').replace(/_/g, '/'))
+  const normalized = keyId.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+  const credIdBin = atob(padded)
   const credId = Uint8Array.from(credIdBin, (c) => c.charCodeAt(0))
 
   try {
@@ -307,7 +310,7 @@ async function signXdrPayload(
   const ihfOp = tx.operations[0] as Operation.InvokeHostFunction
   const feePayerAcct = await rpc.getAccount(feePayerKeypair.publicKey())
   const signedTx = new TransactionBuilder(feePayerAcct, {
-    fee: BASE_FEE,
+    fee: inclusionFee(),
     networkPassphrase: network.networkPassphrase,
   })
     .addOperation(Operation.invokeHostFunction({

@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-black)](https://stellar.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![codecov](https://codecov.io/gh/Miracle656/veil/branch/main/graph/badge.svg)](https://codecov.io/gh/Miracle656/veil)
 
 A passkey-powered smart wallet on the Stellar Soroban blockchain. Users authenticate with their device biometrics (Face ID, fingerprint, Windows Hello) instead of seed phrases or private keys.
 
@@ -110,12 +111,12 @@ veil/
 │           ├── txBuilder.ts       # Builds unsigned Stellar XDR transactions (swap, payment)
 │           └── x402Client.ts      # x402 micropayment client — auto-pays Lens price endpoint calls
 └── frontend/
-    ├── website/                   # Next.js 14 marketing site (veil-mocha.vercel.app)
+    ├── website/                   # Next.js 14 marketing site (useveilapp.xyz)
     │   └── app/
     │       ├── page.tsx           # Homepage — Hero, HowItWorks, WhyVeil, DevQuickstart
     │       └── products/          # /products listing + /wallet /lens /wraith /agent detail pages
-    ├── docs/                      # Nextra 3 documentation (veil-2ap8.vercel.app)
-    └── wallet/                    # Veil wallet app (Next.js 14, veil-ezry.vercel.app)
+    ├── docs/                      # Nextra 3 documentation (docs.useveilapp.xyz)
+    └── wallet/                    # Veil wallet app (Next.js 14, app.useveilapp.xyz)
         ├── app/
         │   ├── dashboard/         # Balance, all token assets with logos, activity feed + filters (All/Transfers/Swaps)
         │   ├── send/              # Send XLM or tokens — passkey-gated
@@ -382,7 +383,7 @@ The contract's `__check_auth` expects the signature field to be a `Vec<Val>` wit
 
 ## Security
 
-See the [Security docs](https://veil-2ap8.vercel.app/security) and the [Threat Model](https://veil-2ap8.vercel.app/threat-model) for the full STRIDE analysis, trust assumptions, and residual risks.
+See the [Security docs](https://docs.useveilapp.xyz/security) and the [Threat Model](https://docs.useveilapp.xyz/threat-model) for the full STRIDE analysis, trust assumptions, and residual risks.
 
 ### Verifying contract builds
 

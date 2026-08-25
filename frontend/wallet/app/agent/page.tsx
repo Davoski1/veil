@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -14,6 +15,24 @@ interface Message {
   content: string
   pendingTxXdr?: string
   pendingTxSummary?: string
+}
+
+// Agent output relays third-party data (transfer memos, token metadata, price
+// payloads), so it is untrusted. Escape all HTML *before* applying the inline
+// markup pass — the `**bold**` / `` `code` `` markers are not HTML-special, so
+// they still match, and the only real tags produced are the ones injected here.
+// Without the escape, a payload like `<img src=x onerror=...>` would execute in
+// a wallet origin that holds the signing key.
+function renderAgentMarkup(content: string): string {
+  const escaped = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code style="font-family:Inconsolata,monospace;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.8125rem">$1</code>')
 }
 
 // ── User roles ───────────────────────────────────────────────────────────────
@@ -396,9 +415,9 @@ export default function AgentPage() {
           {/* Step 0: Name */}
           {onboardingStep === 0 && (
             <>
-              <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', textAlign: 'center' }}>
-                What should I call you?
-              </h2>
+              <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Assistant" title="Agent" />
+        </div>
               <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)', textAlign: 'center', lineHeight: 1.6 }}>
                 Your agent will greet you by name and personalize conversations.
               </p>
@@ -589,10 +608,7 @@ export default function AgentPage() {
               overflowWrap: 'anywhere',
             }}>
               <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}
-                dangerouslySetInnerHTML={{ __html: msg.content
-                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/`(.+?)`/g, '<code style="font-family:Inconsolata,monospace;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.8125rem">$1</code>')
-                }}
+                dangerouslySetInnerHTML={{ __html: renderAgentMarkup(msg.content) }}
               />
 
               {/* Transaction approval card */}

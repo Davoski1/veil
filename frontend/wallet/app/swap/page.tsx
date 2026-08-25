@@ -1,5 +1,9 @@
 'use client'
 
+import { spendableNativeXlm } from '@/lib/reserves'
+import { getUsdcIssuer } from '@/lib/network'
+import { inclusionFee } from '@/lib/fees'
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,7 +17,7 @@ import {
   Transaction,
 } from '@stellar/stellar-sdk'
 const Server = Horizon.Server
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork } from '@/lib/network'
 import { beginTx, endTx } from '@/lib/txState'
@@ -30,10 +34,9 @@ const network = getNetwork()
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DEBOUNCE_MS = 600
-const TESTNET_USDC = {
-  code: 'USDC',
-  issuer: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
-}
+// Resolved per network — see getUsdcIssuer(). Previously pinned to the
+// testnet issuer, which made mainnet swaps default to the wrong asset.
+const DEFAULT_USDC = { code: 'USDC', issuer: getUsdcIssuer() }
 
 const SLIPPAGE_OPTIONS = [
   { label: '0.1%', bps: 10 },
@@ -58,10 +61,13 @@ export default function SwapPage() {
 
   // Assets & Amounts
   const [sourceBalances, setSourceBalances] = useState<StellarAsset[]>([])
+  // Native XLM that can actually leave the account once the base reserve and
+  // any selling liabilities are held back. Null until the account is loaded.
+  const [spendableXlm, setSpendableXlm] = useState<string | null>(null)
   const [sourceAsset, setSourceAsset] = useState<StellarAsset | null>(null)
   const [destAsset, setDestAsset] = useState<StellarAsset>({
     code: 'USDC',
-    issuer: TESTNET_USDC.issuer,
+    issuer: DEFAULT_USDC.issuer,
     balance: '0',
   })
   const [sourceAmount, setSourceAmount] = useState('')
@@ -111,6 +117,7 @@ export default function SwapPage() {
           issuer: b.asset_issuer,
           balance: b.balance,
         }))
+        setSpendableXlm(spendableNativeXlm(data))
         setSourceBalances(assets)
         setSourceAsset(assets.find((a) => a.code === 'XLM') || assets[0])
       }
@@ -324,7 +331,7 @@ export default function SwapPage() {
         )
 
       const txBuilder = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
 
@@ -401,7 +408,7 @@ export default function SwapPage() {
           </svg>
           Dashboard
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         {/* Slippage settings icon */}
         <button
           onClick={() => setShowSlippage((v) => !v)}
@@ -456,21 +463,14 @@ export default function SwapPage() {
         </div>
       )}
 
-      <main className="wallet-main">
-        <h2
-          style={{
-            fontFamily: 'Lora, Georgia, serif',
-            fontWeight: 600,
-            fontStyle: 'italic',
-            fontSize: '1.75rem',
-            marginBottom: '1.75rem',
-          }}
-        >
-          Swap tokens
-        </h2>
+      <main className="wallet-main wallet-main--wide">
+        <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Exchange" title="Swap" />
+        </div>
 
         {step === 'form' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
+            <div className="vw-swapcol">
             {/* You Pay */}
             <div className="card" style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
@@ -489,7 +489,15 @@ export default function SwapPage() {
                     Balance: {sourceAsset?.balance || '0'} {sourceAsset?.code}
                   </span>
                   <button
-                    onClick={() => setSourceAmount(sourceAsset?.balance || '')}
+                    onClick={() =>
+                      setSourceAmount(
+                        // Only XLM carries the reserve; issued assets are fully
+                        // spendable.
+                        sourceAsset?.code === 'XLM' && spendableXlm !== null
+                          ? spendableXlm
+                          : sourceAsset?.balance || '',
+                      )
+                    }
                     style={{
                       fontSize: '0.6875rem',
                       padding: '0.125rem 0.375rem',
@@ -612,7 +620,7 @@ export default function SwapPage() {
                     setDestAsset(
                       e.target.value === 'XLM'
                         ? { code: 'XLM', balance: '0' }
-                        : { code: 'USDC', issuer: TESTNET_USDC.issuer, balance: '0' }
+                        : { code: 'USDC', issuer: DEFAULT_USDC.issuer, balance: '0' }
                     )
                   }
                 >
@@ -632,6 +640,28 @@ export default function SwapPage() {
               </div>
             </div>
 
+            {errorMsg && (
+              <div
+                className="card"
+                style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)' }}
+              >
+                <p style={{ fontSize: '0.8125rem', color: 'var(--teal)', textAlign: 'center' }}>
+                  {errorMsg}
+                </p>
+              </div>
+            )}
+
+            <button
+              className="btn-gold"
+              onClick={() => setStep('confirm')}
+              disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
+              style={{ marginTop: '1rem' }}
+            >
+              Review swap
+            </button>
+            </div>
+
+            <div className="vw-swapside">
             {/* Quote details */}
             {usingSoroswap && quote && !errorMsg && (
               <div className="card" style={{ padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -656,26 +686,7 @@ export default function SwapPage() {
                 </p>
               </div>
             )}
-
-            {errorMsg && (
-              <div
-                className="card"
-                style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)' }}
-              >
-                <p style={{ fontSize: '0.8125rem', color: 'var(--teal)', textAlign: 'center' }}>
-                  {errorMsg}
-                </p>
-              </div>
-            )}
-
-            <button
-              className="btn-gold"
-              onClick={() => setStep('confirm')}
-              disabled={!sourceAmount || !destAmount || isFetchingQuote || !!errorMsg}
-              style={{ marginTop: '1rem' }}
-            >
-              Review swap
-            </button>
+            </div>
           </div>
         )}
 

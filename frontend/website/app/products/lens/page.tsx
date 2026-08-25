@@ -6,7 +6,7 @@ import { ArrowLeft, BarChart2, GitMerge, Zap, CreditCard, Database, Globe } from
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 }
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } }
 const vp = { once: true, margin: '-60px' as const }
@@ -105,7 +105,7 @@ export default function LensProductPage() {
                   className="btn-gold">
                   View Live API
                 </a>
-                <a href="https://veil-2ap8.vercel.app" className="btn-ghost">
+                <a href="https://docs.useveilapp.xyz" className="btn-ghost">
                   Read the Docs
                 </a>
               </motion.div>
@@ -218,7 +218,7 @@ export default function LensProductPage() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Products', href: '/products' },
-                { label: 'Docs', href: 'https://veil-2ap8.vercel.app' },
+                { label: 'Docs', href: 'https://docs.useveilapp.xyz' },
                 { label: 'GitHub', href: 'https://github.com/Miracle656/veil' },
               ].map(({ label, href }) => (
                 <a key={label} href={href}

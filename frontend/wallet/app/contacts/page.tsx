@@ -1,9 +1,10 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContacts } from '@/components/useContacts'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 
 export default function ContactsPage() {
   const router = useRouter()
@@ -39,15 +40,15 @@ export default function ContactsPage() {
           </svg>
           Back
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <div style={{ width: 40 }} />
       </nav>
 
       <main className="wallet-main">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
-          <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem' }}>
-            Contacts
-          </h2>
+          <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Address book" title="Contacts" />
+        </div>
           <button
             className="btn-gold"
             style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }}

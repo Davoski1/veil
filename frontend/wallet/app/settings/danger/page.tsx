@@ -1,5 +1,6 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -11,7 +12,8 @@ import {
 } from '@stellar/stellar-sdk'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { getNetwork, walletConfig } from '@/lib/network'
-import { VeilLogo } from '@/components/VeilLogo'
+import { resetFeePayer } from '@/lib/feePayer'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet } from '@veil/sdk'
 
@@ -157,7 +159,7 @@ export default function DangerPage() {
       const account = await server.loadAccount(feePayerAddress)
 
       const transaction = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(
@@ -174,7 +176,9 @@ export default function DangerPage() {
       setTxHash(result.hash)
       setStep('success')
 
-      // Clear local wallet data
+      // Clear local wallet data. resetFeePayer() drops the in-memory fee-payer
+      // cache and the pinned derivation mode as well (ADR 0003).
+      resetFeePayer()
       localStorage.removeItem('veil_signer_secret')
       localStorage.removeItem('veil_signer_public_key')
       localStorage.removeItem('invisible_wallet_address')
@@ -236,7 +240,7 @@ export default function DangerPage() {
           </svg>
           Settings
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 

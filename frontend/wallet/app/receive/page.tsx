@@ -1,5 +1,7 @@
 'use client'
 
+import { useActivityFeed } from '@/lib/activityFeed'
+import { PageHeader } from '@/components/ui/primitives'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -188,6 +190,9 @@ export default function ReceivePage() {
   const [contractAddress, setContractAddress] = useState<string | null>(null)
   const [feePayerAddress, setFeePayerAddress] = useState<string | null>(null)
 
+  // Real incoming transfers, newest first — the same feed the dashboard shows.
+  const deposits = useActivityFeed().filter((t) => t.type === 'received').slice(0, 4)
+
   useEffect(() => {
     const stored = sessionStorage.getItem('invisible_wallet_address')
     if (!stored) { router.replace('/lock'); return }
@@ -229,16 +234,11 @@ export default function ReceivePage() {
         </span>
       </header>
 
-      <main className="wallet-main" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+      <main className="wallet-main wallet-main--wide" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
 
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h1 style={{
-            fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic',
-            fontSize: '1.75rem', color: 'var(--off-white)', marginBottom: '0.375rem',
-          }}>
-            Receive
-          </h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <PageHeader eyebrow="Deposit" title="Receive" />
+          <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.5)', marginTop: '0.5rem' }}>
             Share the right address for where the sender is sending from.
           </p>
         </div>
@@ -246,7 +246,8 @@ export default function ReceivePage() {
         {!ready ? (
           <div className="spinner spinner-light" style={{ width: '2rem', height: '2rem', margin: '4rem auto' }} />
         ) : (
-          <>
+          <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
+            <div className="vw-receivecol">
             {/* G... fee-payer address — primary, works with all senders */}
             {feePayerAddress ? (
               <AddressCard
@@ -267,15 +268,47 @@ export default function ReceivePage() {
               </div>
             )}
 
-            {/* C... contract address — secondary, for Soroban-native senders */}
-            {contractAddress && (
-              <AddressCard
-                label="CONTRACT ADDRESS (C…) — SOROBAN / VEIL WALLETS ONLY"
-                description="Use this address only when sending from another Veil wallet or a Soroban-compatible app. Classic wallets cannot send to C… addresses."
-                address={contractAddress}
-              />
-            )}
-          </>
+            </div>
+
+            <div className="vw-swapside">
+              {/* C... contract address — secondary, for Soroban-native senders */}
+              {contractAddress && (
+                <AddressCard
+                  label="CONTRACT ADDRESS (C…) — SOROBAN / VEIL WALLETS ONLY"
+                  description="Use this address only when sending from another Veil wallet or a Soroban-compatible app. Classic wallets cannot send to C… addresses."
+                  address={contractAddress}
+                />
+              )}
+
+              {/* The design puts a "funds start earning automatically" panel
+                  here. That is not true of this wallet — nothing is staked
+                  without an explicit, passkey-signed deposit — so it says what
+                  actually happens instead of making a promise the code does
+                  not keep. */}
+              <div className="vw-panel" style={{ padding: '8px 26px 16px' }}>
+                <div className="vw-label" style={{ padding: '18px 0 4px' }}>Recent deposits</div>
+                {deposits.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'rgba(246,247,248,0.4)', padding: '12px 0' }}>
+                    Nothing received yet.
+                  </p>
+                ) : deposits.map((tx) => (
+                  <div key={tx.id} className="vw-listrow" style={{ padding: '14px 0', cursor: 'default' }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <span style={{ fontSize: '14px', fontWeight: 500 }}>Received</span>
+                      <span className="vw-meta">
+                        {tx.counterparty.length > 14
+                          ? `${tx.counterparty.slice(0, 6)}…${tx.counterparty.slice(-6)}`
+                          : tx.counterparty}
+                      </span>
+                    </span>
+                    <span className="font-mono" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--teal)', flexShrink: 0 }}>
+                      +{tx.amount} {tx.asset}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
       </main>

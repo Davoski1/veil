@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Horizon, Keypair } from '@stellar/stellar-sdk'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { OnboardingTutorial } from '@/components/OnboardingTutorial'
 import { useInvisibleWallet } from '@veil/sdk'
-import { deriveFeePayerKeypair } from '@/lib/deriveFeePayer'
+import { ensureFeePayer } from '@/lib/feePayer'
 import { buildFriendbotUrl, getNetwork, walletConfig } from '@/lib/network'
 import { trackWalletCreated } from '@/lib/supabase'
 
@@ -62,13 +62,18 @@ export default function OnboardingPage() {
       // On cache clear the same passkey → same credential ID → same keypair.
       const credentialId = localStorage.getItem('invisible_wallet_key_id')
       if (!credentialId) throw new Error('Passkey credential not found after registration')
-      signerKeypair = await deriveFeePayerKeypair(credentialId)
+      // Establish the fee-payer for this new wallet. Fresh wallets use the
+      // passkey-bound PRF derivation (ADR 0003); authenticators without PRF fall
+      // back to the legacy credential-ID derivation. ensureFeePayer persists the
+      // seed per mode — PRF → sessionStorage only, legacy → localStorage.
+      const established = await ensureFeePayer()
+      if (!established) throw new Error('Could not establish fee-payer key')
+      signerKeypair = established
       const signerSecret = signerKeypair.secret()
 
-      // Persist the signer before deploy so a failed mainnet attempt can be retried
-      // after the account is funded externally.
+      // The public key is not secret — keep it in localStorage for display and
+      // funding retries regardless of derivation mode.
       localStorage.setItem('veil_signer_public_key', signerKeypair.publicKey())
-      localStorage.setItem('veil_signer_secret', signerSecret)
 
       const friendbotUrl = buildFriendbotUrl(signerKeypair.publicKey())
       if (friendbotUrl) {
@@ -89,9 +94,9 @@ export default function OnboardingPage() {
       // avoiding XDR type mismatches between two stellar-sdk copies.
       const deployed = await wallet.deploy(signerSecret)
 
-      // Persist minimal session to sessionStorage for the dashboard
+      // Persist minimal session to sessionStorage for the dashboard. The
+      // fee-payer secret is already in sessionStorage (ensureFeePayer set it).
       sessionStorage.setItem('invisible_wallet_address', deployed.walletAddress)
-      sessionStorage.setItem('veil_signer_secret', signerSecret)
       setAddress(deployed.walletAddress)
       setStep('done')
       success = true
@@ -125,6 +130,7 @@ export default function OnboardingPage() {
 
   return (
     <>
+    <main>
       {showTutorial && <OnboardingTutorial onComplete={handleTutorialComplete} />}
       <div className="wallet-shell" style={{ justifyContent: 'center', alignItems: 'center', padding: '2rem 1.25rem', minHeight: '100dvh' }}>
       <div style={{ maxWidth: 400, width: '100%' }}>
@@ -132,7 +138,7 @@ export default function OnboardingPage() {
         {/* Logo + wordmark */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '3rem' }}>
           <div style={{ position: 'relative' }} className="biometric-pulse">
-            <VeilLogo size={64} />
+            <VeilMark size={64} />
           </div>
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ fontFamily: 'Anton, Impact, sans-serif', fontSize: '2.5rem', letterSpacing: '0.08em', color: 'var(--gold)' }}>
@@ -145,6 +151,9 @@ export default function OnboardingPage() {
         </div>
 
         {/* Main card */}
+        
+
+        
         {step === 'landing' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button className="btn-gold" onClick={handleCreate}>
@@ -205,12 +214,16 @@ export default function OnboardingPage() {
         )}
 
         {/* Footer */}
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(246,247,248,0.25)', marginTop: '2rem' }}>
+        <p
+        id= "tutorial-title"
+        style={{ textAlign: 'center', fontSize: '0.75rem', color: '#7c7c7c', marginTop: '2rem' }}>
           No seed phrase. No private key. Powered by{' '}
-          <span style={{ color: 'rgba(246,247,248,0.4)' }}>Stellar Soroban</span>
+          <span style={{ color: 'rgba(246,247,248,0.88)' }}>Stellar Soroban</span>
         </p>
+      
       </div>
     </div>
+    </main>
     </>
   )
 }

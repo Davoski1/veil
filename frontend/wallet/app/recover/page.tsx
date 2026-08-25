@@ -1,10 +1,11 @@
 'use client'
 
+import { inclusionFee } from '@/lib/fees'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { derToRawSignature, bufferToHex, hexToUint8Array } from '@veil/utils'
-import { deriveFeePayerKeypair } from '@/lib/deriveFeePayer'
+import { ensureFeePayer, resetFeePayer } from '@/lib/feePayer'
 import { getNetwork } from '@/lib/network'
 import {
   rpc as SorobanRpc, Contract, TransactionBuilder, BASE_FEE,
@@ -43,7 +44,7 @@ export default function RecoverPage() {
       const walletContract = new Contract(walletAddress)
 
       const tx = new TransactionBuilder(sourceAcct, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(walletContract.call('get_signers'))
@@ -143,13 +144,13 @@ export default function RecoverPage() {
       localStorage.setItem('invisible_wallet_public_key', matchedHex)
       sessionStorage.setItem('invisible_wallet_address', walletAddress)
 
-      // Derive fee-payer from the passkey credential ID — recovers the same
-      // keypair that was created during initial registration, so any funds
-      // on the fee-payer G... account are immediately accessible again.
-      const derived = await deriveFeePayerKeypair(assertion.id)
-      localStorage.setItem('veil_signer_secret', derived.secret())
-      localStorage.setItem('veil_signer_public_key', derived.publicKey())
-      sessionStorage.setItem('veil_signer_secret', derived.secret())
+      // Re-establish the fee-payer for the recovered wallet. Using the same
+      // credential reconstructs the same key: a PRF-capable credential yields the
+      // PRF-derived fee-payer, a legacy one the credential-ID derivation —
+      // matching whichever mode the wallet was created with (ADR 0003). Clear any
+      // stale state from a prior wallet on this device first.
+      resetFeePayer()
+      await ensureFeePayer()
 
       setStep('done')
       setTimeout(() => router.push('/dashboard'), 800)
@@ -187,7 +188,7 @@ export default function RecoverPage() {
       const walletContract = new Contract(walletAddress)
 
       const tx = new TransactionBuilder(sourceAcct, {
-        fee: BASE_FEE,
+        fee: inclusionFee(),
         networkPassphrase: network.networkPassphrase,
       })
         .addOperation(walletContract.call('get_signers'))
@@ -254,7 +255,7 @@ export default function RecoverPage() {
       <div style={{ maxWidth: 400, width: '100%' }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
-          <VeilLogo size={48} />
+          <VeilMark size={48} />
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem' }}>
               Recover wallet
