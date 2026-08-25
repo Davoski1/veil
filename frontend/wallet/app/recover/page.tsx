@@ -12,6 +12,7 @@ import {
   Account, Keypair, scValToNative,
 } from '@stellar/stellar-sdk'
 import { deriveP256KeyPair } from '@/lib/recovery'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const network = getNetwork()
 
@@ -139,10 +140,10 @@ export default function RecoverPage() {
       }
 
       // ── 4. Restore localStorage + session ────────────────────────────────
-      localStorage.setItem('invisible_wallet_address',    walletAddress)
-      localStorage.setItem('invisible_wallet_key_id',     assertion.id)
-      localStorage.setItem('invisible_wallet_public_key', matchedHex)
-      sessionStorage.setItem('invisible_wallet_address', walletAddress)
+      walletLocal.setItem('invisible_wallet_address',    walletAddress)
+      walletLocal.setItem('invisible_wallet_key_id',     assertion.id)
+      walletLocal.setItem('invisible_wallet_public_key', matchedHex)
+      walletSession.setItem('invisible_wallet_address', walletAddress)
 
       // Re-establish the fee-payer for the recovered wallet. Using the same
       // credential reconstructs the same key: a PRF-capable credential yields the
@@ -229,18 +230,18 @@ export default function RecoverPage() {
       }
 
       // Store in storage
-      localStorage.setItem('invisible_wallet_address',    walletAddress)
-      localStorage.setItem('invisible_wallet_key_id',     'recovery')
-      localStorage.setItem('invisible_wallet_public_key', matchedHex)
-      sessionStorage.setItem('invisible_wallet_address', walletAddress)
-      sessionStorage.setItem('invisible_wallet_recovery_private_key', bufferToHex(privateKey))
+      walletLocal.setItem('invisible_wallet_address',    walletAddress)
+      walletLocal.setItem('invisible_wallet_key_id',     'recovery')
+      walletLocal.setItem('invisible_wallet_public_key', matchedHex)
+      walletSession.setItem('invisible_wallet_address', walletAddress)
+      walletSession.setItem('invisible_wallet_recovery_private_key', bufferToHex(privateKey))
 
       // Derive deterministic fee-payer from the mnemonic seed
       const seed = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(mnemonic))
       const derivedFeePayer = Keypair.fromRawEd25519Seed(Buffer.from(new Uint8Array(seed).slice(0, 32)))
-      localStorage.setItem('veil_signer_secret', derivedFeePayer.secret())
-      localStorage.setItem('veil_signer_public_key', derivedFeePayer.publicKey())
-      sessionStorage.setItem('veil_signer_secret', derivedFeePayer.secret())
+      walletLocal.setItem('veil_signer_secret', derivedFeePayer.secret())
+      walletLocal.setItem('veil_signer_public_key', derivedFeePayer.publicKey())
+      walletSession.setItem('veil_signer_secret', derivedFeePayer.secret())
 
       setStep('done')
       setTimeout(() => router.push('/dashboard'), 800)

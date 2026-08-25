@@ -23,6 +23,9 @@ const config = {
   modulePaths: ['<rootDir>/node_modules'],
   // Replicate tsconfig paths so Jest resolves workspace aliases
   moduleNameMapper: {
+    // The app-root alias (`@/*` -> `./*` in tsconfig). Without this, any module
+    // under test that imports a sibling via `@/lib/...` fails to resolve.
+    '^@/(.*)$':         '<rootDir>/$1',
     '^@veil/utils$':    '<rootDir>/../../sdk/src/utils',
     '^@veil/sdk$':      '<rootDir>/../../sdk/src/useInvisibleWallet',
     '^@veil/events$':   '<rootDir>/../../sdk/src/events',

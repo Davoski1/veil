@@ -18,6 +18,7 @@ import {
   type BlendPool,
   type BlendPosition,
 } from '@/lib/blend'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const network = getNetwork()
 
@@ -43,12 +44,12 @@ export default function EarnPage() {
 
   // ── Load session ──
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) { router.replace('/lock'); return }
 
     const signerSecret =
-      sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret')
-    const signerPublic = localStorage.getItem('veil_signer_public_key')
+      walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret')
+    const signerPublic = walletLocal.getItem('veil_signer_public_key')
 
     if (!signerSecret && !signerPublic) {
       setErrorMsg('Signing key not found. Return to dashboard and set up a fee-payer first.')
@@ -85,7 +86,7 @@ export default function EarnPage() {
       await requirePasskey()
 
       const signerSecret =
-        sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret')
+        walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret')
       if (!signerSecret) throw new Error('Signing key not found. Please unlock wallet again.')
 
       const amountInStroops = BigInt(Math.round(parseFloat(depositAmount) * 1e7))
@@ -137,7 +138,7 @@ export default function EarnPage() {
       await requirePasskey()
 
       const signerSecret =
-        sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret')
+        walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret')
       if (!signerSecret) throw new Error('Signing key not found. Please unlock wallet again.')
 
       const bTokenAmount = BigInt(selectedPosition.bTokenBalance)

@@ -10,6 +10,7 @@ import {
   Keypair, TransactionBuilder, BASE_FEE, Asset, Operation,
   Contract, rpc as SorobanRpc, nativeToScVal, Horizon,
 } from '@stellar/stellar-sdk'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 const Server = Horizon.Server
 import { VeilMark } from '@/components/ui/VeilMark'
 import { ContactPicker } from '@/components/ContactPicker'
@@ -61,16 +62,16 @@ export default function SendPage() {
   const [selectedAsset, setSelectedAsset] = useState<WalletAsset | null>(null)
 
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) { router.replace('/lock'); return }
 
     if (typeof (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector !== 'undefined' || !!navigator.mediaDevices?.getUserMedia) {
       setHasCamera(true)
     }
 
-    const signerPublicKey = sessionStorage.getItem('veil_signer_secret')
-      ? Keypair.fromSecret(sessionStorage.getItem('veil_signer_secret')!).publicKey()
-      : localStorage.getItem('veil_signer_public_key') || null
+    const signerPublicKey = walletSession.getItem('veil_signer_secret')
+      ? Keypair.fromSecret(walletSession.getItem('veil_signer_secret')!).publicKey()
+      : walletLocal.getItem('veil_signer_public_key') || null
     if (!signerPublicKey || !signerPublicKey.startsWith('G')) {
       const xlm: WalletAsset = { code: 'XLM', issuer: null, contractId: getNativeAssetContractId(), balance: '0' }
       setAssets([xlm])
@@ -169,8 +170,8 @@ export default function SendPage() {
     setStep('signing')
     setErrorMsg(null)
     try {
-      const signerSecret = sessionStorage.getItem('veil_signer_secret')
-        || localStorage.getItem('veil_signer_secret')
+      const signerSecret = walletSession.getItem('veil_signer_secret')
+        || walletLocal.getItem('veil_signer_secret')
       if (!signerSecret) {
         setErrorMsg('Signing key not found. Return to dashboard and tap "Fund wallet" to set up a fee-payer.')
         setStep('error')
@@ -178,7 +179,7 @@ export default function SendPage() {
       }
       const feePayerKp = Keypair.fromSecret(signerSecret)
 
-      const keyId = localStorage.getItem('invisible_wallet_key_id')
+      const keyId = walletLocal.getItem('invisible_wallet_key_id')
       if (!keyId) throw new Error('No passkey found. Please register the wallet first.')
       if (keyId !== 'recovery') {
         const normalized = keyId.replace(/-/g, '+').replace(/_/g, '/')

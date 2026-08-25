@@ -9,6 +9,7 @@ import { useInvisibleWallet } from '@veil/sdk'
 import { ensureFeePayer } from '@/lib/feePayer'
 import { buildFriendbotUrl, getNetwork, walletConfig } from '@/lib/network'
 import { trackWalletCreated } from '@/lib/supabase'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const network = getNetwork()
 const HorizonServer = Horizon.Server
@@ -24,7 +25,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     // If a wallet already exists, go straight to the lock/unlock screen
-    const existingWallet = localStorage.getItem('invisible_wallet_address')
+    const existingWallet = walletLocal.getItem('invisible_wallet_address')
     if (existingWallet) {
       router.replace('/lock')
       return
@@ -48,8 +49,8 @@ export default function OnboardingPage() {
     let signerKeypair: Keypair | null = null
     try {
       const hasStoredPasskey =
-        !!localStorage.getItem('invisible_wallet_key_id')
-        && !!localStorage.getItem('invisible_wallet_public_key')
+        !!walletLocal.getItem('invisible_wallet_key_id')
+        && !!walletLocal.getItem('invisible_wallet_public_key')
 
       if (!hasStoredPasskey) {
         setStep('registering')
@@ -60,7 +61,7 @@ export default function OnboardingPage() {
       setStep('deploying')
       // Derive fee-payer deterministically from the passkey credential ID.
       // On cache clear the same passkey → same credential ID → same keypair.
-      const credentialId = localStorage.getItem('invisible_wallet_key_id')
+      const credentialId = walletLocal.getItem('invisible_wallet_key_id')
       if (!credentialId) throw new Error('Passkey credential not found after registration')
       // Establish the fee-payer for this new wallet. Fresh wallets use the
       // passkey-bound PRF derivation (ADR 0003); authenticators without PRF fall
@@ -73,7 +74,7 @@ export default function OnboardingPage() {
 
       // The public key is not secret — keep it in localStorage for display and
       // funding retries regardless of derivation mode.
-      localStorage.setItem('veil_signer_public_key', signerKeypair.publicKey())
+      walletLocal.setItem('veil_signer_public_key', signerKeypair.publicKey())
 
       const friendbotUrl = buildFriendbotUrl(signerKeypair.publicKey())
       if (friendbotUrl) {
@@ -96,7 +97,7 @@ export default function OnboardingPage() {
 
       // Persist minimal session to sessionStorage for the dashboard. The
       // fee-payer secret is already in sessionStorage (ensureFeePayer set it).
-      sessionStorage.setItem('invisible_wallet_address', deployed.walletAddress)
+      walletSession.setItem('invisible_wallet_address', deployed.walletAddress)
       setAddress(deployed.walletAddress)
       setStep('done')
       success = true

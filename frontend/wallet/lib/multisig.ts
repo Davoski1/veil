@@ -14,6 +14,7 @@ import {
   Operation
 } from '@stellar/stellar-sdk';
 import { getNetwork } from './network';
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 const network = getNetwork();
 const RPC_URL = network.rpcUrl;
@@ -41,7 +42,7 @@ export async function getOrFundFeePayer(explicitSecret?: string): Promise<Keypai
     return Keypair.fromSecret(explicitSecret);
   }
   const stored = typeof window !== 'undefined'
-    ? (sessionStorage.getItem('veil_signer_secret') || localStorage.getItem('veil_signer_secret'))
+    ? (walletSession.getItem('veil_signer_secret') || walletLocal.getItem('veil_signer_secret'))
     : null;
   
   if (stored) {

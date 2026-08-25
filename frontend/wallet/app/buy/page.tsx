@@ -11,6 +11,7 @@ import {
   isSep24Complete,
   type Sep24TransactionStatus,
 } from '@/lib/sep24'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,16 +80,16 @@ export default function BuyPage() {
   const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('invisible_wallet_address')
+    const stored = walletSession.getItem('invisible_wallet_address')
     if (!stored) { router.replace('/lock'); return }
 
-    const secret = sessionStorage.getItem('veil_signer_secret')
-      || localStorage.getItem('veil_signer_secret')
+    const secret = walletSession.getItem('veil_signer_secret')
+      || walletLocal.getItem('veil_signer_secret')
     if (secret) {
       try { setFeePayerAddress(Keypair.fromSecret(secret).publicKey()) } catch { /* skip */ }
       return
     }
-    const pub = localStorage.getItem('veil_signer_public_key')
+    const pub = walletLocal.getItem('veil_signer_public_key')
     if (pub) setFeePayerAddress(pub)
   }, [router])
 

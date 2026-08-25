@@ -18,6 +18,7 @@ import {
   BASE_FEE,
   Operation,
 } from '@stellar/stellar-sdk'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
 
 async function getWalletNonce(
   rpc: SorobanRpc.Server,
@@ -134,8 +135,8 @@ async function syncSessionsFromClient(client: IWeb3Wallet): Promise<void> {
 
 function getFeePayerKeypair(): Keypair {
   const signerSecret =
-    sessionStorage.getItem('veil_signer_secret')
-    || localStorage.getItem('veil_signer_secret')
+    walletSession.getItem('veil_signer_secret')
+    || walletLocal.getItem('veil_signer_secret')
   if (!signerSecret) {
     throw new Error('No fee-payer signer secret found in storage.')
   }
@@ -143,8 +144,8 @@ function getFeePayerKeypair(): Keypair {
 }
 
 async function signAuthEntry(payload: Uint8Array): Promise<WebAuthnSignature | null> {
-  const keyId = localStorage.getItem('invisible_wallet_key_id')
-  const publicKeyHex = localStorage.getItem('invisible_wallet_public_key')
+  const keyId = walletLocal.getItem('invisible_wallet_key_id')
+  const publicKeyHex = walletLocal.getItem('invisible_wallet_public_key')
   if (!keyId || !publicKeyHex) {
     throw new Error('No passkey found. Please register the wallet first.')
   }
