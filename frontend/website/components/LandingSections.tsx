@@ -30,7 +30,7 @@ export function Capabilities({ t }: { t: Messages }) {
     <section id="capabilities" className="bg-near-black section-pad">
       <div className="max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10">
         <SectionLabel>{copy.label}</SectionLabel>
-        <h2 className="font-lora italic font-semibold text-off-white text-display-sm mt-3 max-w-[620px]">
+        <h2 className="font-lora italic font-normal text-off-white text-display-sm mt-3 max-w-[620px]">
           {copy.title}
         </h2>
 
@@ -70,7 +70,7 @@ export function Trust({ t }: { t: Messages }) {
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
           {copy.label}
         </span>
-        <h2 className="font-lora italic font-semibold text-near-black text-display-sm mt-3 max-w-[640px]">
+        <h2 className="font-lora italic font-normal text-near-black text-display-sm mt-3 max-w-[640px]">
           {copy.title}
         </h2>
 
@@ -101,7 +101,7 @@ export function Faq({ t }: { t: Messages }) {
     <section id="faq" className="bg-near-black section-pad">
       <div className="max-w-[880px] mx-auto px-5 sm:px-6 lg:px-10">
         <SectionLabel>{copy.label}</SectionLabel>
-        <h2 className="font-lora italic font-semibold text-off-white text-display-sm mt-3">
+        <h2 className="font-lora italic font-normal text-off-white text-display-sm mt-3">
           {copy.title}
         </h2>
 

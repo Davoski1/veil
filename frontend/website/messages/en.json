@@ -114,9 +114,9 @@
     "poweredBy": "Powered by Stellar Soroban · WebAuthn / FIDO2"
   },
   "heroNew": {
-    "line1": "Spend anywhere.",
-    "line2": "Earn dollars.",
-    "line3": "No keys.",
+    "line1": "The agentic",
+    "line2": "passkey wallet",
+    "line3": "for Stellar.",
     "body": "Hold dollars, spend in naira. The balance earns yield underneath, and nothing moves without your passkey — face, fingerprint, your device, your call.",
     "cta1": "Create wallet",
     "cta2": "Read the docs",

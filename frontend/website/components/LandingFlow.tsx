@@ -42,7 +42,7 @@ function BalanceCard() {
       <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-near-black/45">
         Total balance
       </div>
-      <div className="font-lora italic font-semibold text-near-black text-[32px] sm:text-[40px] leading-none mt-2">
+      <div className="font-lora italic font-normal text-near-black text-[32px] sm:text-[40px] leading-none mt-2">
         ₦642,384<span className="text-[24px] text-near-black/45">.10</span>
       </div>
       <div className="inline-flex items-center mt-3 rounded-pill bg-teal/12 border border-teal/25 px-3 py-[5px]">
@@ -138,7 +138,7 @@ export function FlowShowcase({ t }: { t: Messages }) {
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-near-black/50">
           {copy.label}
         </span>
-        <h2 className="font-lora italic font-semibold text-near-black text-display mt-4 max-lg:text-display-sm">
+        <h2 className="font-lora italic font-normal text-near-black text-display mt-4 max-lg:text-display-sm">
           {copy.title1}
           <br />
           {copy.title2}
@@ -167,7 +167,7 @@ export function FlowShowcase({ t }: { t: Messages }) {
                 />
               )}
               <C />
-              <h3 className="font-lora italic font-semibold text-near-black text-[24px] mt-7">
+              <h3 className="font-lora italic font-normal text-near-black text-[24px] mt-7">
                 {copy.cards[i].title}
               </h3>
               <p className="font-inter text-[15px] leading-[1.75] text-near-black/60 mt-3">
