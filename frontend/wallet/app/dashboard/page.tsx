@@ -729,8 +729,8 @@ function DashboardPageContent() {
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem 1.25rem',
-            background: 'rgba(253,218,36,0.07)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            background: 'var(--surface-md)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '12px',
           }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--off-white)', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -760,8 +760,8 @@ function DashboardPageContent() {
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem 1.25rem',
-            background: 'rgba(253,218,36,0.07)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            background: 'var(--surface-md)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '12px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -952,7 +952,7 @@ function DashboardPageContent() {
             transform: 'translateX(-50%)',
             zIndex: 70,
             background: 'rgba(32, 34, 38, 0.95)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '999px',
             padding: '0.625rem 0.95rem',
             color: 'var(--off-white)',
