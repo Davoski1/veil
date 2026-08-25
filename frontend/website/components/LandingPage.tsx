@@ -1,5 +1,8 @@
 'use client'
 
+import { FlowShowcase } from './LandingFlow'
+import { Capabilities, Faq, Trust } from './LandingSections'
+import { LandingHero } from './LandingHero'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -580,11 +583,18 @@ export default function LandingPage({ locale }: { locale: Locale }) {
       <HtmlLang locale={locale} />
       <Navbar t={t} locale={locale} />
       <main>
-        <Hero t={t} />
+        <LandingHero />
         <HowItWorks t={t} />
         <WhyVeil t={t} />
-        <DevQuickstart t={t} />
+        <FlowShowcase />
+        <Capabilities />
+        <Trust />
+        {/* Consumer story first: the product vision is a fiat-facing neobank,
+            so the developer quickstart sits below the ecosystem proof rather
+            than fourth from the top. */}
         <BuiltOnStellar t={t} />
+        <DevQuickstart t={t} />
+        <Faq />
         <EarlyAccess t={t} />
       </main>
       <Footer t={t} locale={locale} />
