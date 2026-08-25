@@ -60,7 +60,7 @@ function SendScreen() {
         <span className="w-[30px] h-[30px] rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-off-white/70 text-[13px]">
           &lsaquo;
         </span>
-        <span className="font-lora italic font-semibold text-[22px]">Send</span>
+        <span className="font-lora italic font-normal text-[22px]">Send</span>
       </div>
 
       <div className={`${LABEL} mt-5`}>Asset</div>
@@ -79,7 +79,7 @@ function SendScreen() {
 
       <div className={`${LABEL} mt-4`}>Amount</div>
       <div className={`${FIELD} px-[13px] pt-[18px] pb-3 mt-[7px] flex flex-col items-center`}>
-        <span className="font-lora italic font-semibold text-[38px] leading-none">₦25,000</span>
+        <span className="font-lora italic font-normal text-[38px] leading-none">₦25,000</span>
         <span className="font-mono text-[11px] text-off-white/50 mt-[7px]">≈ 16.08 USDC</span>
         <span className="text-[10px] text-off-white/45 mt-[11px]">Balance ₦642,384</span>
         <span className="flex gap-[5px] flex-wrap justify-center mt-2">
@@ -156,7 +156,7 @@ function HomeScreen() {
           </span>
           <Mark size={21} color="#0F0F0F" />
         </div>
-        <div className="relative font-lora italic font-semibold text-[35px] leading-[1.1] mt-[11px]">
+        <div className="relative font-lora italic font-normal text-[35px] leading-[1.1] mt-[11px]">
           ₦642,384<span className="text-[17px] text-near-black/45">.10</span>
         </div>
         <div className="relative flex justify-between items-center mt-[13px] gap-2">
@@ -257,7 +257,7 @@ function ConfirmScreen() {
   return (
     <>
       <div className={LABEL}>Confirm transfer</div>
-      <div className="font-lora italic font-semibold text-[42px] mt-[11px]">₦25,000</div>
+      <div className="font-lora italic font-normal text-[42px] mt-[11px]">₦25,000</div>
       <div className="font-mono text-[12px] text-off-white/50 mt-[5px]">To alice*veil.xyz</div>
 
       <div className="w-full mt-[30px] flex flex-col">
@@ -306,7 +306,7 @@ export function LandingHero({ t }: { t: Messages }) {
       />
 
       <div className="relative flex flex-col items-center text-center px-5 sm:px-8 lg:px-14 pt-28 sm:pt-32 lg:pt-36">
-        <h1 className="font-lora italic font-semibold text-off-white mt-0 text-[clamp(2.3rem,6.4vw,5.4rem)] leading-[1.06] tracking-[-0.02em]">
+        <h1 className="font-lora italic font-normal text-off-white mt-0 text-[clamp(2.3rem,6.4vw,5.4rem)] leading-[1.06] tracking-[-0.02em]">
           {copy.line1}
           <br />
           {copy.line2}
@@ -337,7 +337,7 @@ export function LandingHero({ t }: { t: Messages }) {
           {copy.metrics.map((m) => (
             <div key={m.label} className="flex flex-col gap-[6px]">
               <dt className="sr-only">{m.label}</dt>
-              <dd className="font-lora italic font-semibold text-[28px] sm:text-[32px] leading-none text-off-white">
+              <dd className="font-lora italic font-normal text-[28px] sm:text-[32px] leading-none text-off-white">
                 {m.value}
               </dd>
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-off-white/45 whitespace-nowrap">
