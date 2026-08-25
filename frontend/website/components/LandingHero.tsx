@@ -180,14 +180,14 @@ export function LandingHero({ t }: { t: Messages }) {
         }}
       />
 
-      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 py-14 sm:py-20 lg:py-28 flex items-center gap-10 lg:gap-16 max-lg:flex-col max-lg:text-left">
+      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 lg:px-10 pt-28 pb-14 sm:pt-32 sm:pb-20 lg:pt-36 lg:pb-28 flex items-center gap-10 lg:gap-16 max-lg:flex-col max-lg:text-left">
         <div className="flex-1 min-w-0 max-w-[560px]">
-          <span className="flex items-center gap-[11px]">
+          <span className="hidden lg:flex items-center gap-[11px]">
             <Mark size={24} />
             <span className="font-anton text-gold text-[20px] tracking-[0.08em]">VEIL</span>
           </span>
 
-          <h1 className="font-anton uppercase text-off-white mt-9 text-[clamp(2.6rem,5.4vw,4.1rem)] leading-[1.02] tracking-[-0.01em]">
+          <h1 className="font-anton uppercase text-off-white mt-0 lg:mt-9 text-[clamp(2.6rem,5.4vw,4.1rem)] leading-[1.02] tracking-[-0.01em]">
             {copy.line1}
             <br />
             {copy.line2}
