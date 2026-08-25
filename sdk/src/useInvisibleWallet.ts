@@ -137,6 +137,29 @@ export type RegisterOptions = {
 };
 
 /**
+ * Options for the login() method.
+ *
+ * On a device with no prior local state, pass a credentialId (base64url) so
+ * the SDK can derive the deterministic wallet address from the passkey.
+ * Alternatively, pass a walletAddress directly to skip derivation and only
+ * verify on-chain existence.
+ */
+export type LoginOptions = {
+    /**
+     * Base64url-encoded credential ID of the passkey to authenticate with.
+     * When provided (and no local address is stored), the SDK triggers a
+     * WebAuthn assertion, extracts the P-256 public key, derives the
+     * deterministic wallet address, and verifies it exists on-chain.
+     */
+    credentialId?: string;
+    /**
+     * Known wallet contract address ("C..."). When provided, skips
+     * credential-based derivation and verifies on-chain existence directly.
+     */
+    walletAddress?: string;
+};
+
+/**
  * A roaming (cross-platform) credential, persisted independently of platform
  * passkeys so it can be identified and used as a portable signer across devices.
  */
@@ -284,10 +307,19 @@ export type InvisibleWallet = {
      */
     getPortableSigner: () => Promise<PortableSigner | null>;
     /**
-     * Restore an existing wallet session from storage.
-     * Verifies that the wallet contract actually exists on-chain before setting the address.
+     * Restore an existing wallet session, or discover one from a passkey.
+     *
+     * On a device with stored state the previous behaviour is preserved: the
+     * address is read from local storage and verified on-chain.
+     *
+     * When no address is stored (fresh device / cleared data), callers can
+     * pass `{ credentialId }` so the SDK derives the deterministic wallet
+     * address from the passkey public key, or `{ walletAddress }` to verify
+     * a known address directly.
+     *
+     * @param options  Optional credential ID or wallet address for cross-device login.
      */
-    login: () => Promise<{ walletAddress: string } | null>;
+    login: (options?: LoginOptions) => Promise<{ walletAddress: string } | null>;
     /**
      * Read the wallet contract's current nonce without submitting a transaction.
      * Uses `server.simulateTransaction` to invoke `get_nonce` in read-only mode.
@@ -531,6 +563,8 @@ async function readPortableSigner(store: StorageAdapter): Promise<PortableSigner
         return null;
     }
 }
+
+
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -778,27 +812,65 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
 
     // ── login ─────────────────────────────────────────────────────────────────
 
-    const login = useCallback(async () => {
+    const login = useCallback(async (options?: LoginOptions) => {
         setIsPending(true);
         setError(null);
         try {
-            const stored = await store.getItem('invisible_wallet_address');
-            if (!stored) {
-                setError('No wallet found. Please register first.');
+            const server = new SorobanRpc.Server(rpcUrl);
+
+            // ── Path 1: local storage has an address (original behaviour) ──────
+            let candidateAddress = await store.getItem('invisible_wallet_address');
+
+            // ── Path 2: caller supplied a known wallet address ────────────────
+            if (!candidateAddress && options?.walletAddress) {
+                candidateAddress = options.walletAddress;
+            }
+
+            // ── Path 3: derive address from a passkey credential ──────────────
+            if (!candidateAddress && options?.credentialId) {
+                const resolvedRpId = rpId ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+                const portable = await readPortableSigner(store);
+
+                // Trigger a WebAuthn assertion so the user authenticates with
+                // their passkey.  The provider now exposes publicKeyBytes when
+                // the authenticator supports SPKI export on assertion responses.
+                const assertResult = await webAuthnProvider.authenticate({
+                    challenge: crypto.getRandomValues(new Uint8Array(32)),
+                    credentialId: options.credentialId,
+                    rpId: resolvedRpId,
+                    transports: portable?.transports,
+                });
+
+                if (assertResult.publicKeyBytes && assertResult.publicKeyBytes.length === 65) {
+                    candidateAddress = computeWalletAddress(
+                        factoryAddress,
+                        assertResult.publicKeyBytes,
+                        networkPassphrase
+                    );
+                }
+            }
+
+            // ── Verify on-chain ──────────────────────────────────────────────
+            if (!candidateAddress) {
+                setError(
+                    'No wallet found. Please register first, or pass a ' +
+                    'credentialId / walletAddress to login().'
+                );
                 return null;
             }
 
-            const server = new SorobanRpc.Server(rpcUrl);
-
             try {
                 await server.getContractData(
-                    stored,
+                    candidateAddress,
                     xdr.ScVal.scvLedgerKeyContractInstance(),
                     SorobanRpc.Durability.Persistent
                 );
-                setAddress(stored);
+
+                // Persist for subsequent calls on this device.
+                await store.setItem('invisible_wallet_address', candidateAddress);
+                setAddress(candidateAddress);
                 setIsDeployed(true);
-                return { walletAddress: stored };
+                return { walletAddress: candidateAddress };
             } catch (e: unknown) {
                 const msg = e instanceof Error ? e.message : String(e);
                 if (msg.toLowerCase().includes('not found')) {
@@ -816,7 +888,7 @@ export function useInvisibleWallet(config: WalletConfig): InvisibleWallet {
         } finally {
             setIsPending(false);
         }
-    }, [rpcUrl, store]);
+    }, [rpcUrl, store, factoryAddress, networkPassphrase, rpId]);
 
     // ── signAuthEntry ─────────────────────────────────────────────────────────
 

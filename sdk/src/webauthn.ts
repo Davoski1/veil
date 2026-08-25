@@ -59,6 +59,14 @@ export interface WebAuthnAssertResult {
     clientDataJSON: Uint8Array;
     /** Raw P-256 ECDSA signature: r ‖ s (64 bytes, low-S normalised). */
     signature: Uint8Array;
+    /**
+     * Uncompressed P-256 public key (65 bytes: 0x04 ‖ x ‖ y) when the
+     * authenticator exposes it via `getPublicKey()` on the assertion response.
+     * Platform passkeys (Touch ID, Windows Hello) generally do not expose the
+     * key; cross-platform roaming keys (YubiKey, etc.) may. When null, the
+     * caller cannot derive the wallet address from the assertion alone.
+     */
+    publicKeyBytes: Uint8Array | null;
 }
 
 export interface WebAuthnProvider {
@@ -169,10 +177,34 @@ export const webAuthnProvider: WebAuthnProvider = {
         if (!assertion) throw new Error('Authentication was cancelled');
 
         const response = assertion.response as AuthenticatorAssertionResponse;
+        // Attempt to extract the P-256 public key from the assertion response.
+        // Some authenticators expose it via getPublicKey() (SPKI export);
+        // others do not.  When available, the SDK can derive the deterministic
+        // wallet address from the key alone — critical for cross-device login.
+        let publicKeyBytes: Uint8Array | null = null;
+        if (typeof response.getPublicKey === 'function') {
+            try {
+                const spkiBuffer = response.getPublicKey();
+                if (spkiBuffer) {
+                    const cryptoKey = await crypto.subtle.importKey(
+                        'spki', spkiBuffer,
+                        { name: 'ECDSA', namedCurve: 'P-256' },
+                        true, ['verify']
+                    );
+                    const rawBuffer = await crypto.subtle.exportKey('raw', cryptoKey);
+                    publicKeyBytes = new Uint8Array(rawBuffer);
+                }
+            } catch {
+                // Some platforms do not support SPKI export on assertion
+                // responses — this is expected, not an error.
+            }
+        }
+
         return {
             authData:       new Uint8Array(response.authenticatorData),
             clientDataJSON: new Uint8Array(response.clientDataJSON),
             signature:      derToRawSignature(response.signature),
+            publicKeyBytes,
         };
     },
 };
