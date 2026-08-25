@@ -306,7 +306,7 @@ export function LandingHero({ t }: { t: Messages }) {
       />
 
       <div className="relative flex flex-col items-center text-center px-5 sm:px-8 lg:px-14 pt-28 sm:pt-32 lg:pt-36">
-        <h1 className="font-anton uppercase text-off-white mt-0 text-[clamp(2.4rem,8vw,5.2rem)] leading-[1.03] tracking-[-0.01em]">
+        <h1 className="font-lora italic font-semibold text-off-white mt-0 text-[clamp(2.3rem,6.4vw,5.4rem)] leading-[1.06] tracking-[-0.02em]">
           {copy.line1}
           <br />
           {copy.line2}
