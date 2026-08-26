@@ -368,7 +368,7 @@ dashboards for the two prefunded wallets.
 ## Open items
 
 **Needs a human with a login (cannot be desk-researched):**
-- **eBills "reseller role"** — transactional endpoints require it; cost/approval is behind the login wall. Thirty minutes of clicking settles it. *Blocks the first adapter.*
+- ~~**eBills "reseller role"**~~ — **SETTLED 2026-08-26: the role is gated on funding the eBills wallet.** Probed directly: `/jwt-auth/v1/token` authenticates fine on an unfunded account, `GET /api/v2/balance` returns `403 rest_forbidden`. So the role is not a support request or a form — it is a deposit. **This is now a money blocker, not a paperwork one**, and the airtime build is parked until there is float to fund. Probe kept at `scripts/ebills-probe.mjs`; re-run it after funding to confirm.
 - **eBills duplicate semantics** — does replaying a `request_id` after the 3-minute `duplicate_order` window create a **second vend**? Ask support before any retry logic ships.
 - **eBills margins on a funded account** — confirm the live 1%-median finding before any revenue model depends on it.
 - **eBills top-up mechanism** — undocumented publicly.
