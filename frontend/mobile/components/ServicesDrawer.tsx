@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -65,15 +65,47 @@ export function ServicesDrawer({
   // Live finger offset, added to the panel's resting position.
   const drag = useRef(new Animated.Value(0)).current;
 
+  // The Modal's own mount is driven from here, not from `visible` directly.
+  // Binding it straight to the prop tears the panel off the screen on the same
+  // frame the close begins, so the exit animation is never seen — and because
+  // a native-driven value does not sync back to JS when its view unmounts
+  // mid-animation, `anim` would then be stranded at 1 and the next open would
+  // animate from 1 to 1, i.e. not at all.
+  const [mounted, setMounted] = useState(visible);
+
   useEffect(() => {
+    if (visible) {
+      // Never trust the previous run to have left these at rest.
+      anim.setValue(0);
+      drag.setValue(0);
+      setMounted(true);
+      return;
+    }
+    // Play the exit first, unmount only once it has finished.
     Animated.timing(anim, {
-      toValue: visible ? 1 : 0,
-      duration: visible ? OPEN_MS : CLOSE_MS,
-      easing: visible ? EASE_OUT : EASE_IN,
+      toValue: 0,
+      duration: CLOSE_MS,
+      easing: EASE_IN,
       useNativeDriver: true,
-    }).start();
-    if (visible) drag.setValue(0);
+    }).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
   }, [visible, anim, drag]);
+
+  // Entrance runs a frame after the Modal has actually put the panel on screen,
+  // so the first frames of the curve are not spent on a view that is not there.
+  useEffect(() => {
+    if (!mounted || !visible) return;
+    const frame = requestAnimationFrame(() => {
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: OPEN_MS,
+        easing: EASE_OUT,
+        useNativeDriver: true,
+      }).start();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mounted, visible, anim]);
 
   const pan = useRef(
     PanResponder.create({
@@ -93,7 +125,12 @@ export function ServicesDrawer({
             easing: EASE_IN,
             useNativeDriver: true,
           }).start(() => {
+            // Hand the panel over to `anim` at exactly the offset the drag left
+            // it at — anim 0 and drag 0 put it in the same place as anim 1 and
+            // drag -PANEL_WIDTH — so the handover costs no visible frame and
+            // the close effect has nothing left to animate.
             drag.setValue(0);
+            anim.setValue(0);
             onClose();
           });
         } else {
@@ -131,7 +168,7 @@ export function ServicesDrawer({
 
   return (
     <Modal
-      visible={visible}
+      visible={mounted}
       transparent
       animationType="none"
       onRequestClose={onClose}
