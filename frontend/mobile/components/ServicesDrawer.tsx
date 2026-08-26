@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Dimensions,
+  Easing,
   Modal,
+  PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +20,21 @@ import { VeilLogo } from './VeilLogo';
 import { BILL_SERVICES, type BillService } from './PayForGrid';
 
 const PANEL_WIDTH = Math.min(320, Dimensions.get('window').width * 0.84);
+
+/**
+ * Decelerating curve — fast off the mark, long settle. Reads as the panel being
+ * thrown rather than driven, which is what makes a drawer feel physical.
+ */
+const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+/** Closing is the reverse: unhurried start, quick exit. Shorter, so it never drags. */
+const EASE_IN = Easing.bezier(0.4, 0, 1, 1);
+
+const OPEN_MS = 380;
+const CLOSE_MS = 230;
+
+/** Past either threshold the drawer commits to closing instead of springing back. */
+const DRAG_CLOSE_PX = 64;
+const FLING_CLOSE_VX = -0.5;
 
 /**
  * The services drawer, opened from the drape mark in the dashboard header.
@@ -40,26 +58,76 @@ export function ServicesDrawer({
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const slide = useRef(new Animated.Value(-PANEL_WIDTH)).current;
-  const fade = useRef(new Animated.Value(0)).current;
+  // One driver for the whole panel: 0 closed, 1 open. Rows read off the same
+  // value at staggered offsets, so the reveal cannot desynchronise from the
+  // slide however the animation is interrupted.
+  const anim = useRef(new Animated.Value(0)).current;
+  // Live finger offset, added to the panel's resting position.
+  const drag = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slide, {
-        toValue: visible ? 0 : -PANEL_WIDTH,
-        duration: visible ? 240 : 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fade, {
-        toValue: visible ? 1 : 0,
-        duration: visible ? 240 : 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [visible, slide, fade]);
+    Animated.timing(anim, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? OPEN_MS : CLOSE_MS,
+      easing: visible ? EASE_OUT : EASE_IN,
+      useNativeDriver: true,
+    }).start();
+    if (visible) drag.setValue(0);
+  }, [visible, anim, drag]);
+
+  const pan = useRef(
+    PanResponder.create({
+      // Claim the gesture only once it is clearly a leftward drag, so vertical
+      // scrolling inside the list still belongs to the ScrollView.
+      onMoveShouldSetPanResponder: (_e, g) =>
+        g.dx < -6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+      // Rightward pull is ignored — the panel is already at its open stop.
+      onPanResponderMove: (_e, g) => drag.setValue(Math.min(0, g.dx)),
+      onPanResponderRelease: (_e, g) => {
+        if (g.dx < -DRAG_CLOSE_PX || g.vx < FLING_CLOSE_VX) {
+          // Carry the fling through rather than snapping: animate the remaining
+          // distance, then let the parent unmount us.
+          Animated.timing(drag, {
+            toValue: -PANEL_WIDTH,
+            duration: 170,
+            easing: EASE_IN,
+            useNativeDriver: true,
+          }).start(() => {
+            drag.setValue(0);
+            onClose();
+          });
+        } else {
+          Animated.spring(drag, {
+            toValue: 0,
+            damping: 20,
+            stiffness: 220,
+            mass: 0.7,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    }),
+  ).current;
+
+  const panelX = Animated.add(
+    anim.interpolate({ inputRange: [0, 1], outputRange: [-PANEL_WIDTH, 0] }),
+    drag,
+  );
+
+  // The backdrop tracks the drag too, so pulling the panel back also lifts the
+  // dimming — the two never look detached from each other.
+  const backdropOpacity = Animated.multiply(
+    anim,
+    drag.interpolate({
+      inputRange: [-PANEL_WIDTH, 0],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    }),
+  );
 
   const live = services.filter((s) => s.status === 'live');
   const soon = services.filter((s) => s.status !== 'live');
+  const ordered = [...live, ...soon];
 
   return (
     <Modal
@@ -70,7 +138,7 @@ export function ServicesDrawer({
       statusBarTranslucent
     >
       <View style={styles.root}>
-        <Animated.View style={[styles.backdrop, { opacity: fade }]}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={onClose}
@@ -79,7 +147,10 @@ export function ServicesDrawer({
           />
         </Animated.View>
 
-        <Animated.View style={[styles.panel, { transform: [{ translateX: slide }] }]}>
+        <Animated.View
+          {...pan.panHandlers}
+          style={[styles.panel, { transform: [{ translateX: panelX }] }]}
+        >
           <View style={styles.header}>
             <View style={styles.brand}>
               <VeilLogo size={22} color={colors.accent} />
@@ -99,27 +170,73 @@ export function ServicesDrawer({
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             {live.length > 0 ? (
               <>
-                <Text style={styles.sectionLabel}>Available</Text>
+                <Stagger anim={anim} index={0}>
+                  <Text style={styles.sectionLabel}>Available</Text>
+                </Stagger>
                 {live.map((s) => (
-                  <Row key={s.id} service={s} colors={colors} styles={styles} />
+                  <Stagger key={s.id} anim={anim} index={ordered.indexOf(s) + 1}>
+                    <Row service={s} colors={colors} styles={styles} />
+                  </Stagger>
                 ))}
               </>
             ) : null}
 
-            <Text style={[styles.sectionLabel, live.length > 0 && styles.sectionLabelSpaced]}>
-              Coming soon
-            </Text>
+            <Stagger anim={anim} index={live.length}>
+              <Text style={[styles.sectionLabel, live.length > 0 && styles.sectionLabelSpaced]}>
+                Coming soon
+              </Text>
+            </Stagger>
             {soon.map((s) => (
-              <Row key={s.id} service={s} colors={colors} styles={styles} soon />
+              <Stagger key={s.id} anim={anim} index={ordered.indexOf(s) + 1}>
+                <Row service={s} colors={colors} styles={styles} soon />
+              </Stagger>
             ))}
 
-            <Text style={styles.footnote}>
-              These arrive as each provider goes live. Nothing here is chargeable yet.
-            </Text>
+            <Stagger anim={anim} index={ordered.length + 1}>
+              <Text style={styles.footnote}>
+                These arrive as each provider goes live. Nothing here is chargeable yet.
+              </Text>
+            </Stagger>
           </ScrollView>
+
+          {/* Grab rail — the only hint that the panel can be pushed away. */}
+          <View style={styles.grabRail} pointerEvents="none" />
         </Animated.View>
       </View>
     </Modal>
+  );
+}
+
+/**
+ * Reveals its child slightly after the panel starts moving, offset by index so
+ * the list cascades in behind the slide. Driven off the panel's own value
+ * rather than a timer, so an interrupted open never strands a row half-faded.
+ */
+function Stagger({
+  anim,
+  index,
+  children,
+}: {
+  anim: Animated.Value;
+  index: number;
+  children: React.ReactNode;
+}) {
+  // Cap the ramp so even a long list finishes with the slide rather than after it.
+  const start = Math.min(0.18 + index * 0.055, 0.82);
+  const range = { inputRange: [start, Math.min(start + 0.3, 1)], extrapolate: 'clamp' as const };
+
+  return (
+    <Animated.View
+      style={{
+        opacity: anim.interpolate({ ...range, outputRange: [0, 1] }),
+        transform: [
+          { translateX: anim.interpolate({ ...range, outputRange: [-18, 0] }) },
+          { scale: anim.interpolate({ ...range, outputRange: [0.97, 1] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
   );
 }
 
@@ -165,6 +282,28 @@ const createStyles = (colors: ThemeColors) =>
       borderRightWidth: 1,
       borderRightColor: colors.border,
       paddingTop: 56,
+      // Depth: without it the panel reads as a flat region of the same screen
+      // rather than a sheet lifted above it.
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOpacity: 0.45,
+          shadowRadius: 24,
+          shadowOffset: { width: 8, height: 0 },
+        },
+        android: { elevation: 24 },
+        default: {},
+      }),
+    },
+    grabRail: {
+      position: 'absolute',
+      right: 3,
+      top: '42%',
+      width: 3,
+      height: 46,
+      borderRadius: 999,
+      backgroundColor: colors.border,
+      opacity: 0.9,
     },
     header: {
       flexDirection: 'row',
