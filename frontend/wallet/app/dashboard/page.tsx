@@ -16,7 +16,7 @@ import { WalletConnectApprovalModal } from '@/components/WalletConnectApprovalMo
 import { DepositModal } from '@/components/DepositModal'
 import { TxDetailSheet, type TxRecord } from '@/components/TxDetailSheet'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
-import { ensureFeePayer } from '@/lib/feePayer'
+import { ensureFeePayer, isFeePayerPrfDowngrade, getFeePayerDiagnostics } from '@/lib/feePayer'
 import { fetchPrices } from '@/lib/fetchPrice'
 import { change24h, historyKey, isComparableTotal, readHistory, recordSnapshot, writeHistory } from '@/lib/balanceHistory'
 import { buildFriendbotUrl, getNativeAssetContractId, getNetwork, getNetworkName } from '@/lib/network'
@@ -135,6 +135,9 @@ function DashboardPageContent() {
   const [wraithOutCursor, setWraithOutCursor] = useState<string | null>(null)
   const [hasMorePages, setHasMorePages]       = useState(false)
   const [isLoadingMore, setIsLoadingMore]     = useState(false)
+  // PRF downgrade: surfaced as a dismissible banner (issue #629).
+  const [prfDowngradeDismissed, setPrfDowngradeDismissed] = useState(false)
+  const [showPrfDowngrade, setShowPrfDowngrade]           = useState(false)
 
   // Shoulder-surfing guard. Persisted, but read after mount so the server and
   // client render the same first paint.
@@ -216,7 +219,11 @@ function DashboardPageContent() {
     // Establish the fee-payer for this session (idempotent, fire-and-forget).
     // PRF wallets keep the seed in sessionStorage only — never copied to
     // localStorage — so the lock protects it at rest (ADR 0003, C3).
-    void ensureFeePayer()
+    void ensureFeePayer().then(() => {
+      // After the fee-payer is established, check whether a silent PRF→legacy
+      // downgrade occurred (issue #629). Show a banner if so.
+      setShowPrfDowngrade(isFeePayerPrfDowngrade(getFeePayerDiagnostics()))
+    })
   }, [router])
 
   const fetchData = useCallback(async () => {
@@ -752,6 +759,42 @@ function DashboardPageContent() {
             {fundingError && (
               <p style={{ color: 'var(--teal)', fontSize: '0.75rem', marginTop: '0.625rem' }}>{fundingError}</p>
             )}
+          </div>
+        )}
+
+        {/* ── PRF downgrade warning banner (issue #629) ── */}
+        {!loading && showPrfDowngrade && !prfDowngradeDismissed && (
+          <div style={{
+            marginBottom: '1.5rem',
+            padding: '1rem 1.25rem',
+            background: 'rgba(220,38,38,0.06)',
+            border: '1px solid rgba(220,38,38,0.3)',
+            borderRadius: '12px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--off-white)', fontWeight: 500, marginBottom: '0.375rem' }}>
+                Fee payer: PRF unavailable on this device
+              </p>
+              <button
+                id="dashboard-prf-downgrade-dismiss"
+                onClick={() => setPrfDowngradeDismissed(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', fontSize: '1rem', lineHeight: 1, padding: '0 0 0 0.5rem' }}
+                title="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.55)', marginBottom: '0.875rem', lineHeight: 1.5 }}>
+              This wallet requested a WebAuthn PRF result but the authenticator didn&apos;t provide one. It fell back to the legacy fee payer, which will look like a different wallet on a PRF-capable device. If this is unexpected, copy the diagnostics in Settings → Fee Payer and share them.
+            </p>
+            <button
+              id="dashboard-prf-downgrade-details"
+              className="btn-gold"
+              onClick={() => router.push('/settings/fee-payer')}
+              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem', color: 'var(--color-muted)' }}
+            >
+              View diagnostics
+            </button>
           </div>
         )}
 
