@@ -699,7 +699,7 @@ body {
 }
 .vw-feerow__label { color: var(--text-muted); }
 .vw-feerow__value {
-  font-family: 'Inconsolata', monospace;
+  font-family: var(--font-inconsolata), 'Inconsolata', monospace;
   font-variant-numeric: tabular-nums;
   color: var(--teal);
 }
@@ -1080,6 +1080,9 @@ body {
   .vw-assetlist button:hover { background: var(--surface-md); }
   .vw-roundbtn:hover { border-color: var(--gold); color: var(--gold); }
   .vw-amountchip:hover { border-color: rgba(253,218,36,0.35); color: var(--gold); }
+  .vw-recv-tile:hover { border-color: var(--gold); color: var(--gold); }
+  .vw-recv-tile--gold:hover { color: var(--near-black); }
+  .vw-contract-row:hover { border-color: var(--lilac); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1095,7 +1098,6 @@ body {
   .vw-send-stage .btn-gold:active,
   .vw-send-stage .btn-ghost:active { transform: none; }
 }
-
 
 /* ── Receive: primary spending QR + compact contract row ─────────────── */
 .vw-spendcard {
@@ -1134,7 +1136,7 @@ body {
   height: auto !important;
 }
 .vw-spendcard__addr {
-  font-family: 'Inconsolata', monospace;
+  font-family: var(--font-inconsolata), 'Inconsolata', monospace;
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
@@ -1166,7 +1168,6 @@ body {
   cursor: pointer;
   transition: transform 120ms var(--ease), border-color 120ms var(--ease), color 120ms var(--ease);
 }
-.vw-recv-tile:hover { border-color: var(--gold); color: var(--gold); }
 .vw-recv-tile:active { transform: scale(0.97); }
 .vw-recv-tile:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .vw-recv-tile svg { color: var(--gold); }
@@ -1190,7 +1191,6 @@ body {
   font-weight: 600;
 }
 .vw-recv-tile--gold svg { color: var(--near-black); }
-.vw-recv-tile--gold:hover { color: var(--near-black); }
 .vw-recv-tile--gold:active { transform: scale(0.97); }
 .vw-contract-row {
   display: flex;
@@ -1207,7 +1207,6 @@ body {
   cursor: pointer;
   transition: border-color 120ms var(--ease), transform 120ms var(--ease);
 }
-.vw-contract-row:hover { border-color: var(--lilac); }
 .vw-contract-row:active { transform: scale(0.97); }
 .vw-contract-row__badge {
   width: 34px;
@@ -1234,6 +1233,7 @@ body {
   border: 1px solid var(--border-dim);
   color: var(--text-muted);
 }
+
 @media (prefers-reduced-motion: reduce) {
   .vw-recv-swap { animation: none; }
   .vw-recv-tile:active,
