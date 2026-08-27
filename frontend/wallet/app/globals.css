@@ -699,7 +699,7 @@ body {
 }
 .vw-feerow__label { color: var(--text-muted); }
 .vw-feerow__value {
-  font-family: 'Inconsolata', monospace;
+  font-family: var(--font-inconsolata), 'Inconsolata', monospace;
   font-variant-numeric: tabular-nums;
   color: var(--teal);
 }
@@ -1080,6 +1080,9 @@ body {
   .vw-assetlist button:hover { background: var(--surface-md); }
   .vw-roundbtn:hover { border-color: var(--gold); color: var(--gold); }
   .vw-amountchip:hover { border-color: rgba(253,218,36,0.35); color: var(--gold); }
+  .vw-recv-tile:hover { border-color: var(--gold); color: var(--gold); }
+  .vw-recv-tile--gold:hover { color: var(--near-black); }
+  .vw-contract-row:hover { border-color: var(--lilac); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1094,4 +1097,146 @@ body {
   .vw-sendcta .btn-gold:active,
   .vw-send-stage .btn-gold:active,
   .vw-send-stage .btn-ghost:active { transform: none; }
+}
+
+/* ── Receive: primary spending QR + compact contract row ─────────────── */
+.vw-spendcard {
+  background: var(--surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 20px;
+  padding: 24px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vw-spendcard__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+}
+.vw-spendcard__sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.vw-qrframe {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 18px;
+}
+.vw-qrframe canvas {
+  display: block;
+  width: min(200px, calc(100vw - 8rem)) !important;
+  height: auto !important;
+}
+.vw-spendcard__addr {
+  font-family: var(--font-inconsolata), 'Inconsolata', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.6;
+  margin-top: 16px;
+  width: 100%;
+}
+.vw-recv-tiles {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 18px;
+}
+.vw-recv-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface-md);
+  border: 1px solid var(--border-dim);
+  border-radius: 14px;
+  padding: 12px 8px;
+  color: var(--off-white);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 120ms var(--ease), border-color 120ms var(--ease), color 120ms var(--ease);
+}
+.vw-recv-tile:active { transform: scale(0.97); }
+.vw-recv-tile:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.vw-recv-tile svg { color: var(--gold); }
+.vw-recv-tile__face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.vw-recv-swap {
+  animation: vw-recv-swap 220ms var(--ease);
+}
+@keyframes vw-recv-swap {
+  from { opacity: 0; filter: blur(2px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+.vw-recv-tile--gold {
+  background: var(--gold);
+  color: var(--near-black);
+  border-color: var(--gold);
+  font-weight: 600;
+}
+.vw-recv-tile--gold svg { color: var(--near-black); }
+.vw-recv-tile--gold:active { transform: scale(0.97); }
+.vw-contract-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 16px;
+  padding: 14px 16px;
+  width: 100%;
+  text-align: left;
+  color: var(--off-white);
+  cursor: pointer;
+  transition: border-color 120ms var(--ease), transform 120ms var(--ease);
+}
+.vw-contract-row:active { transform: scale(0.97); }
+.vw-contract-row__badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(183,172,232,0.12);
+  border: 1px solid rgba(183,172,232,0.3);
+  color: var(--lilac);
+}
+.vw-contract-row__copy {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface-md);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vw-recv-swap { animation: none; }
+  .vw-recv-tile:active,
+  .vw-recv-tile--gold:active,
+  .vw-contract-row:active { transform: none; }
 }
