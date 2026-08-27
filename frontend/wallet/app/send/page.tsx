@@ -540,10 +540,6 @@ export default function SendPage() {
                   <span>Debited</span>
                   <strong className="font-mono">{amount ? `${amount} ${selectedAsset?.code ?? ''}` : '—'}</strong>
                 </div>
-                <div className="vw-sumrow">
-                  <span>Network fee</span>
-                  <strong className="vw-feerow__value">{feeXlm} XLM · paid by fee-payer</strong>
-                </div>
                 <div className="vw-sumrow vw-sumrow--last">
                   <span>Remaining</span>
                   <strong className="font-mono">
