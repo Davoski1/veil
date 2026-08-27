@@ -9,6 +9,7 @@ import { buildSep7PayUri } from '@/lib/sep7'
 import { walletLocal, walletSession } from '@/lib/walletStorage'
 import { CURRENCIES, hydrateCurrency, useCurrency, type CurrencyCode } from '@/lib/currency'
 import { fetchPrice } from '@/lib/fetchPrice'
+import { downloadBrandedQr } from '@/lib/downloadBrandedQr'
 
 const REQUEST_CHIPS: Record<CurrencyCode, number[]> = {
   USD: [5, 10, 25, 50],
@@ -131,27 +132,20 @@ function SpendingCard({ address }: { address: string }) {
     window.setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleSaveQr = () => {
+  const handleSaveQr = async () => {
     if (!qrRef.current) return
-    setDownloading(true)
     const canvas = qrRef.current.querySelector('canvas')
-    if (!canvas) { setDownloading(false); return }
-
-    const pad = 24
-    const out = document.createElement('canvas')
-    out.width = canvas.width + pad * 2
-    out.height = canvas.height + pad * 2
-    const ctx = out.getContext('2d')
-    if (!ctx) { setDownloading(false); return }
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, out.width, out.height)
-    ctx.drawImage(canvas, pad, pad)
-
-    const link = document.createElement('a')
-    link.download = `veil-spending-${address.slice(0, 8)}.png`
-    link.href = out.toDataURL('image/png')
-    link.click()
-    setDownloading(false)
+    if (!canvas) return
+    setDownloading(true)
+    try {
+      await downloadBrandedQr({
+        qrCanvas: canvas,
+        filename: `veil-spending-${address.slice(0, 8)}.png`,
+        address,
+      })
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const handleShare = async () => {
