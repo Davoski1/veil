@@ -578,7 +578,7 @@ export default function SendPage() {
                 <Row label="To"      value={`${recipient.slice(0, 8)}...${recipient.slice(-8)}`} mono />
                 <Row label="Amount"  value={`${amount} ${selectedAsset?.code ?? 'XLM'}`} mono />
                 {memo && <Row label="Memo" value={memo} />}
-                <Row label="Network" value="Stellar Testnet" />
+                <Row label="Network" value={network.displayName} />
                 <Row label="Auth"    value="Passkey (WebAuthn)" />
               </div>
             </div>
