@@ -23,6 +23,8 @@
 
   /* Animation */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: var(--ease);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   --text-muted: rgba(246, 247, 248, 0.55);
 }
@@ -570,8 +572,9 @@ body {
 .vw-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
 .vw-label--lilac { color: #B7ACE8; }
 .vw-meta { font-family: var(--font-inconsolata), 'Inconsolata', monospace; font-size: 12px; color: rgba(246,247,248,0.4); }
-.vw-listrow { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.06); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: var(--off-white); cursor: pointer; text-align: left; }
+.vw-listrow { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.06); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: var(--off-white); cursor: pointer; text-align: left; transition: transform 160ms var(--ease-out); }
 .vw-listrow:last-child { border-bottom: none; }
+.vw-listrow:active { transform: scale(0.97); }
 .vw-agent { background: rgba(183,172,232,0.06); border: 1px solid rgba(183,172,232,0.22); border-radius: 26px; padding: 22px 26px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
 
 @media (max-width: 1180px) {
@@ -616,8 +619,13 @@ body {
   color: var(--off-white);
   cursor: pointer;
   text-align: left;
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease);
 }
-.vw-assetcard:hover { border-color: var(--gold); }
+.vw-assetcard:active { transform: scale(0.97); }
+.vw-assetcard svg {
+  transition: transform 200ms var(--ease-in-out);
+}
+.vw-assetcard[aria-expanded="true"] svg { transform: rotate(180deg); }
 .vw-assetcard__left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .vw-assetlist {
   margin-top: 8px;
@@ -625,6 +633,12 @@ body {
   border: 1px solid var(--border-dim);
   border-radius: 16px;
   overflow: hidden;
+  transform-origin: 50% 0;
+  animation: vw-send-pop 200ms var(--ease-out);
+}
+@keyframes vw-send-pop {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 .vw-assetlist button {
   display: flex;
@@ -639,9 +653,10 @@ body {
   color: var(--off-white);
   cursor: pointer;
   text-align: left;
+  transition: transform 160ms var(--ease-out), background 160ms var(--ease);
 }
 .vw-assetlist button:last-child { border-bottom: 0; }
-.vw-assetlist button:hover { background: var(--surface-md); }
+.vw-assetlist button:active { transform: scale(0.97); }
 
 .vw-recipientcard {
   display: flex;
@@ -665,13 +680,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: var(--surface-md);
   border: 1px solid var(--border-dim);
   color: var(--off-white);
   cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease), color 160ms var(--ease);
 }
-.vw-roundbtn:hover { border-color: var(--gold); color: var(--gold); }
-.vw-roundbtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vw-roundbtn:active { transform: scale(0.97); }
+.vw-roundbtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .vw-feerow {
   display: flex;
@@ -695,6 +712,35 @@ body {
   background: linear-gradient(180deg, transparent, var(--near-black) 28%);
   z-index: 2;
 }
+.vw-sendcta .btn-gold {
+  transition: background 160ms var(--ease), transform 160ms var(--ease-out), opacity 160ms var(--ease);
+}
+.vw-sendcta .btn-gold:active { transform: scale(0.97); }
+
+.vw-send-stage {
+  animation: vw-send-stage 220ms var(--ease-out);
+}
+@keyframes vw-send-stage {
+  from { opacity: 0; filter: blur(2px); transform: scale(0.96); }
+  to   { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+.vw-send-swap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  animation: vw-send-swap 200ms var(--ease);
+}
+@keyframes vw-send-swap {
+  from { opacity: 0; filter: blur(2px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+.vw-send-stage .btn-gold,
+.vw-send-stage .btn-ghost {
+  transition: background 160ms var(--ease), border-color 160ms var(--ease), transform 160ms var(--ease-out), opacity 160ms var(--ease);
+}
+.vw-send-stage .btn-gold:active,
+.vw-send-stage .btn-ghost:active { transform: scale(0.97); }
 
 .vw-amountcard { background: rgba(255,255,255,0.04); border: 1px solid var(--border-dim); border-radius: 16px; padding: 26px 22px 18px; display: flex; flex-direction: column; align-items: center; }
 .vw-amountinput { font-family: var(--font-inconsolata), 'Inconsolata', monospace; font-style: normal; font-weight: 500; font-size: 56px; line-height: 1; text-align: center; width: 100%; background: none; border: 0; color: var(--off-white); outline: none; font-variant-numeric: tabular-nums; }
@@ -707,8 +753,18 @@ body {
 .vw-amountfoot { align-self: stretch; display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
 .vw-amountbal { font-size: 12px; color: rgba(246,247,248,0.45); }
 .vw-chips { display: flex; gap: 7px; }
-.vw-amountchip { border: 1px solid var(--border-dim); background: rgba(255,255,255,0.04); color: rgba(246,247,248,0.7); border-radius: 100px; padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer; }
-.vw-amountchip:hover { border-color: var(--gold); color: var(--gold); }
+.vw-amountchip {
+  border: 1px solid var(--border-dim);
+  background: rgba(255,255,255,0.04);
+  color: rgba(246,247,248,0.7);
+  border-radius: 100px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease), color 160ms var(--ease);
+}
+.vw-amountchip:active { transform: scale(0.97); }
 
 .vw-sumrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
 .vw-sumrow span { color: rgba(246,247,248,0.45); white-space: nowrap; }
@@ -1018,3 +1074,24 @@ body {
 }
 .agent-send--disabled:hover { background: rgba(253,218,36,0.3); }
 .agent-send--disabled:active { transform: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  .vw-assetcard:hover { border-color: var(--gold); }
+  .vw-assetlist button:hover { background: var(--surface-md); }
+  .vw-roundbtn:hover { border-color: var(--gold); color: var(--gold); }
+  .vw-amountchip:hover { border-color: rgba(253,218,36,0.35); color: var(--gold); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vw-assetlist,
+  .vw-send-stage,
+  .vw-send-swap { animation: none; }
+  .vw-assetcard:active,
+  .vw-assetlist button:active,
+  .vw-roundbtn:active,
+  .vw-amountchip:active,
+  .vw-listrow:active,
+  .vw-sendcta .btn-gold:active,
+  .vw-send-stage .btn-gold:active,
+  .vw-send-stage .btn-ghost:active { transform: none; }
+}

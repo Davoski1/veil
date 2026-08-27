@@ -312,7 +312,7 @@ export default function SendPage() {
         </div>
 
         {step === 'form' && (
-          <div className="vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
+          <div className="vw-send-stage vw-row vw-row--first" style={{ alignItems: 'flex-start' }}>
             <div className="vw-sendcol">
 
             <div>
@@ -325,13 +325,15 @@ export default function SendPage() {
                 aria-haspopup={assets.length > 1 ? 'listbox' : undefined}
               >
                 <span className="vw-assetcard__left">
-                  <span className="vw-avatar">{selectedAsset?.code.slice(0, 1) ?? '?'}</span>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{selectedAsset?.code ?? '—'}</span>
-                    <span className="vw-meta">
-                      {selectedAsset
-                        ? `${parseFloat(selectedAsset.balance).toFixed(4)} available`
-                        : 'Loading…'}
+                  <span className="vw-send-swap" key={selectedAsset ? assetKey(selectedAsset) : 'none'}>
+                    <span className="vw-avatar">{selectedAsset?.code.slice(0, 1) ?? '?'}</span>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                      <span style={{ fontSize: 15, fontWeight: 600 }}>{selectedAsset?.code ?? '—'}</span>
+                      <span className="vw-meta">
+                        {selectedAsset
+                          ? `${parseFloat(selectedAsset.balance).toFixed(4)} available`
+                          : 'Loading…'}
+                      </span>
                     </span>
                   </span>
                 </span>
@@ -469,14 +471,16 @@ export default function SendPage() {
                   title="Upload a QR code image from your device"
                   disabled={imgDecoding}
                 >
-                  {imgDecoding ? (
-                    <div className="spinner spinner-light" style={{ width: 16, height: 16 }} />
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                      <path d="M3 13v3a1 1 0 001 1h12a1 1 0 001-1v-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      <path d="M10 3v9M7 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
+                  <span className="vw-send-swap" key={imgDecoding ? 'busy' : 'idle'}>
+                    {imgDecoding ? (
+                      <div className="spinner spinner-light" style={{ width: 16, height: 16 }} />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <path d="M3 13v3a1 1 0 001 1h12a1 1 0 001-1v-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M10 3v9M7 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
                 </button>
                 <input
                   ref={fileInputRef}
@@ -576,7 +580,7 @@ export default function SendPage() {
         )}
 
         {step === 'confirm' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="vw-send-stage" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div className="card">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <Row label="To"      value={`${recipient.slice(0, 8)}...${recipient.slice(-8)}`} mono />
@@ -598,7 +602,7 @@ export default function SendPage() {
         )}
 
         {step === 'signing' && (
-          <div className="card" style={{ textAlign: 'center' }}>
+          <div className="card vw-send-stage" style={{ textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
               <div className="spinner spinner-light" />
             </div>
@@ -610,7 +614,7 @@ export default function SendPage() {
         )}
 
         {step === 'done' && (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
+          <div className="card vw-send-stage" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ margin: '0 auto' }}>
               <circle cx="20" cy="20" r="19" stroke="var(--teal)" strokeWidth="1.5"/>
               <path d="M13 20.5l5 5 9-9" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -632,7 +636,7 @@ export default function SendPage() {
         )}
 
         {step === 'error' && (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
+          <div className="card vw-send-stage" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ margin: '0 auto' }}>
               <circle cx="20" cy="20" r="19" stroke="var(--teal)" strokeWidth="1.5" opacity="0.5"/>
               <path d="M14 14l12 12M26 14l-12 12" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round"/>
