@@ -16,6 +16,7 @@ import { ContactPicker } from '@/components/ContactPicker'
 import { QrScanner } from '@/components/QrScanner'
 import { useInactivityLock } from '@/hooks/useInactivityLock'
 import { parseQrValue } from '@/lib/sep7'
+import { passkeyErrorMessage } from '@/lib/passkeyAuth'
 
 import { getNativeAssetContractId, getNetwork } from '@/lib/network'
 import { beginTx, endTx } from '@/lib/txState'
@@ -282,12 +283,7 @@ export default function SendPage() {
 
       setStep('done')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setErrorMsg(
-        msg.includes('NotAllowedError') || msg.includes('not allowed')
-          ? 'Biometric verification was cancelled. Please try again.'
-          : msg
-      )
+      setErrorMsg(passkeyErrorMessage(err))
       setStep('error')
     } finally {
       endTx()
