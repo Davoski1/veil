@@ -736,8 +736,8 @@ function DashboardPageContent() {
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem 1.25rem',
-            background: 'rgba(253,218,36,0.07)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            background: 'var(--surface-md)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '12px',
           }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--off-white)', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -747,10 +747,10 @@ function DashboardPageContent() {
               Your browser storage was cleared. Tap below to set up a new fee-payer account so you can send, swap, and use the agent.
             </p>
             <button
-              className="btn-gold"
+              className="btn-secondary"
               onClick={handleFund}
               disabled={isFunding}
-              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem', color:'var(--color-muted)', }}
+              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem', width: 'auto' }}
             >
               {isFunding
                 ? <div className="spinner" style={{ width: '14px', height: '14px' }} />
@@ -803,8 +803,8 @@ function DashboardPageContent() {
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem 1.25rem',
-            background: 'rgba(253,218,36,0.07)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            background: 'var(--surface-md)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '12px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -826,10 +826,10 @@ function DashboardPageContent() {
               <p style={{ color: 'var(--teal)', fontSize: '0.75rem', marginBottom: '0.625rem' }}>{sweepError}</p>
             )}
             <button
-              className="btn-gold"
+              className="btn-secondary"
               onClick={handleSweep}
               disabled={isSweeping}
-              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem' }}
+              style={{ fontSize: '0.875rem', padding: '0.625rem 1.25rem', width: 'auto' }}
             >
               {isSweeping
                 ? <div className="spinner" style={{ width: '14px', height: '14px' }} />
@@ -995,7 +995,7 @@ function DashboardPageContent() {
             transform: 'translateX(-50%)',
             zIndex: 70,
             background: 'rgba(32, 34, 38, 0.95)',
-            border: '1px solid rgba(253,218,36,0.25)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '999px',
             padding: '0.625rem 0.95rem',
             color: 'var(--off-white)',
