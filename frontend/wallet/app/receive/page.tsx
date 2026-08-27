@@ -68,6 +68,14 @@ function HexagonIcon() {
   )
 }
 
+function CheckIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 function Tile({
   label,
   onClick,
@@ -88,8 +96,10 @@ function Tile({
       onClick={onClick}
       disabled={disabled}
     >
-      {icon}
-      {label}
+      <span className="vw-recv-tile__face vw-recv-swap" key={label}>
+        {icon}
+        {label}
+      </span>
     </button>
   )
 }
@@ -191,7 +201,7 @@ function SpendingCard({ address }: { address: string }) {
       <p className="vw-spendcard__addr">{address}</p>
 
       <div className="vw-recv-tiles">
-        <Tile primary label={copied ? 'Copied' : 'Copy'} onClick={handleCopy} icon={<CopyIcon />} />
+        <Tile primary label={copied ? 'Copied' : 'Copy'} onClick={handleCopy} icon={copied ? <CheckIcon /> : <CopyIcon />} />
         <Tile label={downloading ? 'Saving…' : 'Save QR'} onClick={handleSaveQr} disabled={downloading} icon={<DownloadIcon />} />
         <Tile label="Share" onClick={handleShare} icon={<ShareIcon />} />
       </div>
@@ -213,7 +223,7 @@ function ContractRow({ address }: { address: string }) {
       type="button"
       className="vw-contract-row"
       onClick={handleCopy}
-      aria-label="Copy contract address"
+      aria-label={copied ? 'Contract address copied' : 'Copy contract address'}
     >
       <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <span className="vw-contract-row__badge"><HexagonIcon /></span>
@@ -224,7 +234,11 @@ function ContractRow({ address }: { address: string }) {
           </span>
         </span>
       </span>
-      <span className="vw-contract-row__copy" aria-hidden="true"><CopyIcon /></span>
+      <span className="vw-contract-row__copy" aria-hidden="true">
+        <span className="vw-recv-swap" key={copied ? 'copied' : 'copy'}>
+          {copied ? <CheckIcon /> : <CopyIcon />}
+        </span>
+      </span>
     </button>
   )
 }
