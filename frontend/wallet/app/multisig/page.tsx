@@ -70,7 +70,7 @@ export default function MultisigPage() {
           }}>
             DAO Multisig Hub
           </h1>
-          <p style={{ fontSize: "0.875rem", color: "rgba(246,247,248,0.5)", lineHeight: 1.5 }}>
+          <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
             Create M-of-N multisig wallets programmatically, propose native XLM token transfers, and collect signatures completely on-chain.
           </p>
         </div>
