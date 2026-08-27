@@ -3,7 +3,7 @@ const INK = '#0F0F0F'
 const PAPER = '#FFFFFF'
 
 const CARD_W = 1080
-const CARD_H = 1440
+const CARD_H = 1260
 
 type DownloadBrandedQrParams = {
   qrCanvas: HTMLCanvasElement
