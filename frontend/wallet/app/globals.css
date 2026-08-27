@@ -1167,6 +1167,14 @@ body {
 .vw-recv-tile:hover { border-color: var(--gold); color: var(--gold); }
 .vw-recv-tile:disabled { opacity: 0.6; cursor: not-allowed; }
 .vw-recv-tile svg { color: var(--gold); }
+.vw-recv-tile--gold {
+  background: var(--gold);
+  color: var(--near-black);
+  border-color: var(--gold);
+  font-weight: 600;
+}
+.vw-recv-tile--gold svg { color: var(--near-black); }
+.vw-recv-tile--gold:hover { filter: brightness(0.95); color: var(--near-black); }
 .vw-contract-row {
   display: flex;
   align-items: center;
