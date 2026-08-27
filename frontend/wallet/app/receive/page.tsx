@@ -8,6 +8,18 @@ import { Keypair } from '@stellar/stellar-sdk'
 import { QRCodeCanvas } from 'qrcode.react'
 import { buildSep7PayUri } from '@/lib/sep7'
 import { walletLocal, walletSession } from '@/lib/walletStorage'
+import { CURRENCIES, hydrateCurrency, useCurrency, type CurrencyCode } from '@/lib/currency'
+import { fetchPrice } from '@/lib/fetchPrice'
+
+const REQUEST_CHIPS: Record<CurrencyCode, number[]> = {
+  USD: [5, 10, 25, 50],
+  NGN: [2000, 5000, 10000, 20000],
+  KES: [500, 1000, 2500, 5000],
+  GHS: [50, 100, 250, 500],
+  ZAR: [50, 100, 250, 500],
+  GBP: [5, 10, 25, 50],
+  EUR: [5, 10, 25, 50],
+}
 
 function shorten(address: string, head = 12, tail = 12): string {
   return address.length > head + tail + 1
@@ -62,14 +74,21 @@ function Tile({
   onClick,
   disabled,
   icon,
+  primary,
 }: {
   label: string
   onClick: () => void
   disabled?: boolean
   icon: ReactNode
+  primary?: boolean
 }) {
   return (
-    <button type="button" className="vw-recv-tile" onClick={onClick} disabled={disabled}>
+    <button
+      type="button"
+      className={primary ? 'vw-recv-tile vw-recv-tile--gold' : 'vw-recv-tile'}
+      onClick={onClick}
+      disabled={disabled}
+    >
       {icon}
       {label}
     </button>
@@ -79,8 +98,23 @@ function Tile({
 function SpendingCard({ address }: { address: string }) {
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [xlmUsd, setXlmUsd] = useState<number | null>(null)
+  const [requestFiat, setRequestFiat] = useState<number | null>(null)
   const qrRef = useRef<HTMLDivElement>(null)
-  const payUri = buildSep7PayUri({ destination: address })
+  const { code, rate } = useCurrency()
+  const chips = REQUEST_CHIPS[code]
+  const symbol = CURRENCIES[code].symbol
+
+  useEffect(() => {
+    hydrateCurrency()
+    void fetchPrice('XLM', null).then(setXlmUsd)
+  }, [])
+
+  const xlmAmount =
+    requestFiat != null && xlmUsd != null && xlmUsd > 0 && rate > 0
+      ? (requestFiat / rate / xlmUsd).toFixed(7).replace(/\.?0+$/, '')
+      : undefined
+  const payUri = buildSep7PayUri({ destination: address, amount: xlmAmount })
 
   const handleCopy = async () => {
     if (!(await copyText(address))) return
@@ -112,9 +146,10 @@ function SpendingCard({ address }: { address: string }) {
   }
 
   const handleShare = async () => {
+    const payload = xlmAmount ? payUri : address
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'My Veil Wallet Address', text: address })
+        await navigator.share({ title: 'My Veil Wallet Address', text: payload })
       } catch { /* user dismissed */ }
       return
     }
@@ -125,6 +160,24 @@ function SpendingCard({ address }: { address: string }) {
     <div className="vw-spendcard">
       <p className="vw-spendcard__label">Spending address</p>
       <p className="vw-spendcard__sub">Use this for most senders &amp; exchanges</p>
+
+      <div className="vw-more" style={{ marginTop: 14, justifyContent: 'center' }}>
+        {chips.map((amount) => (
+          <button
+            key={amount}
+            type="button"
+            className={requestFiat === amount ? 'vw-chip vw-chip--active' : 'vw-chip'}
+            onClick={() => setRequestFiat((current) => current === amount ? null : amount)}
+          >
+            {symbol}{amount.toLocaleString('en-US')}
+          </button>
+        ))}
+      </div>
+      {xlmAmount && (
+        <p className="vw-spendcard__sub" style={{ marginTop: 8 }}>
+          QR asks for {xlmAmount} XLM
+        </p>
+      )}
 
       <div ref={qrRef} className="vw-qrframe">
         <QRCodeCanvas
@@ -139,7 +192,7 @@ function SpendingCard({ address }: { address: string }) {
       <p className="vw-spendcard__addr">{address}</p>
 
       <div className="vw-recv-tiles">
-        <Tile label={copied ? 'Copied' : 'Copy'} onClick={handleCopy} icon={<CopyIcon />} />
+        <Tile primary label={copied ? 'Copied' : 'Copy'} onClick={handleCopy} icon={<CopyIcon />} />
         <Tile label={downloading ? 'Saving…' : 'Save QR'} onClick={handleSaveQr} disabled={downloading} icon={<DownloadIcon />} />
         <Tile label="Share" onClick={handleShare} icon={<ShareIcon />} />
       </div>
