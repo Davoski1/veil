@@ -71,7 +71,7 @@ export default function ContactsScreen() {
   const isFormOpen = showAddForm || editingId !== null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Contacts</Text>

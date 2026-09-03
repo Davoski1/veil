@@ -37,7 +37,7 @@ User device                        Stellar network
 graph TD
     subgraph Browser["Browser (WebAuthn)"]
         UA["User Agent\n(Face ID / Fingerprint)"]
-        SDK["invisible-wallet-sdk\n(React hook)"]
+        SDK["invisible-wallet-sdk\n(React hook / Vue composable)"]
     end
 
     subgraph Wallet["Veil Wallet PWA (Next.js)"]
@@ -97,7 +97,9 @@ veil/
 │       └── Cargo.toml
 ├── sdk/
 │   ├── src/
-│   │   ├── useInvisibleWallet.ts  # React hook — register, deploy, login, signAuthEntry, addSigner, removeSigner, setGuardian, initiateRecovery, completeRecovery
+│   │   ├── core.ts                # Framework-agnostic wallet core — register, deploy, login, signAuthEntry, sendPayment, addSigner, removeSigner, setGuardian, initiateRecovery, completeRecovery
+│   │   ├── useInvisibleWallet.ts  # React hook — binds the core to useSyncExternalStore
+│   │   ├── vue/                   # Vue 3 composable — binds the same core to refs (invisible-wallet-sdk/vue)
 │   │   ├── webauthn.ts            # WebAuthn provider interface + web/browser implementation
 │   │   ├── webauthn.native.ts     # React Native implementation (react-native-passkey) — Metro auto-resolves
 │   │   ├── utils.ts               # Crypto utilities (DER→raw, pubkey extraction, SHA256, computeWalletAddress)
@@ -111,12 +113,12 @@ veil/
 │           ├── txBuilder.ts       # Builds unsigned Stellar XDR transactions (swap, payment)
 │           └── x402Client.ts      # x402 micropayment client — auto-pays Lens price endpoint calls
 └── frontend/
-    ├── website/                   # Next.js 14 marketing site (veil-mocha.vercel.app)
+    ├── website/                   # Next.js 14 marketing site (useveilapp.xyz)
     │   └── app/
     │       ├── page.tsx           # Homepage — Hero, HowItWorks, WhyVeil, DevQuickstart
     │       └── products/          # /products listing + /wallet /lens /wraith /agent detail pages
-    ├── docs/                      # Nextra 3 documentation (veil-2ap8.vercel.app)
-    └── wallet/                    # Veil wallet app (Next.js 14, veil-ezry.vercel.app)
+    ├── docs/                      # Nextra 3 documentation (docs.useveilapp.xyz)
+    └── wallet/                    # Veil wallet app (Next.js 14, app.useveilapp.xyz)
         ├── app/
         │   ├── dashboard/         # Balance, all token assets with logos, activity feed + filters (All/Transfers/Swaps)
         │   ├── send/              # Send XLM or tokens — passkey-gated
@@ -334,6 +336,33 @@ function App() {
 }
 ```
 
+### With Vue 3
+
+```vue
+<script setup lang="ts">
+import { useInvisibleWallet } from 'invisible-wallet-sdk/vue';
+
+// Same actions as the React hook — both wrap the same framework-agnostic core.
+// State comes back as refs instead of React state.
+const { address, isPending, error, register, deploy, login, sendPayment } =
+  useInvisibleWallet({
+    factoryAddress: FACTORY_CONTRACT_ID,
+    rpcUrl: 'https://soroban-testnet.stellar.org',
+    networkPassphrase: Networks.TESTNET,
+  });
+</script>
+
+<template>
+  <p v-if="address">Wallet: {{ address }}</p>
+  <button v-else :disabled="isPending" @click="register('alice')">Create wallet</button>
+</template>
+```
+
+`vue` is an optional peer dependency, so React apps never install it — and the
+Vue entry point pulls in no React. See [`examples/vue/`](examples/vue/) for a
+Vite starter covering register, login and send, and [`examples/nuxt/`](examples/nuxt/)
+for the SSR flavour.
+
 ### Without a framework
 
 ```js
@@ -383,7 +412,7 @@ The contract's `__check_auth` expects the signature field to be a `Vec<Val>` wit
 
 ## Security
 
-See the [Security docs](https://veil-2ap8.vercel.app/security) and the [Threat Model](https://veil-2ap8.vercel.app/threat-model) for the full STRIDE analysis, trust assumptions, and residual risks.
+See the [Security docs](https://docs.useveilapp.xyz/security) and the [Threat Model](https://docs.useveilapp.xyz/threat-model) for the full STRIDE analysis, trust assumptions, and residual risks.
 
 ### Verifying contract builds
 
