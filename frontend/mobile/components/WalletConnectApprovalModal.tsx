@@ -165,7 +165,7 @@ export function WalletConnectApprovalModal() {
         <View accessibilityViewIsModal accessibilityLabel="Transaction approval" style={styles.sheet}>
           <Text style={styles.title}>Transaction approval</Text>
 
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
               <View style={styles.dappRow}>
                 {dappIcon ? (

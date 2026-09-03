@@ -1,9 +1,10 @@
 'use client'
 
+import { PageHeader } from '@/components/ui/primitives'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Keypair } from '@stellar/stellar-sdk'
-import { VeilLogo } from '@/components/VeilLogo'
+import { VeilMark } from '@/components/ui/VeilMark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useInvisibleWallet, type SignerInfo } from '@veil/sdk'
 import { walletConfig } from '@/lib/network'
@@ -16,6 +17,8 @@ import {
   storeEncryptedMnemonic,
   getEncryptedMnemonic,
 } from '@/lib/recovery'
+import { walletLocal, walletSession } from '@/lib/walletStorage'
+import { isFeePayerPrfDowngrade, getFeePayerDiagnostics } from '@/lib/feePayer'
 
 type Section = 'overview' | 'add-signer' | 'guardian' | 'recovery-backup'
 
@@ -146,6 +149,7 @@ export default function SettingsPage() {
   const [section, setSection] = useState<Section>('overview')
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [prfDowngraded, setPrfDowngraded] = useState(false)
 
   const [signers, setSigners] = useState<SignerInfo[]>([])
   const [localPublicKey, setLocalPublicKey] = useState<string | null>(null)
@@ -258,9 +262,12 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    const addr = sessionStorage.getItem('invisible_wallet_address')
+    const addr = walletSession.getItem('invisible_wallet_address')
     if (!addr) { router.replace('/lock'); return }
     setAddress(addr)
+    // Check fee-payer downgrade state so the card can show a warning dot
+    // without importing the full diagnostics into every render.
+    setPrfDowngraded(isFeePayerPrfDowngrade(getFeePayerDiagnostics()))
   }, [router])
 
   const fetchSigners = useCallback(async () => {
@@ -277,12 +284,12 @@ export default function SettingsPage() {
       fetchSigners()
     }
     if (typeof window !== 'undefined') {
-      setLocalPublicKey(localStorage.getItem('invisible_wallet_public_key'))
+      setLocalPublicKey(walletLocal.getItem('invisible_wallet_public_key'))
     }
   }, [address, section, fetchSigners])
 
   function getSignerKeypair(): Keypair {
-    const secret = sessionStorage.getItem('veil_signer_secret')
+    const secret = walletSession.getItem('veil_signer_secret')
     if (!secret) throw new Error('No signer key in session')
     return Keypair.fromSecret(secret)
   }
@@ -354,7 +361,7 @@ export default function SettingsPage() {
           </svg>
           {section === 'overview' ? 'Dashboard' : 'Settings'}
         </button>
-        <VeilLogo size={22} />
+        <VeilMark size={22} />
         <ThemeToggle />
       </nav>
 
@@ -362,9 +369,9 @@ export default function SettingsPage() {
         {/* Overview */}
         {section === 'overview' && (
           <>
-            <h2 style={{ fontFamily: 'Lora, Georgia, serif', fontWeight: 600, fontStyle: 'italic', fontSize: '1.75rem', marginBottom: '0.375rem' }}>
-              Security
-            </h2>
+            <div style={{ marginBottom: '1.75rem' }}>
+          <PageHeader eyebrow="Preferences" title="Settings" />
+        </div>
             <p style={{ fontSize: '0.875rem', color: 'rgba(246,247,248,0.4)', marginBottom: '2rem' }}>
               Manage signers, recovery, and wallet settings
             </p>
@@ -395,6 +402,42 @@ export default function SettingsPage() {
                   </div>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
                     <path d="M6 3l5 5-5 5" stroke="rgba(246,247,248,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+
+              {/* Fee Payer card */}
+              <button
+                id="settings-fee-payer"
+                className="card"
+                onClick={() => router.push('/settings/fee-payer')}
+                style={{ textAlign: 'left', cursor: 'pointer', width: '100%', border: prfDowngraded ? '1px solid rgba(220,38,38,0.35)' : '1px solid var(--border-dim)', background: 'var(--surface)' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <p style={{ fontWeight: 500, fontSize: '0.9375rem' }}>Fee Payer</p>
+                      {prfDowngraded && (
+                        <span
+                          title="PRF was requested but is unavailable on this device — fee payer may differ on other clients"
+                          style={{
+                            display: 'inline-block',
+                            width: '7px', height: '7px',
+                            borderRadius: '50%',
+                            background: 'rgba(220,38,38,0.85)',
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(246,247,248,0.4)', marginTop: '0.25rem' }}>
+                      {prfDowngraded
+                        ? 'PRF unavailable — using legacy derivation'
+                        : 'View active fee-payer address and derivation mode'}
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M6 3l5 5-5 5" stroke={prfDowngraded ? 'rgba(220,38,38,0.5)' : 'rgba(246,247,248,0.3)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               </button>
