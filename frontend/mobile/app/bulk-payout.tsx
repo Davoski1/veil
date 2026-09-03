@@ -101,7 +101,7 @@ export default function BulkPayoutScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bulk payout</Text>
         <ThemeToggle />

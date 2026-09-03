@@ -34,6 +34,8 @@ export type ThemeColors = {
   background: string;
   /** Cards, inputs, and list containers sitting on the background. */
   surface: string;
+  /** Raised surface — quick-action tiles, tx icon chips (artboard `surface-md`). */
+  surfaceMd: string;
   /** Borders, dividers, and secondary button fills. */
   border: string;
   /** Screen and section titles. */
@@ -56,42 +58,62 @@ export type ThemeColors = {
   danger: string;
   /** Fill behind error text. */
   dangerSurface: string;
+  /** Uppercase Anton section labels (artboard `grey`). */
+  label: string;
+  /** Positive movement — gains, received transfers, up-deltas (artboard `teal`). */
+  positive: string;
+  /** Fill/border behind positive pills. */
+  positiveSurface: string;
+  /** Swaps and secondary accents (artboard `lilac`). */
+  lilac: string;
 };
 
 /**
- * Dark values are the ones the app already shipped with, so dark mode is
- * unchanged by this feature — only light mode is new.
+ * Veil brand palette — gold (`#FDDA24`) on near-black (`#0F0F0F`), matching the
+ * web wallet's `--gold` / `--near-black` / `--off-white` tokens. Light mode uses
+ * the web wallet's darker `#C4A800` gold so the accent keeps contrast on white.
+ * (Replaces an earlier indigo/slate palette that had drifted off-brand.)
  */
 export const THEMES: Record<Theme, ThemeColors> = {
   dark: {
-    background: '#0B0B0F',
-    surface: '#1e293b',
-    border: '#334155',
+    background: '#0F0F0F',
+    surface: 'rgba(255,255,255,0.03)',
+    surfaceMd: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.08)',
     textStrong: '#FFFFFF',
-    textPrimary: '#f1f5f9',
-    textSecondary: '#9BA1A6',
-    textMuted: '#94a3b8',
-    textFaint: '#64748b',
-    accent: '#6366f1',
-    accentText: '#a5b4fc',
-    onAccent: '#FFFFFF',
-    danger: '#f87171',
-    dangerSurface: '#450a0a',
+    textPrimary: '#F6F7F8',
+    textSecondary: 'rgba(246,247,248,0.62)',
+    textMuted: 'rgba(246,247,248,0.55)',
+    textFaint: 'rgba(246,247,248,0.35)',
+    accent: '#FDDA24',
+    accentText: '#FDDA24',
+    onAccent: '#0F0F0F',
+    danger: '#E06A5B',
+    dangerSurface: 'rgba(224,106,91,0.14)',
+    label: '#D6D2C4',
+    positive: '#00A7B5',
+    positiveSurface: 'rgba(0,167,181,0.12)',
+    lilac: '#B7ACE8',
   },
   light: {
-    background: '#F6F7F9',
-    surface: '#FFFFFF',
-    border: '#D9DEE7',
-    textStrong: '#0B0B0F',
-    textPrimary: '#1F2937',
-    textSecondary: '#5A6472',
+    background: '#FFFFFF',
+    surface: 'rgba(0,0,0,0.02)',
+    surfaceMd: 'rgba(0,0,0,0.04)',
+    border: 'rgba(0,0,0,0.10)',
+    textStrong: '#0F0F0F',
+    textPrimary: '#1A1A1A',
+    textSecondary: '#4B5563',
     textMuted: '#6B7280',
-    textFaint: '#8B94A3',
-    accent: '#4F46E5',
-    accentText: '#4338CA',
-    onAccent: '#FFFFFF',
-    danger: '#DC2626',
-    dangerSurface: '#FEE2E2',
+    textFaint: '#9CA3AF',
+    accent: '#C4A800',
+    accentText: '#8A7600',
+    onAccent: '#0F0F0F',
+    danger: '#C4442F',
+    dangerSurface: 'rgba(196,68,47,0.10)',
+    label: '#6B7280',
+    positive: '#00838F',
+    positiveSurface: 'rgba(0,131,143,0.10)',
+    lilac: '#6C5CB0',
   },
 };
 
