@@ -200,6 +200,11 @@ export const walletConfig: WalletConfig = {
   // Namespace the SDK's own credential reads/writes per network, so switching or
   // resetting one network cannot touch the other's wallet — see walletStorage.ts.
   storage: namespacedStorageAdapter,
+  // Explicit rpId and origin allow native (Expo / React Native) builds to
+  // provide the relying-party id and origin via environment variables.
+  // When unset, the SDK falls back to window.location.hostname / origin.
+  rpId: process.env.NEXT_PUBLIC_RP_ID?.trim() || undefined,
+  origin: process.env.NEXT_PUBLIC_ORIGIN?.trim() || undefined,
 }
 
 export function getNativeAssetContractId(): string {
